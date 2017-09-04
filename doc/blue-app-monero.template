@@ -202,7 +202,7 @@ $endfor$
   \centering
 %  \includegraphics[width=0.15\textwidth]{example-image-1x1}\par\vspace{1cm}
   {\scshape\LARGE Ledger Device for Monero \par}
-  {\scshape v0.7b \par}
+  {\scshape v0.7c \par}
   \vspace{1cm}
   {\Large\itshape Cédric Mesnil (cedric@ledger.fr)\par}
   {\scshape\Large  Ledger SAS \par}
