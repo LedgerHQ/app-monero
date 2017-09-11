@@ -24,7 +24,25 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_stealth() {
+int monero_apdu_stealth() {
+    unsigned int options,i;
+    unsigned char Dout[33];
+
+    options = monero_io_fetch_u8();
+    //fetch Aout
+    monero_io_fetch(Dout,32);
+    //Derive Dout
+    monero_derive_dh(Dout, (void*)&G_monero_vstate.r, Dout);
+    //compute mask
+    Dout[32] = ENCRYPTED_PAYMENT_ID_TAIL;
+    monero_hash_H(Dout,33,NULL);
+    monero_io_fetch(Dout,32);
+    //stealth!
+    for (i=0; i<32;i++) {
+        Dout[i] = Dout[i] ^ G_monero_vstate.H[i];
+    }
     monero_io_discard(0);
-    return 0x6f01;
+    monero_io_insert(Dout,32);
+    
+    return SW_OK;
 }

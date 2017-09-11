@@ -60,7 +60,16 @@ void ui_info(const char* msg1, const char* msg2, const void *menu_display, unsig
   UX_MENU_DISPLAY(0, G_monero_vstate.ui_dogsays, NULL);
 };
 
+/* ----------------------------- USER VALIDATION ----------------------------- */
 
+void ui_menu_validation_display(unsigned int value) {
+  
+}
+
+
+void monero_ux_user_validation() {
+  ui_menu_validation_display(0);
+}
 /* -------------------------------- RESET UX --------------------------------- */
 
 const ux_menu_entry_t ui_menu_reset[] = {

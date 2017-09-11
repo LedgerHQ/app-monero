@@ -28,7 +28,7 @@
 .. |c|      replace:: :math:`\mathit{c}`
 .. |c.C|    replace:: :math:`(\mathit{c, C})`
 .. |d|      replace:: :math:`\mathit{d}`
-.. |dD|     replace:: :math:`(\mathit{d, D})`
+.. |d.D|    replace:: :math:`(\mathit{d, D})`
 .. |Aout|   replace:: :math:`\mathit{A_{out}}`
 .. |Bout|   replace:: :math:`\mathit{B_{out}}`
 .. |Dout|   replace:: :math:`\mathit{D_{out}}`
@@ -43,8 +43,13 @@
 .. |exin|   replace:: :math:`\widetilde{\mathit{x_{in}}}`
 .. |Pout|   replace:: :math:`\mathit{P_{out}}`
 .. |ai|     replace:: :math:`\mathit{\alpha_{in}}`
-.. |aGi|    replace:: :math:`(\mathit{alpha_{in}, alpha_{in}.G})`
+.. |eai|    replace:: :math:`\widetilde{\mathit{\alpha_{in}}}`
+.. |aGi|    replace:: :math:`\mathit{\alpha_{in}.G}`
+.. |Hi|     replace:: :math:`\mathit{H_i}`
+.. |aHi|    replace:: :math:`\mathit{\alpha_{in}.H_i}`
 .. |Iin|    replace:: :math:`\mathit{I_{in}}`
+.. |IIi|    replace:: :math:`\mathit{II_{in}}`
+
 
 .. |Rin|    replace:: :math:`\mathit{R_{in}}`
 .. |R|      replace:: :math:`\mathit{R}`
@@ -65,6 +70,8 @@
 .. |lH|     replace:: :math:`\mathcal{L}` 
 .. |ctH|    replace:: :math:`\mathcal{C}` 
 .. |mlsagH| replace:: :math:`\mathcal{H}` 
+.. |ss|     replace:: :math:`\mathit{ss}` 
+.. |c|      replace:: :math:`\mathit{c}` 
 
 .. |DRVin|  replace:: :math:`\mathfrak{D}_\mathrm{in}` 
 .. |eDRVin| replace:: :math:`\widetilde{\mathfrak{D}_\mathrm{in}}`
@@ -81,10 +88,12 @@
 .. |Hf|     replace:: :math:`\mathit{H = h.G}`
 
 .. |G|      replace:: :math:`\mathit{G}`
+.. |l|      replace:: :math:`\mathit{l}`
 .. |v|      replace:: :math:`\mathit{v}`
 .. |k|      replace:: :math:`\mathit{k}`
 .. |ev|      replace:: :math:`\widetilde{\mathit{v}}`
 .. |ek|      replace:: :math:`\widetilde{\mathit{k}}`
+
 
 .. |drvDH|  replace:: :math:`\mathtt{DeriveDH}`
 .. |drvPu|  replace:: :math:`\mathtt{DerivePub}`
@@ -188,11 +197,11 @@ and scalars, such as private keys, are written in italic lower case:
 
    - |spk| :             protection key
 
-   - |r.R| :              transaction key pair
+   - |r.R| :             transaction key pair
 
-   - |a.A| |b.B| :         sender main view/spend key pair
+   - |a.A| |b.B| :       sender main view/spend key pair
 
-   - |c.C| |dD| :         sender sub view/spend key pair
+   - |c.C| |d.D| :       sender sub view/spend key pair
 
    - |Aout| |Bout| :     receiver main view/spend public keys
 
@@ -313,7 +322,7 @@ Put Keys
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 30  | 00  | 00  | var  |                                           |
+| 00  | 30  | 00  | 00  | 80   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -322,11 +331,11 @@ Put Keys
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-| 20     | |aa|                                                             |
+| 20     | |aa|                                                            |
 +--------+-----------------------------------------------------------------+
 | 20     | |A|                                                             |
 +--------+-----------------------------------------------------------------+
-| 20     | |bb|                                                             |
+| 20     | |bb|                                                            |
 +--------+-----------------------------------------------------------------+
 | 20     | |B|                                                             |
 +--------+-----------------------------------------------------------------+
@@ -364,9 +373,47 @@ Note that |lH| is required because the mlsag-prehash does not cover the
 ephemeral destination key.
 
 
+Common commands format
+----------------------
+
+All command follow the generic ISO7816 command format, with the following meaning:
+
++------+--------+------------------------------------------+
+| byte | length | description                              |
++======+========+==========================================+
+| CLA  | 01     | Always zero '00'                         |
++------+--------+------------------------------------------+
+| INS  | 01     | Command                                  |
++------+--------+------------------------------------------+
+| P1   | 01     | Sub command                              |
++------+--------+------------------------------------------+
+| P2   | 01     | Command/Sub command counter              |
++------+--------+------------------------------------------+
+| LC   | 01     | byte length of `data`                    |
++------+--------+------------------------------------------+
+| data | 01     | options                                  |
+|      +--------+------------------------------------------+
+|      | var    |                                          |
++------+--------+------------------------------------------+
+
+
+When a command/sub-command can be sent repeatedlyn the counter must be increased 
+by one at each command. The flag ``last sub command indicator`` must be set 
+to indicate another command will be sent. 
+
+*Common option encoding*
+
++---------------+----------------------------------------------------------+
+| ``x--------`` | Last sub command indicator                               |
+|               |                                                          |
+| ``1--------`` | More identical subcommand to comme                       |
+|               |                                                          |
+| ``0--------`` | Last sub command                                         |
++---------------+----------------------------------------------------------+
+
+
 Start transaction
 -----------------
-
 
 
 Code Reference
@@ -442,7 +489,7 @@ Open Transaction
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 0 0 | 50  | 01  | 00  | 05   |                                           |
+| 00  | 50  | 01  | 00  | 05   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -451,7 +498,7 @@ Open Transaction
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 01     | option                                                          |
+| 01     | options                                                         |
 +--------+-----------------------------------------------------------------+
 | 04     | account                                                         |
 +--------+-----------------------------------------------------------------+
@@ -459,14 +506,14 @@ Open Transaction
 *option encoding*
 
 +---------------+----------------------------------------------------------+
-| ``x----0001`` | ``Keep r``  indicator                                    |
+| ``-------x`` | ``Keep r``  indicator                                    |
 |               |                                                          |
-| ``0----0001`` | Private TX key must be returned encrypted                |
+| ``-------1`` | Private TX key must be returned encrypted                |
 |               |                                                          |
-| ``1----0001`` | Private TX key must not be returned                      |
+| ``-------0`` | Private TX key must not be returned                      |
 +---------------+----------------------------------------------------------+
 
- **Response data**
+**Response data**
 
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
@@ -539,7 +586,7 @@ Stealth
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 52  | 00  | 00  | 41   |                                           |
+| 00  | 52  | 01  | 00  | 41   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -550,9 +597,9 @@ Stealth
 +========+=================================================================+
 | 01     | option                                                          |
 +--------+-----------------------------------------------------------------+
-| 20     | clear payment ID |PayID|                                        |
-+--------+-----------------------------------------------------------------+
 | 20     | View destination address  |Aout|                                |
++--------+-----------------------------------------------------------------+
+| 20     | clear payment ID |PayID|                                        |
 +--------+-----------------------------------------------------------------+
 
 
@@ -683,8 +730,6 @@ Get Input Keys
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-| 01     | option                                                          |
-+--------+-----------------------------------------------------------------+
 | 20     | public input spend key |Pin|                                    |
 +--------+-----------------------------------------------------------------+
 | 20     | |Pin| key image |Iin|                                           |
@@ -733,8 +778,8 @@ If change key is requested, perform the following:
 
 Finally:
  
-  | compute |eDRVout| = |enc|[|spk|](|DRVout|)
-  | update |lH| : |Hupd|(|Aout| \| |Dout| \| |DRVout| \| |Pout|)
+   | compute |eDRVout| = |enc|[|spk|](|DRVout|)
+   | update |lH| : |Hupd|(|Aout| \| |DRVout| \| |Bout|  \| |Pout|)
 
 In both cases, return |Pout| and |eDRVout|.
 
@@ -751,7 +796,7 @@ Get Output Keys
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 56  | 00  | cnt | 41   |                                           |
+| 00  | 56  | 01  | cnt | 41   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
   
 
@@ -770,11 +815,11 @@ Get Output Keys
 *option encoding*  
   
 +---------------+----------------------------------------------------------+
-| ``--------x`` | Change key request                                       |
+| ``-------x-`` | Change key request                                       |
 |               |                                                          |
-| ``--------0`` | Generate destination key                                 |
+| ``-------0-`` | Generate destination key                                 |
 |               |                                                          |
-| ``--------1`` | Generate change key                                      |
+| ``-------1-`` | Generate change key                                      |
 +---------------+----------------------------------------------------------+
 
 
@@ -842,7 +887,7 @@ Blind Amount and Mask
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 58  | 00  | cnt | var  |                                           |
+| 00  | 58  | 01  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
   
 
@@ -872,8 +917,8 @@ Blind Amount and Mask
 +--------+-----------------------------------------------------------------+
    
 
-MLSAG-prehash
--------------
+MLSAG
+-----
 
 Code Reference
 ~~~~~~~~~~~~~~
@@ -906,7 +951,7 @@ Once prehash is computed, the proveRctMG is called. This function only builds
 some matrix and vectors to prepare the signature which is performed by the final 
 call MLSAG_Gen.
 
-During this last step some ephemeral key pairs are generated : |aGi|. 
+During this last step some ephemeral key pairs are generated : |ai|, |aGi|. 
 All |ai| must be kept secret to protect the x in keys. 
 Moreover we must avoid signing arbitrary values during the final loop
 `rctSigs.cpp line 191`_
@@ -954,6 +999,8 @@ Finally the key Image computation must be delegated to the NanoS: `rctSigs.cpp l
 Description
 ~~~~~~~~~~~
 
+**Part 1: prehash** 
+
 Validate the destinations and amounts and compute the MLSAG prehash value.
 
 This final part is divided in three steps.
@@ -993,7 +1040,45 @@ Finally the application receives the last part of data (`SEN`_):
    | finalize |mlsagH| : |Hfin|(:math:`commitments`)
    | compute |mlsagH| = |H|(:math:`message` \| |mlsagH| \| :math:`proof`)
 
-return |mlsagH|
+
+Keep |mlsagH|
+
+**Part 2: signature**
+
+Step 1:
+
+Generate the matrix ring paramaters. 
+
+   | generate |ai| , 
+   | compute |aGi|
+   | if real key:
+   |     check the order of |Hi|
+   |     compute |xin| =  |dec|[|spk|](|exin|)
+   |     compute |IIi| = |xin|.|Hi|
+   |     compute |aHi|
+   |     compute |eai| = |enc|[|spk|](|ai|)
+
+return |eai| , |aGi| [ |aHi|, |IIi|]
+
+Step 2:
+
+Compute the last matrice ring parameter
+
+   | replace the first 32 bytes of ``inputs`` by the previously computed MLSAG-prehash
+   | compute c = |H|(``inputs``)
+
+
+
+Step 3:
+
+Finaly compute all signature:
+
+    | compute |ai|  = |dec|[|spk|](|eai|)
+    | compute |xin| = |dec|[|spk|](|exin|)
+    | compute |ss|  = (|ai| - |c| * |xin| ) % |l|
+
+return |ss|
+
 
 Commands
 ~~~~~~~~
@@ -1051,20 +1136,20 @@ Update MLSAG-prehash
 +========+=================================================================+
 | 01     | options                                                         |
 +--------+-----------------------------------------------------------------+
-| var    | serialized ecdhInfo :                                           |
-|        |                                                                 |
-|        | | {                                                             |
-|        | |    bytes[32] mask   (|ek|)                                     |
-|        | |    bytes[32] amount (|ev|)                                     |
-|        | |    bytes[32] senderPk                                         |
-|        | | }                                                             |
-|        |                                                                 | 
-+--------+-----------------------------------------------------------------+
-| 20     | |Ct| of |v|,|k|                                                 |
-+--------+-----------------------------------------------------------------+
 | 20     | Real destination view key |Aout|                                |
 +--------+-----------------------------------------------------------------+
 | 20     | Real destination spend key |Bout|                               |
++--------+-----------------------------------------------------------------+
+| 20     | |Ct| of |v|,|k|                                                 |
++--------+-----------------------------------------------------------------+
+| var    | serialized ecdhInfo :                                           |
+|        |                                                                 |
+|        | | {                                                             |
+|        | |    bytes[32] mask   (|ek|)                                    |
+|        | |    bytes[32] amount (|ev|)                                    |
+|        | |    bytes[32] senderPk                                         |
+|        | | }                                                             |
+|        |                                                                 | 
 +--------+-----------------------------------------------------------------+
 
 
@@ -1089,26 +1174,156 @@ Finalize MLSAG-prehash
 +========+=================================================================+
 | 01     | options                                                         |
 +--------+-----------------------------------------------------------------+
-| var    | serialized commitments :                                         |
+| 20     | message (rctSig.message)                                        |
++--------+-----------------------------------------------------------------+
+| 20     | proof (proof range hash)                                        |
++--------+-----------------------------------------------------------------+
+| var    | serialized commitments :                                        |
 |        |                                                                 |
 |        | | {                                                             |
 |        | |    bytes[32] mask   (|Ct|)                                    |
 |        | | }                                                             |
 |        |                                                                 |
 +--------+-----------------------------------------------------------------+
-| 20     | message (rctSig.message)                                        |
-+--------+-----------------------------------------------------------------+
-| 20     | proof (proof range hash)                                        |
-+--------+-----------------------------------------------------------------+
-  
+
 **Response data**
 
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-|   20   | |mlsagH|                                                        |
+|        |                                                                 |
 +--------+-----------------------------------------------------------------+
    
+
+MLSAG prepare
+^^^^^^^^^^^^^^
+
+**Command**
+
++-----+-----+-----+-----+------+-------------------------------------------+
+| CLA | INS | P1  | P2  | LC   | data description                          |
++=====+=====+=====+=====+======+===========================================+
+| 00  | 5C  | 01  | cnt | var  |                                           |
++-----+-----+-----+-----+------+-------------------------------------------+
+  
+
+**Command data**
+
+for real key:
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| 20     | point                                                           |
++--------+-----------------------------------------------------------------+
+| 20     | secret spend key |exin|                                         |
++--------+-----------------------------------------------------------------+
+
+
+for random ring key
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+
+
+**Response data**
+
+for real key:
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 20     | |aHi|                                                           |
++--------+-----------------------------------------------------------------+
+| 20     | |aGi|                                                           |
++--------+-----------------------------------------------------------------+
+| 20     | |IIi|                                                           |
++--------+-----------------------------------------------------------------+
+| 20     | encrypted |ai| : |eai|                                          |
++--------+-----------------------------------------------------------------+
+
+for random ring key
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 20     | |aHi|                                                           |
++--------+-----------------------------------------------------------------+
+| 20     | |aGi|                                                           |
++--------+-----------------------------------------------------------------+
+
+
+
+MLSAG start
+^^^^^^^^^^^
+
+**Command**
+
++-----+-----+-----+-----+------+-------------------------------------------+
+| CLA | INS | P1  | P2  | LC   | data description                          |
++=====+=====+=====+=====+======+===========================================+
+| 00  | 5C  | 02  | 00  | var  |                                           |
++-----+-----+-----+-----+------+-------------------------------------------+
+  
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| var    | inputs                                                          |
++--------+-----------------------------------------------------------------+
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+|        |                                                                 |
++--------+-----------------------------------------------------------------+
+
+
+MLSAG sign
+^^^^^^^^^^
+
+**Command**
+
++-----+-----+-----+-----+------+-------------------------------------------+
+| CLA | INS | P1  | P2  | LC   | data description                          |
++=====+=====+=====+=====+======+===========================================+
+| 00  | 5C  | 03  | cnt | var  |                                           |
++-----+-----+-----+-----+------+-------------------------------------------+
+  
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| 20     | |exin|                                                          |
++--------+-----------------------------------------------------------------+
+| 20     | |eai|                                                           |
++--------+-----------------------------------------------------------------+
+
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 20     | signature |ss|                                                  |
++--------+-----------------------------------------------------------------+
+
+
 
 Conclusion
 ==========
@@ -1128,7 +1343,7 @@ Helper functions
 **DeriveDH**
 
    | *Input* : :math:`r , P`
-   | *Ouput*: : math:`\mathfrak{D}`
+   | *Ouput*:  :math:`\mathfrak{D}`
    | *Monero*: generate_key_derivation
    | 
    |      :math:`\mathfrak{D} = r.P`
@@ -1158,7 +1373,7 @@ Helper functions
 
    | *input*: :math:`x,P`
    | *output*: :math:`I`
-   | *Monero*: derive_private_key
+   | *Monero*: 
    |
    |      :math:`I` = |xin|.|Hp|(|Pin|)
    | 
@@ -1167,7 +1382,7 @@ Helper functions
 
    | *input*: :math:`D, idx`
    | *output*: :math:`s`
-   | *Monero*: derive_private_key
+   | *Monero*: 
    | 
    |      :math:`data` = :math:`point2bytes(D) || scalar2bytes(idx)`
    |      |s| = |Hs|(:math:`data`)
@@ -1180,16 +1395,9 @@ This is just a quick proposal. Any other KDF based on said standard may take pla
    | *input*: :math:`R,a,b`
    | *output*: :math:`spk`
    | 
-   |      :math:`hkey` = :math:`sha256(“AES”|R|seed)`
-   |      :math:`data` = :math:`hmac_sha256[hkey](sha512(R))`
-   |      :math:`spk` = :math:`lower16(data)`
-   | 
-
-Seed shall be retrievable from a and b or master seed. Example:
-
-   | :math:`seed` = :math:`sha256(sha256(a)|sha256(b))`
-   | 
-
+   | :math:`seed` = :math:`sha256(R|a|b|R)`
+   | :math:`data` = :math:`sha256(seed)`
+   | :math:`spk`  = :math:`lower16(data)`
 
 References
 ----------
@@ -1198,3 +1406,4 @@ References
    | [2] `<https://github.com/monero-project/monero/pull/2056>`_
    | [3] `<https://github.com/kenshi84/monero/tree/subaddress-v2>`_
    | [4] `<https://www.reddit.com/r/Monero/comments/6invis/ledger_hardware_wallet_monero_integration>`_
+   | [5] `<https://github.com/moneroexamples>`_

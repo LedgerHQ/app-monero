@@ -20,5 +20,5 @@
 
 void ui_init(void);
 void ui_main_display(unsigned int value);
-
+void monero_ux_user_validation();  
 #endif

@@ -45,22 +45,23 @@ struct monero_nv_state_s {
   unsigned char magic[8];
 
   /* view key */
-  cx_ecfp_public_key_t A;
-  cx_ecfp_private_key_t a;
+  unsigned char A[32];
+  unsigned char a[32];
   
   /* spend key */
-  cx_ecfp_public_key_t B;
-  cx_ecfp_private_key_t b;
+  unsigned char B[32];
+  unsigned char b[32];
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
 
-#define MONERO_IO_BUFFER_LENGTH (1024)
+#define MONERO_IO_BUFFER_LENGTH (512)
 
 struct monero_v_state_s {
-  /* app state: INS|P1 */
-  unsigned int   state;
-
+  /* ------------------------------------------ */
+  /* ---                  IO                --- */
+  /* ------------------------------------------ */
+  
   /* io state*/
   unsigned char   io_cla;
   unsigned char   io_ins;
@@ -71,36 +72,61 @@ struct monero_v_state_s {
   unsigned short  io_length;
   unsigned short  io_offset;
   unsigned short  io_mark;
-  union {
-    unsigned char io_buffer[MONERO_IO_BUFFER_LENGTH];
-  } work;
+  unsigned char   io_buffer[MONERO_IO_BUFFER_LENGTH];
+
+  
+  unsigned int    options;
+
+  /* ------------------------------------------ */
+  /* ---            State Machine           --- */
+  /* ------------------------------------------ */
+  
+  /* app state: INS|P1 */
+  unsigned int   state;
+
+  unsigned int   cmd_counter;
+  unsigned int   subcmd_counter;
+
+  /* ------------------------------------------ */
+  /* ---               Crypo                --- */
+  /* ------------------------------------------ */
+
+  /* SPK */
+  cx_aes_key_t spk;
 
   /* Tx key */
-  cx_ecfp_public_key_t  R;
-  cx_ecfp_private_key_t r;
+  unsigned char R[32];
+  unsigned char r[32];
 
-  /* hash */
-  union {
-    cx_sha3_t   keccak;
-    cx_sha512_t sha512;
-    cx_sha256_t sha256;
-  } hashes;
+  /* mlsag hash */  
+  cx_sha3_t     keccakH;
+  unsigned char H[32];
 
-  cx_sha256_t   hasher_L;
-  cx_sha256_t   hasher_C;
-
+  /* -- track tx-in/out and commitment -- */
+  cx_sha256_t   sha256L;
   unsigned char L[32];
-
+  
+  cx_sha256_t   sha256C;
   unsigned char C[32];
 
+  /* -- multiple commands memories -- */
+  unsigned char Dinout[32];
+  unsigned char Aout[32];
+  unsigned char Bout[32];
+  unsigned char Pout[32];
+  unsigned char amount[32];
+  unsigned char mask[32];
+  unsigned char commitment[32];
+  unsigned char fees[32];
+  
 
+  /* ------------------------------------------ */
+  /* ---               UI/UX                --- */
+  /* ------------------------------------------ */
   /* ux menus */
   char          menu[32];
   ux_menu_entry_t ui_dogsays[2] ;
 
-#ifdef MONERO_DEBUG
-  unsigned char print;
-#endif
 } ;
 typedef struct  monero_v_state_s monero_v_state_t;
 
@@ -109,6 +135,10 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define IO_OFFSET_END                       (unsigned int)-1
 #define IO_OFFSET_MARK                      (unsigned int)-2
 
+
+#define OPTION_KEEP_r                       0x01
+
+#define ENCRYPTED_PAYMENT_ID_TAIL            0x8d
 /* ---  Errors  --- */
 
 #define ERROR(x)                            ((x)<<16)
@@ -120,15 +150,18 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 
 /* ---  INS  --- */
-#define INS_NONE                           0x00
-#define INS_OPEN_TX                        0x50
-#define INS_STEALTH                        0x52
-#define INS_PROCESS_INPUT                  0x54 
-#define INS_PROCESS_OUTPUT                 0x56
-#define INS_BLIND                          0x58
-#define INS_MLSAG                          0x5A
+#define INS_NONE                            0x00
+#define INS_PUT_KEY                         0x30
+
+#define INS_OPEN_TX                         0x50
+#define INS_STEALTH                         0x52
+#define INS_PROCESS_INPUT                   0x54 
+#define INS_PROCESS_OUTPUT                  0x56
+#define INS_BLIND                           0x58
+#define INS_VALIDATE                        0x5A
+#define INS_MLSAG                           0x5C
               
-#define INS_GET_RESPONSE                   0xc0
+#define INS_GET_RESPONSE                    0xc0
 
 
 /* ---  IO constants  --- */
