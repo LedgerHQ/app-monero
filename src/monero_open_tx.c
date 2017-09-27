@@ -28,24 +28,28 @@
  * HD wallet not yet supported : account is assumed to be zero
  */
 int monero_apdu_open_tx() {
-    unsigned int options, account;
-    options = monero_io_fetch_u8();
+    unsigned int account;
     account = monero_io_fetch_u32();
 
+    monero_io_discard(0);
+   
     cx_rng(G_monero_vstate.r,32);
+    cx_math_modm(G_monero_vstate.r,32, (unsigned char*)C_ED25519_ORDER, 32);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
-    
-    if (options & OPTION_KEEP_r) {
-        unsigned int len;
+    monero_io_insert(G_monero_vstate.R,32);
+
+    if (G_monero_vstate.options & OPTION_KEEP_r) {
         monero_aes_derive(&G_monero_vstate.spk,
                           G_monero_vstate.R, N_monero_pstate->a,  N_monero_pstate->b);
-        len = cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_ISO9797M2,
-                     (void*)&G_monero_vstate.r, sizeof(cx_ecfp_private_key_t),
-                     G_monero_vstate.io_buffer);
-        monero_io_inserted(len);
+        
     } else {
         monero_aes_generate(&G_monero_vstate.spk);
+        
     }
+
+    monero_io_insert_encrypt(G_monero_vstate.r,32);
+    monero_hash_init_L();
+    monero_hash_init_C();
     return SW_OK;
 }
 

@@ -25,31 +25,31 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_get_output_key() {
-    unsigned int options;
-    unsigned char Dout[32];    
-    unsigned char Pout[32];    
+    unsigned char Aout[32];    
+    unsigned char Bout[32];    
+    #define Dout  Aout
+    #define Pout  Bout
+    unsigned int  output_index;
 
-    options = monero_io_fetch_u8();
-    if (options != 0) {
-        THROW (SW_ALGORITHM_UNSUPPORTED);
-        return SW_ALGORITHM_UNSUPPORTED;
-    }
-    //fetch Aout,compute Dout, update LHash
-    monero_io_fetch(Dout,32); 
-    monero_hash_update_L(Dout,32);
-    monero_derive_dh(Dout,G_monero_vstate.r, Dout);
+    monero_io_fetch(Aout,32); 
+    monero_io_fetch(Bout,32); 
+    output_index = monero_io_fetch_u32();
+    monero_io_discard(1);
+
+    //compute Dout, update LHash
+    monero_hash_update_L(Aout,32);
+    monero_derive_dh(Dout,G_monero_vstate.r, Aout);
     monero_hash_update_L(Dout,32);
 
-    //fetch Bout,compute Pout, update LHash
-    monero_io_fetch(Pout,32);
-    monero_hash_update_L(Pout,32);
-    monero_derive_pub(Pout,Dout,Pout);
+    //compute Pout, update LHash
+    monero_hash_update_L(Bout,32);
+    monero_derive_pub(Pout,Dout, output_index, Bout);
     monero_hash_update_L(Pout,32);
 
     //ret all
     monero_io_discard(0);
-    monero_io_insert(Pout,32);
     monero_io_insert_encrypt(Dout,32);
+    monero_io_insert(Pout,32);
 
     return SW_OK;
 }

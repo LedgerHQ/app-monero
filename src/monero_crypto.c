@@ -34,12 +34,12 @@ static unsigned char const WIDE  C_ED25519_G[] = {
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x58};
 
-const unsigned char C_ED25519_ORDER[32] = {
+unsigned char const C_ED25519_ORDER[32] = {
     //l:  0x1000000000000000000000000000000014DEF9DEA2F79CD65812631A5CF5D3ED
     0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x14, 0xDE, 0xF9, 0xDE, 0xA2, 0xF7, 0x9C, 0xD6, 0x58, 0x12, 0x63, 0x1A, 0x5C, 0xF5, 0xD3, 0xED};
 
-const unsigned char  C_EIGHT[32] = {
+unsigned char const C_EIGHT[32] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08};
 
@@ -67,28 +67,63 @@ void monero_aes_generate(cx_aes_key_t *sk) {
     cx_aes_init_key(h1,16,sk);
 } 
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+unsigned int monero_encode_varint(unsigned char varint[8], unsigned int out_idx) {
+    unsigned int len;
+    len = 0;
+    while(out_idx >= 0x80) {
+        varint[len] = (out_idx & 0x7F) | 0x80;
+        out_idx = out_idx>>7;
+        len++;
+    }
+    varint[len] = out_idx;
+    len++;
+    return len;
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-
-
-void monero_hash_init(cx_hash_t * hasher) {
-    if (hasher->algo == CX_SHA256) {
-         cx_sha256_init((cx_sha256_t *)hasher);
-    } else {
-        cx_keccak_init((cx_sha3_t *)hasher, 256);
+void monero_reverse32(unsigned char *scal) {
+    unsigned char x;
+    unsigned int i;
+    for (i = 0; i<16; i++) {
+        x          = scal[i];
+        scal[i]    = scal [31-i];
+        scal[31-i] = x;
     }
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_hash_init_sha256(cx_hash_t * hasher) {
+    cx_sha256_init((cx_sha256_t *)hasher);
+}
+
+void monero_hash_init_keccak(cx_hash_t * hasher) {
+    cx_keccak_init((cx_sha3_t *)hasher, 256);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 void monero_hash_update(cx_hash_t * hasher, unsigned char* buf, unsigned int len) {
     cx_hash(hasher, 0, buf, len, NULL);
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_hash_final(cx_hash_t * hasher, unsigned char* out) { 
     return cx_hash(hasher, CX_LAST, NULL, 0, out);
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_hash(cx_hash_t * hasher, unsigned char* buf, unsigned int len, unsigned char* out) {
     if (hasher->algo == CX_SHA256) {
          cx_sha256_init((cx_sha256_t *)hasher);
@@ -101,33 +136,70 @@ int monero_hash(cx_hash_t * hasher, unsigned char* buf, unsigned int len, unsign
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_dh(unsigned char *s, unsigned char *P, unsigned char *k) {
-    monero_ecmul(s,P,k);
-    monero_ecmul(s,s,(unsigned char *)C_EIGHT);
+/* thanks to knaccc and moneromoo on IRC #monero-research-lab */
+static void monero_ge_fromfe_frombytes(unsigned char *bytes) {
+
+    //TODO INSERT MAGIC CODE HERE
+
 }
+
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_priv(unsigned char *x, unsigned char *drv_data, unsigned char *ec_priv) {
-    monero_hash_H(drv_data,32,NULL);
-    cx_math_addm(x, &G_monero_vstate.H[0],  ec_priv, (unsigned char *)C_ED25519_ORDER, 32);
+void monero_derive_dh(unsigned char *s, unsigned char *P, unsigned char *k) {
+    monero_ecmul_8(s,P,k);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_pub(unsigned char *x, unsigned char* drv_data, unsigned char *ec_pub) {
-    monero_hash_H(drv_data,32,NULL);
-    monero_ecmul_G(x,&G_monero_vstate.H[0]);
+void monero_derive_priv(unsigned char *x, 
+                        unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv) {
+    unsigned char varint[32+8];
+    unsigned int len_varint;
+      
+    os_memmove(varint, drv_data, 32);
+    len_varint = monero_encode_varint(varint+32, out_idx);
+    len_varint += 32;
+    monero_hash_H(varint,len_varint,x);
+    monero_reverse32(x);  
+    cx_math_modm(x, 32, (unsigned char *)C_ED25519_ORDER, 32); 
+    cx_math_addm(x, x,  ec_priv, (unsigned char *)C_ED25519_ORDER, 32);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_derive_pub(unsigned char *x, 
+                       unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub) { 
+    
+    unsigned char varint[32+8];
+    unsigned int len_varint;
+      
+    os_memmove(varint, drv_data, 32);
+    len_varint = monero_encode_varint(varint+32, out_idx);
+    len_varint += 32;
+    monero_hash_H(varint,len_varint,x);
+    monero_reverse32(x);  
+    cx_math_modm(x, 32, (unsigned char *)C_ED25519_ORDER, 32); 
+    monero_ecmul_G(x,x);
     monero_ecadd(x,x,ec_pub);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_img(unsigned char *img, unsigned char* x, unsigned char *P) {
-    monero_hash_H(P,32,NULL);
-    monero_ecmul(img,x,&G_monero_vstate.H[0]);
+void monero_derive_img(unsigned char *img, unsigned char *P, unsigned char* x) {
+#if 0
+    monero_hash_H(P,32,img);
+    monero_ge_fromfe_frombytes(img);
+    monero_ecmul_8(img, img, x);
+#else
+    //tmp code, waiting for monero_ge_fromfe_frombytes
+    monero_ge_fromfe_frombytes(img);
+    os_memset(img, 0, 32);
+#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -150,11 +222,26 @@ void monero_ecmul(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, 0);
-
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
     cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, scalar32, 32);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    os_memmove(W, &Pxy[1], 32);
+}
 
-    cx_edward_compress_point(CX_CURVE_Ed25519, 0);
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_ecmul_8(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
+    unsigned char Pxy[65];
+    unsigned char eight = 8;
+
+    Pxy[0] = 0x02;
+    os_memmove(&Pxy[1], P, 32);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, scalar32, 32);
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, &eight, 1);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
     os_memmove(W, &Pxy[1], 32);
 }
 

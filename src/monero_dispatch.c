@@ -188,7 +188,7 @@ int monero_dispatch() {
   }
 
   G_monero_vstate.options = monero_io_fetch_u8();
-  monero_check_state_machine();
+  //monero_check_state_machine();
   
   sw = 0x6F01;
 
@@ -196,6 +196,9 @@ int monero_dispatch() {
 
     /* --- START TX --- */
   case INS_OPEN_TX:  
+    if (G_monero_vstate.io_p2 != 0) {
+      THROW(SW_WRONG_P1P2);
+    }
     if (G_monero_vstate.io_p1 == 1) {
       sw = monero_apdu_open_tx();
     }  else if (G_monero_vstate.io_p1 == 2) {
@@ -207,6 +210,10 @@ int monero_dispatch() {
   
     /* --- STEATH PAYMENT --- */
   case INS_STEALTH:
+    if ((G_monero_vstate.io_p1 != 0) || 
+        (G_monero_vstate.io_p2 != 0)) {
+      THROW(SW_WRONG_P1P2);
+    }
     sw = monero_apdu_stealth();
     break;
 
@@ -214,7 +221,6 @@ int monero_dispatch() {
   case INS_PROCESS_INPUT:
 
     if (G_monero_vstate.io_p1 == 1) {
-
       sw = monero_apdu_get_derivation_data();
     }  else if (G_monero_vstate.io_p1 == 2) {
       sw = monero_apdu_get_input_key();      

@@ -42,9 +42,7 @@ static void monero_validate_ecdh_info(unsigned char *ecdhinfo, int ecdhinfo_len)
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_init_validate() {
-    unsigned int options;
-    options = monero_io_fetch_u8();
-
+    
     //finish L hash
     monero_hash_final_L(NULL);
 
@@ -59,9 +57,7 @@ int monero_apdu_init_validate() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_update_validate_pre_validation() {
-    unsigned int options;   
-
-    options = monero_io_fetch_u8();
+    
     monero_io_fetch(G_monero_vstate.Aout,32);
     monero_io_fetch(G_monero_vstate.Bout,32);
     monero_io_fetch(G_monero_vstate.commitment,32);
@@ -91,12 +87,11 @@ int monero_apdu_update_validate_post_validation() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_finalize_validate() {
-    unsigned int options;    
+int monero_apdu_finalize_validate() { 
     unsigned char message[32];
     unsigned char proof[32];
     unsigned char h[32];
-    options = monero_io_fetch_u8();
+    
     monero_io_fetch(message,32);
     monero_io_fetch(proof,32);
 

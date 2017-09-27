@@ -27,13 +27,12 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prepare() {
-    unsigned int options;
+    int options;
     unsigned char Hi[32];
     unsigned char xin[32];
     unsigned char alpha[32];
     unsigned char mul[32];
 
-    options = monero_io_fetch_u8();
 
     if (G_monero_vstate.io_length>1) {        
         monero_io_fetch(Hi,32);

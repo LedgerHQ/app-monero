@@ -1,0 +1,1 @@
+https://github.com/monero-project/mininero/blob/master/mininero.py

@@ -24,12 +24,11 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_blind() {
-    unsigned int options,len;
+    unsigned int  len;
     unsigned char v[32];
     unsigned char k[32];
     unsigned char Dout[32];
 
-    options = monero_io_fetch_u8();
     monero_io_fetch(v,32);
     monero_io_fetch(k,32);
     monero_io_fetch_decrypt(Dout,32);
