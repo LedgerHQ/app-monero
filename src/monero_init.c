@@ -92,21 +92,16 @@ int monero_install(unsigned char app_state) {
     //TESTKEY W3
     unsigned char AB[32];
     unsigned char   ab[32];
-    int i;
-    for (i = 0; i<32; i++) {
-      ab[i] = C_w3_a[31-i];
-    }
+
+    os_memmove(ab,C_w3_a,32);
     monero_ecmul_G(AB, ab);
     monero_nvm_write(N_monero_pstate->a, ab, 32);
     monero_nvm_write(N_monero_pstate->A, AB, 32);
 
-    for (i = 0; i<32; i++) {
-      ab[i] = C_w3_b[31-i];
-    }
+    os_memmove(ab,C_w3_b,32);
     monero_ecmul_G(AB, ab);
     monero_nvm_write(N_monero_pstate->b, ab, 32);
     monero_nvm_write(N_monero_pstate->B, AB, 32);
-    
 
   }
 

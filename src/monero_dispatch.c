@@ -240,14 +240,14 @@ int monero_dispatch() {
     sw = monero_apdu_blind();
     break;
 
-    /* --- VALIDATE-- */
+    /* --- VALIDATE/PREHASH-- */
   case INS_VALIDATE:
     if (G_monero_vstate.io_p1 == 1) {
-      sw = monero_apdu_init_validate();
+      sw = monero_apdu_mlsag_prehash_init();
     }  else if (G_monero_vstate.io_p1 == 2) {
-      sw = monero_apdu_update_validate_pre_validation();
+      sw = monero_apdu_mlsag_prehash_update();
     }  else if (G_monero_vstate.io_p1 == 3) {
-      sw = monero_apdu_finalize_validate();
+      sw = monero_apdu_mlsag_prehash_finalize();
     } else {
       THROW(SW_WRONG_P1P2);
     }
@@ -258,7 +258,7 @@ int monero_dispatch() {
     if (G_monero_vstate.io_p1 == 1) {
       sw = monero_apdu_mlsag_prepare();
     }  else if (G_monero_vstate.io_p1 == 2) {
-      sw = monero_apdu_mlsag_start();
+      sw = monero_apdu_mlsag_hash();
     }  else if (G_monero_vstate.io_p1 == 3) {
       sw = monero_apdu_mlsag_sign();
     } else {

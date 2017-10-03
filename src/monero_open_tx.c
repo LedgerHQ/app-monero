@@ -35,18 +35,17 @@ int monero_apdu_open_tx() {
    
     cx_rng(G_monero_vstate.r,32);
     cx_math_modm(G_monero_vstate.r,32, (unsigned char*)C_ED25519_ORDER, 32);
+    monero_reverse32(G_monero_vstate.r, G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
-    monero_io_insert(G_monero_vstate.R,32);
 
     if (G_monero_vstate.options & OPTION_KEEP_r) {
         monero_aes_derive(&G_monero_vstate.spk,
                           G_monero_vstate.R, N_monero_pstate->a,  N_monero_pstate->b);
-        
     } else {
         monero_aes_generate(&G_monero_vstate.spk);
-        
     }
 
+    monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
     monero_hash_init_L();
     monero_hash_init_C();

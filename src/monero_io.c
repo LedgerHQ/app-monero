@@ -93,9 +93,9 @@ void monero_io_insert(unsigned char const *buff, unsigned int len) {
 
 void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   monero_io_hole(len);
-#ifdef LEDGERDEBUG 
-  os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buff, len);
-#else
+
+  os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
+#if 0
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
          G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
@@ -253,9 +253,12 @@ int monero_io_fetch(unsigned char* buffer, int len) {
 
 int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
   if (buffer) {
+#if 0    
     cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
            G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
            buffer);
+#endif
+    os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
   }
   G_monero_vstate.io_offset += len;
   return len;

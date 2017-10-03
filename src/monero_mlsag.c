@@ -21,8 +21,6 @@
 #include "monero_vars.h"
 #include "usbd_ccid_impl.h"
 
-
-
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -42,10 +40,11 @@ int monero_apdu_mlsag_prepare() {
         options = 0;
     }
 
-    monero_io_discard(0);
+    monero_io_discard(1);
     
     //ai
     cx_rng(alpha, 32);
+    monero_reduce(alpha, alpha);
     monero_io_insert_encrypt(alpha, 32);
     
     //ai.G
@@ -67,16 +66,23 @@ int monero_apdu_mlsag_prepare() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_mlsag_start() {
-    unsigned int options;
-    options = monero_io_fetch_u8();
+int monero_apdu_mlsag_hash() {
+    unsigned char msg[32];
+    unsigned char c[32];
+    if (G_monero_vstate.io_p2 == 1) {
+        monero_hash_init_H();
+        os_memmove(msg, G_monero_vstate.H, 32);
+    } else {
+        monero_io_fetch(msg, 32);
+    }
+    monero_io_discard(1);
 
-    os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, 
-               G_monero_vstate.H, 32);
-    monero_hash_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
-                  G_monero_vstate.io_length-G_monero_vstate.io_offset,
-                  NULL);
-    monero_io_discard(0);
+    monero_hash_update_H(msg, 32);
+    if ((G_monero_vstate.options&0x80) == 0 ) {
+        monero_hash_final_H(c);
+        monero_reduce(G_monero_vstate.H,c);
+        monero_io_insert(G_monero_vstate.H,32);
+    }  
     return SW_OK;
 }
 
@@ -84,19 +90,18 @@ int monero_apdu_mlsag_start() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
     int monero_apdu_mlsag_sign() {
-    unsigned int options;
-    options = monero_io_fetch_u8();
     unsigned char xin[32];
     unsigned char alpha[32];
     unsigned char ss[32];
+    unsigned char ss2[32];
 
     monero_io_fetch_decrypt(xin,32);
     monero_io_fetch_decrypt(alpha,32);
+    monero_io_discard(1);
 
-    cx_math_multm(ss, G_monero_vstate.H, xin, (unsigned char *)C_ED25519_ORDER, 32);
-    cx_math_subm(ss, alpha, ss, (unsigned char *) C_ED25519_ORDER, 32);
+    monero_multm(ss, G_monero_vstate.H, xin);
+    monero_subm(ss2, alpha, ss);
 
-    monero_io_discard(0);
-    monero_io_insert(ss,32);
+    monero_io_insert(ss2,32);
     return SW_OK;
 }

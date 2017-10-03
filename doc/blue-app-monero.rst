@@ -61,9 +61,7 @@
 .. |spk|     replace:: :math:`\mathit{spk}`
 .. |espk|    replace:: :math:`\widetilde{\mathit{spk}}`
 
-.. |Hs|     replace:: :math:`\mathtt{H_s}`
-.. |Hp|     replace:: :math:`\mathtt{H_p}`
-.. |Hps|    replace:: :math:`\mathtt{H_{p\to{s}}}`
+
 
 .. |Hupd|   replace:: :math:`\mathtt{H_{update}}`
 .. |Hfin|   replace:: :math:`\mathtt{H_{finalize}}`
@@ -77,6 +75,8 @@
 .. |eDRVin| replace:: :math:`\widetilde{\mathfrak{D}_\mathrm{in}}`
 .. |DRVout| replace:: :math:`\mathfrak{D}_\mathrm{out}` 
 .. |eDRVout| replace:: :math:`\widetilde{\mathfrak{D}_\mathrm{out}}`
+.. |AKout|   replace::  :math:`\mathcal{AK}_\mathrm{amount}` 
+.. |eAKout|  replace:: :math:`\widetilde{\mathcal{AK}_\mathrm{amount}}`
 
 .. |PayID|  replace:: :math:`\mathit{PayID}`
 .. |ePayID| replace:: :math:`\widetilde{\mathit{PayID}}`
@@ -91,10 +91,12 @@
 .. |l|      replace:: :math:`\mathit{l}`
 .. |v|      replace:: :math:`\mathit{v}`
 .. |k|      replace:: :math:`\mathit{k}`
-.. |ev|      replace:: :math:`\widetilde{\mathit{v}}`
-.. |ek|      replace:: :math:`\widetilde{\mathit{k}}`
+.. |ev|     replace:: :math:`\widetilde{\mathit{v}}`
+.. |ek|     replace:: :math:`\widetilde{\mathit{k}}`
 
-
+.. |Hs|     replace:: :math:`\mathtt{H_s}`
+.. |Hp|     replace:: :math:`\mathtt{H_p}`
+.. |Hps|    replace:: :math:`\mathtt{H_{p\to{s}}}`
 .. |drvDH|  replace:: :math:`\mathtt{DeriveDH}`
 .. |drvPu|  replace:: :math:`\mathtt{DerivePub}`
 .. |drvPv|  replace:: :math:`\mathtt{DerivePriv}`
@@ -770,20 +772,24 @@ Compute either the destination key or the change key.
 
 If destination key is requested, perform the following:
 
-   | compute |DRVout| = |drvDH|(|rr|,|Aout|)
-   | compute |Pout|   = |drvPu|(|DRVout|,|Bout|)
+   | compute |DRVout|    = |drvDH|(|rr|,|Aout|)
+   
  
-If change key is requested, perform the following:
+Else if change key is requested, perform the following:
 
    | compute |DRVout| = |drvDH|(|aa|,|R|)
-   | compute |Pout|   = |drvPu|(|DRVout|,|B|)
+
+Then
+
+   | compute |AKout| = |Hps|(|DRVout|,|idx|)
+   | compute |Pout|      = |drvPu|(|DRVout|,|Bout|)
 
 Finally:
  
-   | compute |eDRVout| = |enc|[|spk|](|DRVout|)
-   | update |lH| : |Hupd|(|Aout| \| |DRVout| \| |Bout|  \| |Pout|)
+   | compute |eAKout| = |enc|[|spk|](|AKout|)
+   | update  |lH| : |Hupd|(|Aout| \| |Bout|  \| |AKout| \| |Pout|)
 
-In both cases, return |Pout| and |eDRVout|.
+In both cases, return |Pout| and |AKout|.
 
 
 
@@ -832,7 +838,7 @@ Get Output Keys
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 20     | encrypted private derivation data |eDRVout|                     |
+| 20     | encrypted private amount key |eAKout|                           |
 +--------+-----------------------------------------------------------------+
 | 20     | public destination key |Pout|                                   |
 +--------+-----------------------------------------------------------------+
@@ -856,7 +862,7 @@ First a commitment |Ct| to each |v| amount, and associated range proof are compu
 to ensure the |v| amount confidentiality. The commitment and its range proof do not
 imply any secret and generate |Ct|, |k| such |Ctf| (`rctSigs.cpp line L589`_).
 
-Then |k| and |v| are blinded by using the |DRVout| which is only known in an encrypted 
+Then |k| and |v| are blinded by using the |AKout| which is only known in an encrypted 
 form by the host (`rctSigs.cpp L597`_).
 
 
@@ -869,10 +875,10 @@ processing of output transaction keys (GOK_).
 
 The application performs the following steps:
 
-   | compute |DRVout| = |dec|[|spk|](|eDRVout|)
-   | compute |ek| = |k| + |Hps|(|DRVout|)
-   | compute |ev| = |k| + |Hs|(|Hps|(|DRVout|))
-   | update |lH| : |Hupd|(|v| \| |k| \| |DRVout|)
+   | compute |AKout| = |dec|[|spk|](|eAKout|)
+   | compute |ek| = |k| + |Hs|(|AKout|)
+   | compute |ev| = |k| + |Hs|(|Hs|(|AKout|))
+   | update |lH| : |Hupd|(|v| \| |k| \| |AKout|)
 
 
 The application returns |ev|, |ek|
@@ -906,7 +912,7 @@ Blind Amount and Mask
 +--------+-----------------------------------------------------------------+
 | 20     | mask |k|                                                        |
 +--------+-----------------------------------------------------------------+
-| 20    | encrypted private derivation data |eDRVout|                     |
+| 20    | encrypted private derivation data |eAKout|                       |
 +--------+-----------------------------------------------------------------+
   
 
@@ -1113,7 +1119,6 @@ Initialize MLSAG-prehash
 |        | | {                                                             |
 |        | |    type                                                       |
 |        | |    txnFee                                                     |
-|        | |    pseudoOut                                                  |
 |        | | }                                                             |
 |        |                                                                 | 
 +--------+-----------------------------------------------------------------+
@@ -1151,7 +1156,6 @@ Update MLSAG-prehash
 |        | | {                                                             |
 |        | |    bytes[32] mask   (|ek|)                                    |
 |        | |    bytes[32] amount (|ev|)                                    |
-|        | |    bytes[32] senderPk                                         |
 |        | | }                                                             |
 |        |                                                                 | 
 +--------+-----------------------------------------------------------------+
@@ -1173,6 +1177,24 @@ Finalize MLSAG-prehash
 
 **Command data**
 
+not last: 
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
+
++--------+-----------------------------------------------------------------+
+| var    | serialized commitments :                                        |
+|        |                                                                 |
+|        | | {                                                             |
+|        | |    bytes[32] mask   (|Ct|)                                    |
+|        | | }                                                             |
+|        |                                                                 |
++--------+-----------------------------------------------------------------+
+
+last:
+
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
@@ -1182,13 +1204,7 @@ Finalize MLSAG-prehash
 +--------+-----------------------------------------------------------------+
 | 20     | proof (proof range hash)                                        |
 +--------+-----------------------------------------------------------------+
-| var    | serialized commitments :                                        |
-|        |                                                                 |
-|        | | {                                                             |
-|        | |    bytes[32] mask   (|Ct|)                                    |
-|        | | }                                                             |
-|        |                                                                 |
-+--------+-----------------------------------------------------------------+
+
 
 **Response data**
 
@@ -1382,6 +1398,15 @@ Helper functions
    |      :math:`I` = |xin|.|Hp|(|Pin|)
    | 
 
+**|Hs|**
+
+   | *input*: :math:`raw`
+   | *output*: :math:`s` 
+   | 
+   |     
+   |      |s| = |H|(:math:`raw`)
+   | 
+
 **|Hps|**
 
    | *input*: :math:`D, idx`
@@ -1390,6 +1415,15 @@ Helper functions
    |      :math:`data` = :math:`point2bytes(D) | varint(idx)`
    |      |s| = |H|(:math:`data`)
    | 
+
+
+**|Hp|**
+
+   | *input*: :math:`P`
+   | *output*: :math:`Q` 
+   | 
+   |      :math:`data` = :math:`KindOfMagic(P)`
+
 
 **DeriveAES**
 
