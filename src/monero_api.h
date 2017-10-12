@@ -143,11 +143,17 @@ void monero_derive_img(unsigned char *img, unsigned char* x, unsigned char *P);
 /*
  * W = k.P
  */
-void monero_ecmul(unsigned char *W, unsigned char *P, unsigned char *scalar32);
+void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32);
 /*
  * W = 8k.P
  */
-void monero_ecmul_8(unsigned char *W, unsigned char *P, unsigned char *scalar32);
+void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32);
+
+/*
+ * W = 8.P
+ */
+void monero_ecmul_8(unsigned char *W, unsigned char *P);
+
 /*
  * W = k.G
  */
@@ -157,18 +163,23 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32);
  */
 void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q);
 
-/* */
+/* r = (a+b) %order */
 void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b);
 
-/* */
+/* r = (a-b) %order */
 void monero_subm(unsigned char *r, unsigned char *a, unsigned char *b);
 
-/* */
+/* r = (a*b) %order */
 void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b);
+
+/* r = (a*8) %order */
+void monero_multm_8(unsigned char *r, unsigned char *a);
 
 /* */
 void monero_reduce(unsigned char *r, unsigned char *a);
 
+
+void monero_rng(unsigned char *r,  int len) ;
 /* ----------------------------------------------------------------------- */
 /* ---                                IO                              ---- */
 /* ----------------------------------------------------------------------- */

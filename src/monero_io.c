@@ -19,6 +19,9 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
+#define IODUMMYCRYPT 1f
+//#define  IONOCRYPT 1
+
 
 /*
  * io_buff: contains current message part
@@ -94,11 +97,17 @@ void monero_io_insert(unsigned char const *buff, unsigned int len) {
 void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   monero_io_hole(len);
 
-  os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
-#if 0
+  
+#ifdef IOCRYPT
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
          G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
+#elif defined(IODUMMYCRYPT)
+  for (int i = 0; i<len; i++) {
+       G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] = buffer[i] ^ 0x55;
+    }
+#elif defined(IONOCRYPT) 
+  os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
 #endif
   G_monero_vstate.io_offset += len;
 }
@@ -162,11 +171,34 @@ void monero_io_insert_tlv(unsigned int T, unsigned int L, unsigned char const *V
 /* ----------------------------------------------------------------------- */
 /* FECTH data from received buffer                                         */
 /* ----------------------------------------------------------------------- */
-void monero_io_fetch_buffer(unsigned char* buffer, unsigned int len) {
-  os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
+
+int monero_io_fetch(unsigned char* buffer, int len) {
+  if (buffer) {
+    os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
+  }
   G_monero_vstate.io_offset += len;
+  return len;
 }
 
+int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
+  if (buffer) {
+#ifdef IOCRYPT    
+    cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
+           G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
+           buffer);
+#elif defined(IODUMMYCRYPT) 
+    for (int i = 0; i<len; i++) {
+      buffer[i] = G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] ^ 0x55;
+    }
+#elif defined(IONOCRYPT) 
+     os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
+#else
+     #error 'PLEASE DEFINED ON OF IO CRYPT MODE'
+#endif
+  }
+  G_monero_vstate.io_offset += len;
+  return len;
+}
 unsigned int monero_io_fetch_u32() {
   unsigned int  v32;
   v32 =  ( (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+0] << 24) |
@@ -243,26 +275,7 @@ int monero_io_fetch_nv(unsigned char* buffer, int len) {
   return len;
 }
 
-int monero_io_fetch(unsigned char* buffer, int len) {
-  if (buffer) {
-    os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
-  }
-  G_monero_vstate.io_offset += len;
-  return len;
-}
 
-int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
-  if (buffer) {
-#if 0    
-    cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
-           G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
-           buffer);
-#endif
-    os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
-  }
-  G_monero_vstate.io_offset += len;
-  return len;
-}
 
 
 /* ----------------------------------------------------------------------- */

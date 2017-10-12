@@ -29,7 +29,9 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_init() {
-    monero_hash_init_H();
+    if (G_monero_vstate.io_p2 == 1) {
+        monero_hash_init_H();
+    }
     monero_hash_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
                          G_monero_vstate.io_length-G_monero_vstate.io_offset);
     monero_io_discard(1);
@@ -48,8 +50,8 @@ int monero_apdu_mlsag_prehash_update() {
     monero_io_fetch(Aout,32);
     monero_io_fetch(Bout,32);
     monero_io_fetch(C,32);
-    monero_io_fetch_decrypt(v,32);
-    monero_io_fetch_decrypt(k,32);
+    monero_io_fetch(v,32);
+    monero_io_fetch(k,32);
     //TODO insert check C,k,v and Aout,Bout here
 
     monero_hash_update_H(v,32);
@@ -81,8 +83,8 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_insert(H, 32);
 #endif
     } else {
-        monero_io_fetch_decrypt(message,32);
-        monero_io_fetch_decrypt(proof,32);
+        monero_io_fetch(message,32);
+        monero_io_fetch(proof,32);
         monero_io_discard(1);
         monero_hash_final_H(H);
         monero_hash_init_H();

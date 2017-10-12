@@ -29,11 +29,14 @@
  */
 int monero_apdu_open_tx() {
     unsigned int account;
+
+    G_monero_vstate.rnd = 1;
+
     account = monero_io_fetch_u32();
 
     monero_io_discard(0);
    
-    cx_rng(G_monero_vstate.r,32);
+    monero_rng(G_monero_vstate.r,32);
     cx_math_modm(G_monero_vstate.r,32, (unsigned char*)C_ED25519_ORDER, 32);
     monero_reverse32(G_monero_vstate.r, G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);

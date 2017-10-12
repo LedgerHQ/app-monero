@@ -187,6 +187,12 @@ int monero_dispatch() {
     return sw;
   }
 
+  if (G_monero_vstate.io_ins == INS_RESET) {
+    G_monero_vstate.rnd = 1;
+    monero_io_discard(0);
+    return 0x9000;
+  }
+
   G_monero_vstate.options = monero_io_fetch_u8();
   //monero_check_state_machine();
   

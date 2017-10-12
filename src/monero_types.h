@@ -101,6 +101,7 @@ struct monero_v_state_s {
   /* mlsag hash */  
   cx_sha3_t     keccakH;
   unsigned char H[32];
+  unsigned char c[32];
 
   /* -- track tx-in/out and commitment -- */
   cx_sha256_t   sha256L;
@@ -127,6 +128,11 @@ struct monero_v_state_s {
   char          menu[32];
   ux_menu_entry_t ui_dogsays[2] ;
 
+  /* ------------------------------------------ */
+  /* ---                DEBUG               --- */
+  /* ------------------------------------------ */
+  unsigned char rnd;
+
 } ;
 typedef struct  monero_v_state_s monero_v_state_t;
 
@@ -152,6 +158,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 /* ---  INS  --- */
 #define INS_NONE                            0x00
 #define INS_PUT_KEY                         0x30
+#define INS_RESET                           0x32
 
 #define INS_OPEN_TX                         0x50
 #define INS_STEALTH                         0x52
