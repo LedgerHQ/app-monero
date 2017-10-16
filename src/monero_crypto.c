@@ -367,7 +367,7 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
 void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub) {
     monero_hash_H(ec_pub, 32, ec);
     monero_ge_fromfe_frombytes(ec, ec);
-    //monero_ecmul_8(ec, ec);
+    monero_ecmul_8(ec, ec);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -417,6 +417,7 @@ void monero_derive_pub(unsigned char *x,
 /* ----------------------------------------------------------------------- */
 void monero_derive_img(unsigned char *img, unsigned char *P, unsigned char* x) {
     unsigned char I[32];
+
     monero_hash_to_ec(I,P);
     monero_ecmul_k(img, I,x);
 }
@@ -463,11 +464,13 @@ void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32
 /* ----------------------------------------------------------------------- */
 void monero_ecmul_8(unsigned char *W, unsigned char *P) {
     unsigned char Pxy[65];
-    unsigned char eight = 8;
+    
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
     cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, &eight, 1);
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
     cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
     os_memmove(W, &Pxy[1], 32);
 }
@@ -560,13 +563,6 @@ void monero_reduce(unsigned char *r, unsigned char *a) {
 /* ----------------------------------------------------------------------- */
 
 void monero_rng(unsigned char *r,  int len) {
-    #if 1
-    cx_rng(G_monero_vstate.r,32);
-    #else
-    int i;
-    for (i = 0; i<len;i++) {
-       r[i] = ++G_monero_vstate.rnd;
-    }
-    #endif
+    cx_rng(r,len);
 }
 

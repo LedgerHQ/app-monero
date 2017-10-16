@@ -19,7 +19,7 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#define IODUMMYCRYPT 1f
+#define IODUMMYCRYPT 1
 //#define  IONOCRYPT 1
 
 
