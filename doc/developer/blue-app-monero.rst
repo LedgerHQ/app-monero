@@ -407,7 +407,7 @@ to indicate another command will be sent.
 +---------------+----------------------------------------------------------+
 | ``x--------`` | Last sub command indicator                               |
 |               |                                                          |
-| ``1--------`` | More identical subcommand to command                     |
+| ``1--------`` | More identical subcommand forthcoming                    |
 |               |                                                          |
 | ``0--------`` | Last sub command                                         |
 +---------------+----------------------------------------------------------+
