@@ -122,12 +122,12 @@
 License
 =======
 
-Author: Cedric Mesnil <cslashm@gmail.com>
+Author: Cédric Mesnil <cslashm@gmail.com>
 
 License:
 
 
-  | Copyright 2017 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS
+  | Copyright 2017 Cédric Mesnil <cslashm@gmail.com>, Ledger SAS
   |
   | Licensed under the Apache License, Version 2.0 (the "License");
   | you may not use this file except in compliance with the License.
@@ -152,10 +152,9 @@ Introduction
 ============
 
 We want to enforce key protection, transaction confidentiality and transaction integrity against
-some potential malware on the Host. To achieve that we propose to use a Ledger NanoS as a 2nd
-factor trusted device. Such device has small amount of memory and it is not possible to get the full
-Monero transaction on it or to built the different proofs. So we need to split the process between
-Host and NanoS. This draft note explain how.
+potential malware on the Host. To achieve that we propose to use a Ledger NanoS as a 2nd
+factor trusted device. Such a device has small amount of memory and is not capable of holding the entire transaction or building the required proofs in RAM. So we need to split the process between the
+host and the NanoS. This draft note explain how.
 
 Moreover this draft note also anticipates a future client feature and proposes a solution to integrate the
 PR2056 for sub-address. This proposal is based on kenshi84 fork, branch sub-address-v2.
@@ -292,8 +291,8 @@ sub-address index according to kenshi84 fork.
 
 In case an already existing key needs to be transferred, an optional dedicated 
 command may be provided. As there is no secure messaging for now, this 
-transfer shall be done from a trusted host. 
-Moreoever, as provisioning is not handled by Monero client, a separate tool must 
+transfer shall be done from a trusted Host.
+Moreover, as provisioning is not handled by Monero client, a separate tool must 
 be provided.
 
 
@@ -449,8 +448,8 @@ processed during the first steps, an hash - named |lH| -  is computed during
 the key processing then verified during the sign process. If the hash does not
 match, the device will refuse to sign the transaction.
 
-In the same way, we create an hash over commitment  - named |ctH| - to ensure 
-that values between commitment validation and signature are the same. 
+In the same way, we create an hash over commitment - named |ctH| - to ensure 
+that values between commitment validation and signing are the same.
 
 Note that |lH| is required because the mlsag-prehash does not cover the 
 ephemeral destination key.
@@ -480,7 +479,7 @@ All command follow the generic ISO7816 command format, with the following meanin
 +------+--------+------------------------------------------+
 
 
-When a command/sub-command can be sent repeatedlyn the counter must be increased 
+When a command/sub-command can be sent repeatedly, the counter must be increased 
 by one at each command. The flag ``last sub command indicator`` must be set 
 to indicate another command will be sent. 
 
@@ -489,7 +488,7 @@ to indicate another command will be sent.
 +---------------+----------------------------------------------------------+
 | ``x--------`` | Last sub command indicator                               |
 |               |                                                          |
-| ``1--------`` | More identical subcommand to comme                       |
+| ``1--------`` | More identical subcommand forthcoming                    |
 |               |                                                          |
 | ``0--------`` | Last sub command                                         |
 +---------------+----------------------------------------------------------+
@@ -511,13 +510,13 @@ During this step, the NanoS also computes a secret key SPK (Secret Protection
 Key) to encrypt some confidential data for which the storage is delegated
 to the Host.
 Optionally the secret transaction key may be returned encrypted by SPK to be 
-used later. Moreover the secret transaction key is discarded by the token at 
+used later. Moreover, the secret transaction key is discarded by the token at 
 the end of the transaction and can not be retrieved if not saved by host. If 
 the secret transaction key needs to be saved, the SPK is generated in a 
 deterministic way.
 
 Finally, an optional exchange is done to override the TX public key in case
-a Sub-Address is used
+a Sub-Address is used.
 
 
 Description
@@ -841,7 +840,7 @@ generate_key_derivation in `cryptonote_tx_utils.cpp line 287`_ and and derive_pu
  
 In case of sub-address-v2 a dedicated interaction is done to retrieve the change address.
 Note here, the derivation data must be kept secret as it is used to blind the amount.
-So it is returned encrypted to the host host and must be stored in tx as temporary 
+The data is returned encrypted to the Host and must be stored in the tx as temporary 
 data (associated to the destination key) for the subsequent steps.
 
 
@@ -1030,15 +1029,15 @@ MLSAG_Gen
    | Call to MLSAG_Gen : `rctSigs.cpp line 362`_
    | MLSAG_Gen : `rctSigs.cpp line 116`_
 
-At this point the amounts and destination keys must be validated on NanoS. This
+At this point the amounts and destination keys must be validated on the NanoS. This
 information is embedded in the message to sign by calling get_pre_mlsag_hash 
 at `rctSigs.cpp line 613`_, prior to calling ProveRctMG. So the get_pre_mlsag_hash 
 function will have to be modified to serialize the rv transaction to NanoS which 
-will validate the tuple <amount,dest> and compute the pre-hash. 
+will validate the tuple <amount,dest> and compute the prehash.
 The prehash will be kept inside NanoS to ensure its integrity. 
 Any further access to the prehash will be delegated.
 
-Once prehash is computed, the proveRctMG is called. This function only builds
+Once the prehash is computed, the proveRctMG is called. This function only builds
 some matrix and vectors to prepare the signature which is performed by the final 
 call MLSAG_Gen.
 
@@ -1104,7 +1103,7 @@ header (`SBE`_):
 
 On the second step (`SAP`_) the application receives amount and destination and check 
 values. It also re-compute the |lH| value to ensure consistency with steps 3 and 4.
-So for each commend received, do:
+So for each command received, do:
 
    | compute |DRVout| =  |drvDH|(|rr|,|Aout|)`
    | compute |k| = |ek| - |Hps|(|DRVout|)
@@ -1138,7 +1137,7 @@ Keep |mlsagH|
 
 Step 1:
 
-Generate the matrix ring paramaters. 
+Generate the matrix ring parameters:
 
    | generate |ai| , 
    | compute |aGi|
@@ -1153,7 +1152,7 @@ return |eai| , |aGi| [ |aHi|, |IIi|]
 
 Step 2:
 
-Compute the last matrice ring parameter
+Compute the last matrix ring parameter:
 
    | replace the first 32 bytes of ``inputs`` by the previously computed MLSAG-prehash
    | compute c = |H|(``inputs``)
@@ -1162,7 +1161,7 @@ Compute the last matrice ring parameter
 
 Step 3:
 
-Finaly compute all signature:
+Finally compute all signatures:
 
     | compute |ai|  = |dec|[|spk|](|eai|)
     | compute |xin| = |dec|[|spk|](|exin|)
@@ -1449,8 +1448,8 @@ Helper functions
 
 **DeriveDH**
 
-   | *Input* : :math:`r , P`
-   | *Ouput*:  :math:`\mathfrak{D}`
+   | *input* : :math:`r , P`
+   | *output*:  :math:`\mathfrak{D}`
    | *Monero*: generate_key_derivation
    | 
    |      :math:`\mathfrak{D} = r.P`
