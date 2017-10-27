@@ -29,13 +29,14 @@ int monero_apdu_open_subtx(void) ;
 
 int monero_apdu_stealth();
 
-int monero_apdu_get_derivation_data(void) ;
+int monero_apdu_get_derivation_data();
 int monero_apdu_get_input_key(void);
 
 int monero_apdu_get_output_key(void);
 
 int monero_apdu_blind(void);
-
+int monero_apdu_unblind(void);
+int monero_apdu_get_amount_key(void);
 
 int monero_apdu_mlsag_prehash_init(void);
 int monero_apdu_mlsag_prehash_update(void);
@@ -45,8 +46,12 @@ int monero_apdu_mlsag_prepare(void);
 int monero_apdu_mlsag_hash(void);
 int monero_apdu_mlsag_sign(void);
 
+int monero_apdu_generate_key_derivation(void) ;
+int monero_apdu_derive_secret_key(void);
+int monero_apdu_derive_public_key(void);
+int monero_apdu_verify_key(void);
+int monero_apdu_get_chacha_prekey(void);
 
- 
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
 /* ----------------------------------------------------------------------- */
@@ -113,7 +118,7 @@ void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
  * P [in]  point in 02 y or 04 x y format
  * k [in]  32 bytes scalar
  */
-void monero_derive_dh(unsigned char *s, unsigned char *P, unsigned char *k);
+void monero_gerenrate_key_derivation(unsigned char *s, unsigned char *P, unsigned char *k);
 
 
 /*
@@ -123,7 +128,7 @@ void monero_derive_dh(unsigned char *s, unsigned char *P, unsigned char *k);
  * drv_data [in]  32 bytes derivation data (point) 
  * ec_pv    [in]  32 bytes private key
  */
-void monero_derive_priv(unsigned char *x, unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_pv);
+void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv);
 
 /*
  *  compute x = Hps(drv_data,out_idx)*G + ec_pub
@@ -132,12 +137,12 @@ void monero_derive_priv(unsigned char *x, unsigned char *drv_data, unsigned int 
  * drv_data [in]  32 bytes derivation data (point) 
  * ec_pub   [in]  32 bytes public key
  */
-void monero_derive_pub(unsigned char *P, unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub);
+void monero_derive_public_key(unsigned char *P, unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub);
 
 /*
  *
  */
-void monero_derive_img(unsigned char *img, unsigned char* x, unsigned char *P);
+void monero_generate_key_image(unsigned char *img, unsigned char* x, unsigned char *P);
 
 
 /*

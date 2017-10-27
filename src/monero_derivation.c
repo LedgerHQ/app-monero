@@ -1,3 +1,4 @@
+
 /* Copyright 2017 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,56 +21,63 @@
 #include "monero_vars.h"
 #include "usbd_ccid_impl.h"
 
-
+#if 0
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_get_derivation_data() {
-    unsigned char Rin[32];
-   
-    //fetch Rin
-    monero_io_fetch(Rin,32);
-    monero_io_discard(0);
-
-    //Derive Din
-    monero_gerenrate_key_derivation(G_monero_vstate.Dinout, Rin, N_monero_pstate->a);
-
-    monero_io_insert(G_monero_vstate.Dinout,32);
-    return SW_OK;
+int monero_apdu_derive_secret_key() {
+  
+  return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_get_input_key() {
-    unsigned int  sub_index;
-    unsigned int  out_index;
-
-    unsigned char xin[32];
-    unsigned char Pin[32];
-    unsigned char Iin[32];
-    
-    sub_index= monero_io_fetch_u32();
-    out_index= monero_io_fetch_u32();
-    monero_io_discard(1);
-
-    if (sub_index != 0) {
-        THROW (SW_ALGORITHM_UNSUPPORTED);
-    }
-
-    os_memset(xin, 0, 32);xin[31] = 1;
-    os_memset(Pin, 0, 32);
-    os_memset(Iin, 0, 32);
-    //derive xin
-    monero_derive_secret_key(xin, G_monero_vstate.Dinout, out_index, N_monero_pstate->b);
-    monero_io_insert_encrypt(xin,32);
-
-    //Compute Pin
-    monero_ecmul_G(Pin,xin);
-    monero_io_insert(Pin,32);
-
-    ////Compute Iin
-    monero_generate_key_image(Iin, Pin, xin);
-    monero_io_insert(Iin,32);
-    return SW_OK;
+int monero_apdu_derive_public_key() {
+ 
+  return SW_OK;
 }
+#endif
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_generate_key_derivation() {
+  unsigned char P[32];
+  unsigned char s[32];
+  unsigned char D[32];
+  unsigned char *ps;
+
+  //fetch P,s
+  monero_io_fetch(P,32);
+  switch (G_monero_vstate.io_p1&0x0F) {
+  case 0x00:
+     ps =  N_monero_pstate->a;
+     break;
+  case 0x01:
+     monero_io_fetch_decrypt(s,32);
+     ps = s;
+     break;
+  default:
+    THROW(SW_INCORRECT_P1P2);
+    return SW_INCORRECT_P1P2;
+  }
+  monero_io_discard(0);
+
+  //Derive D
+  monero_gerenrate_key_derivation(D, P, ps);
+
+  //ret
+  switch (G_monero_vstate.io_p1&0xF0) {
+  case 0x00:
+    monero_io_insert(D,32);
+    break;
+  case 0x10:
+    monero_io_insert_encrypt(D,32);
+    break;
+  default:
+    THROW(SW_INCORRECT_P1P2);
+    return SW_INCORRECT_P1P2;
+  }
+  return SW_OK;
+}
+

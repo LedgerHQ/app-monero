@@ -381,15 +381,15 @@ void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_dh(unsigned char *drv_data, unsigned char *P, unsigned char *scalar) {
+void monero_gerenrate_key_derivation(unsigned char *drv_data, unsigned char *P, unsigned char *scalar) {
     monero_ecmul_8k(drv_data,P,scalar);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_priv(unsigned char *x, 
-                        unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv) {
+void monero_derive_secret_key(unsigned char *x, 
+                              unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv) {
     unsigned char tmp[32];
 
     //derivation to scalar
@@ -401,8 +401,8 @@ void monero_derive_priv(unsigned char *x,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_pub(unsigned char *x, 
-                       unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub) { 
+void monero_derive_public_key(unsigned char *x, 
+                              unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub) { 
     unsigned char tmp[32];
 
     //derivation to scalar
@@ -415,7 +415,7 @@ void monero_derive_pub(unsigned char *x,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_img(unsigned char *img, unsigned char *P, unsigned char* x) {
+void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char* x) {
     unsigned char I[32];
 
     monero_hash_to_ec(I,P);
@@ -534,7 +534,6 @@ void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b) {
     monero_reverse32(r,r);
 }
 
-
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -553,9 +552,10 @@ void monero_multm_8(unsigned char *r, unsigned char *a) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 void monero_reduce(unsigned char *r, unsigned char *a) {
-    monero_reverse32(r,a); 
-    cx_math_modm(r, 32, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r,r);
+    unsigned char ra[32];
+    monero_reverse32(ra,a); 
+    cx_math_modm(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
+    monero_reverse32(r,ra);
 }
 
 /* ----------------------------------------------------------------------- */

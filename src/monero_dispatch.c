@@ -180,14 +180,7 @@ int monero_dispatch() {
     return SW_CLA_NOT_SUPPORTED;
   }
 
-
-  if (G_monero_vstate.io_ins == INS_PUT_KEY) {
-    //TODO : Insert user confirmation here
-    sw = monero_apdu_put_key();
-    return sw;
-  }
-
-  if (G_monero_vstate.io_ins == INS_RESET) {
+if (G_monero_vstate.io_ins == INS_RESET) {
     G_monero_vstate.rnd = 1;
     monero_io_discard(0);
     return 0x9000;
@@ -223,7 +216,7 @@ int monero_dispatch() {
     sw = monero_apdu_stealth();
     break;
 
-    /* --- PROCESS IN TX */
+    /* --- PROCESS IN TX --- */
   case INS_PROCESS_INPUT:
 
     if (G_monero_vstate.io_p1 == 1) {
@@ -236,17 +229,23 @@ int monero_dispatch() {
     break;
 
 
-    /* --- PROCESS OUT TX */
+    /* --- PROCESS OUT TX --- */
   case INS_PROCESS_OUTPUT:
     sw = monero_apdu_get_output_key();
     break;
 
-    /* --- RANGE PROOF */
+    /* --- BLIND --- */
   case INS_BLIND:
     sw = monero_apdu_blind();
     break;
+  case INS_UNBLIND:
+    sw = monero_apdu_unblind();
+    break;
+  case INS_AMOUNT_KEY:
+    sw = monero_apdu_get_amount_key();
+    break;
 
-    /* --- VALIDATE/PREHASH-- */
+    /* --- VALIDATE/PREHASH --- */
   case INS_VALIDATE:
     if (G_monero_vstate.io_p1 == 1) {
       sw = monero_apdu_mlsag_prehash_init();
@@ -259,7 +258,7 @@ int monero_dispatch() {
     }
     break;
 
-  /* --- MLSAG-- */
+  /* --- MLSAG --- */
   case INS_MLSAG:
     if (G_monero_vstate.io_p1 == 1) {
       sw = monero_apdu_mlsag_prepare();
@@ -271,6 +270,37 @@ int monero_dispatch() {
       THROW(SW_WRONG_P1P2);
     }
     break;
+
+  /* --- KEYS --- */
+  case INS_PUT_KEY:
+    sw = monero_apdu_put_key();
+    break;
+
+  case INS_GET_KEY:
+    sw = monero_apdu_get_key();
+    break;
+  
+  case INS_VERIFY_KEY:
+    sw = monero_apdu_verify_key();
+    break;
+
+  case INS_GET_CHACHA_PREKEY:
+    sw = monero_apdu_get_chacha_prekey();
+    break;
+  
+  /* --- LOW  --- */
+  case INS_GEN_KEY_DERIVATION_DATA:
+    sw = monero_apdu_generate_key_derivation();
+    break;
+#if 0  
+  case INS_DERIVE_SEC_KEY:
+    sw = monero_apdu_derive_secret_key();
+    break;
+ 
+  case INS_DERIVE_PUB_KEY:
+     sw = monero_apdu_derive_public_key();
+    break;
+#endif
   default:
     THROW(SW_INS_NOT_SUPPORTED);
     return SW_INS_NOT_SUPPORTED;

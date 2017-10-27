@@ -40,7 +40,7 @@ int monero_apdu_get_output_key() {
     monero_hash_update_L(Bout,32);
 
     //compute derivation data
-    monero_derive_dh(drv, Aout, G_monero_vstate.r);
+    monero_gerenrate_key_derivation(drv, Aout, G_monero_vstate.r);
     monero_io_insert(drv, 32);
     
     //compute amountkey, update LHash
@@ -49,9 +49,10 @@ int monero_apdu_get_output_key() {
     monero_io_insert_encrypt(Aout,32);
     
     //compute Pout, update LHash
-    monero_derive_pub(Aout, drv, output_index, Bout);
+    monero_derive_public_key(Aout, drv, output_index, Bout);
     monero_hash_update_L(Aout,32);
     monero_io_insert(Aout, 32);
 
     return SW_OK;
 }
+

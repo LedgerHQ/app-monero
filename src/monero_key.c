@@ -22,31 +22,108 @@
 
 
 int monero_apdu_put_key() {
-    unsigned char *raw;
+    unsigned char raw[32];
     unsigned char pub[32];
+    unsigned char sec[32];
+    
+    if (G_monero_vstate.io_length != (32*2 + 32*2 + 95)) {
+        THROW(SW_WRONG_LENGTH);
+    }
+
     //view key
-    raw = G_monero_vstate.io_buffer;
-    monero_ecmul_G(pub,raw);
-    if (os_memcmp(pub, raw+32, 32)) {
+    monero_io_fetch(sec, 32);    
+    monero_io_fetch(pub, 32);
+    monero_ecmul_G(raw,sec);
+    if (os_memcmp(pub, raw, 32)) {
         THROW(SW_WRONG_DATA);
         return SW_WRONG_DATA;
     }
+    nvm_write(N_monero_pstate->a, sec, 32);
+    nvm_write(N_monero_pstate->A, pub, 32);
 
     //spend key
-    raw = G_monero_vstate.io_buffer+64;
-    monero_ecmul_G(pub,raw);
-    if (os_memcmp(pub, raw+32, 32)) {
+    monero_io_fetch(sec, 32);    
+    monero_io_fetch(pub, 32);
+    monero_ecmul_G(raw,sec);
+    if (os_memcmp(pub, raw, 32)) {
         THROW(SW_WRONG_DATA);
         return SW_WRONG_DATA;
     }
+    nvm_write(N_monero_pstate->b, sec, 32);
+    nvm_write(N_monero_pstate->B, pub, 32);
 
-    //write key
-    raw = G_monero_vstate.io_buffer;
-    nvm_write(&N_monero_pstate->a, raw,    sizeof(cx_ecfp_private_key_t));
-    nvm_write(&N_monero_pstate->A, raw+32, sizeof(cx_ecfp_public_key_t));
-    raw = G_monero_vstate.io_buffer+64;
-    nvm_write(&N_monero_pstate->b, raw,    sizeof(cx_ecfp_private_key_t));
-    nvm_write(&N_monero_pstate->B, raw+32, sizeof(cx_ecfp_public_key_t));
+    //public base 58 address key
+    monero_io_fetch_nv((unsigned char*)N_monero_pstate->public_address, 95);
 
     return SW_OK;
 }
+
+
+int monero_apdu_get_key() {
+    switch (G_monero_vstate.io_p1) {
+    //get pub
+    case 1: 
+       //view key
+        monero_io_insert(N_monero_pstate->A, 32);
+        //spend key
+        monero_io_insert(N_monero_pstate->B, 32);
+        //public address 
+        monero_io_insert((unsigned char*)N_monero_pstate->public_address, 95);
+        break;
+    //get private
+    case 2:
+        //view key
+        monero_io_insert(N_monero_pstate->a, 32);
+        //spend key
+        monero_io_insert(N_monero_pstate->b, 32);
+        break;
+    default:
+        THROW(SW_WRONG_P1P2);
+        return SW_WRONG_P1P2;
+    }
+    return SW_OK;
+}
+
+int monero_apdu_verify_key() {
+    unsigned char key[32];
+
+    if ((G_monero_vstate.io_p1 != 1) & (G_monero_vstate.io_p1 != 2))  {
+        THROW(SW_WRONG_P1P2);
+        return SW_WRONG_P1P2;
+    }
+    if ((G_monero_vstate.io_p1 == 1) || (G_monero_vstate.io_p1 == 2)) {
+        monero_io_fetch(key, 32);
+        if (os_memcmp(N_monero_pstate->A, key, 32)) {
+           THROW(0x6B01);
+           return 0x6B01;
+        }
+    }
+    if (G_monero_vstate.io_p1 == 2) {
+        monero_io_fetch(key, 32);   ;
+        if (os_memcmp(N_monero_pstate->B, key, 32)) {
+           THROW(0x6B01);
+           return 0x6B02;
+        }
+    }
+    monero_io_discard(1);
+    return SW_OK;
+}
+
+
+#define CHACHA8_KEY_TAIL 0x8c
+
+
+int monero_apdu_get_chacha_prekey() {
+    unsigned char abt[65];
+    unsigned char pre[32];
+    monero_io_discard(0);
+    os_memmove(abt, N_monero_pstate->a, 32);
+    os_memmove(abt+32, N_monero_pstate->b, 32);
+    abt[64] = CHACHA8_KEY_TAIL;
+    monero_hash((cx_hash_t*)&G_monero_vstate.keccakH, abt, 65, pre);
+    monero_io_insert(pre, 32);
+    return SW_OK;
+}
+
+
+

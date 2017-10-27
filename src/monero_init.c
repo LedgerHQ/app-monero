@@ -43,12 +43,16 @@ const unsigned char C_w3_b[32] = {
   0xef, 0x92, 0x1a, 0xca, 0x5f, 0x75, 0x5b, 0x5f, 0x5f, 0x35, 0x19, 0x44, 0xc4, 0x48, 0x38, 0x07
 };
 
+const char C_w3_public_address[95] = 
+  "9uuioL9SjdvWDzgZSNx7dBX7DFNs2eBCA2BJno1P5v87aEbzwMpxmTfLKW8Gv4KAjubJTfV3wUbAuZFg5LBMmSPWShChubR";
+   
+
 /* ----------------------*/
 /* -- A Kind of Magic -- */
 /* ----------------------*/
 
 const unsigned char C_MAGIC[8] = {
- 'M','O','N','E','R','O',' ','A'
+ 'M','O','N','E','R','O','H','W'
 };
 
 /* ----------------------------------------------------------------------- */
@@ -102,6 +106,8 @@ int monero_install(unsigned char app_state) {
     monero_ecmul_G(AB, ab);
     monero_nvm_write(N_monero_pstate->b, ab, 32);
     monero_nvm_write(N_monero_pstate->B, AB, 32);
+
+    monero_nvm_write(N_monero_pstate->public_address, C_w3_public_address, 95);
 
   }
 

@@ -51,6 +51,9 @@ struct monero_nv_state_s {
   /* spend key */
   unsigned char B[32];
   unsigned char b[32];
+
+  /* public address */
+  char public_address[95];
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -157,8 +160,10 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 /* ---  INS  --- */
 #define INS_NONE                            0x00
-#define INS_PUT_KEY                         0x30
-#define INS_RESET                           0x32
+#define INS_GET_KEY                         0x30
+#define INS_PUT_KEY                         0x32
+
+#define INS_RESET                           0x02
 
 #define INS_OPEN_TX                         0x50
 #define INS_STEALTH                         0x52
@@ -167,7 +172,16 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_BLIND                           0x58
 #define INS_VALIDATE                        0x5A
 #define INS_MLSAG                           0x5C
-              
+            
+#define INS_GEN_KEY_DERIVATION_DATA         0x70
+#define INS_DERIVE_SEC_KEY                  0x72
+#define INS_DERIVE_PUB_KEY                  0x74
+#define INS_UNBLIND                         0x76
+#define INS_AMOUNT_KEY                      0x78
+#define INS_VERIFY_KEY                      0x7A
+#define INS_GET_CHACHA_PREKEY               0x7C
+
+
 #define INS_GET_RESPONSE                    0xc0
 
 
