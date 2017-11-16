@@ -57,11 +57,6 @@ int monero_apdu_blind() {
     monero_io_fetch_decrypt(AKout,32);
     monero_io_discard(1);
 
-    //update LHash
-    monero_hash_update_L(v,   32);
-    monero_hash_update_L(k,   32);
-    monero_hash_update_L(AKout,32);
-
     //blind mask
     monero_hash_to_scalar(AKout, AKout);
     monero_addm(k,k,AKout);
@@ -76,6 +71,17 @@ int monero_apdu_blind() {
     return SW_OK;
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+
+int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout) {
+    monero_hash_to_scalar(AKout, AKout);
+    monero_subm(k,k,AKout);
+    monero_hash_to_scalar(AKout, AKout);
+    monero_subm(v,v,AKout);
+    return 0;
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */

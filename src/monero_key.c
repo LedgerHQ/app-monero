@@ -55,11 +55,13 @@ int monero_apdu_put_key() {
     //public base 58 address key
     monero_io_fetch_nv((unsigned char*)N_monero_pstate->public_address, 95);
 
+    monero_io_discard(1);
     return SW_OK;
 }
 
 
 int monero_apdu_get_key() {
+    monero_io_discard(0);
     switch (G_monero_vstate.io_p1) {
     //get pub
     case 1: 
@@ -70,13 +72,16 @@ int monero_apdu_get_key() {
         //public address 
         monero_io_insert((unsigned char*)N_monero_pstate->public_address, 95);
         break;
-    //get private
+    
+#ifdef DEBUGLEDGER 
+    //get private          
     case 2:
         //view key
         monero_io_insert(N_monero_pstate->a, 32);
         //spend key
         monero_io_insert(N_monero_pstate->b, 32);
         break;
+#endif
     default:
         THROW(SW_WRONG_P1P2);
         return SW_WRONG_P1P2;
@@ -101,11 +106,12 @@ int monero_apdu_verify_key() {
     if (G_monero_vstate.io_p1 == 2) {
         monero_io_fetch(key, 32);   ;
         if (os_memcmp(N_monero_pstate->B, key, 32)) {
-           THROW(0x6B01);
+           THROW(0x6B02);
            return 0x6B02;
         }
     }
     monero_io_discard(1);
+    monero_io_insert((void*)N_monero_pstate->public_address, 95);
     return SW_OK;
 }
 
@@ -120,8 +126,8 @@ int monero_apdu_get_chacha_prekey() {
     os_memmove(abt, N_monero_pstate->a, 32);
     os_memmove(abt+32, N_monero_pstate->b, 32);
     abt[64] = CHACHA8_KEY_TAIL;
-    monero_hash((cx_hash_t*)&G_monero_vstate.keccakH, abt, 65, pre);
-    monero_io_insert(pre, 32);
+    monero_keccak_F(abt, 65, pre);
+    monero_io_insert((unsigned char*)G_monero_vstate.keccakF.acc, 200);
     return SW_OK;
 }
 

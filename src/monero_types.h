@@ -39,10 +39,15 @@
 #define MONERO_RSA_DEFAULT_PUB 0x010001U
 
 
+#define  CRYPTONOTE_MAINNET_PUBLIC_ADDRESS_BASE58_PREFIX  18
+#define  CRYPTONOTE_TESTNET_PUBLIC_ADDRESS_BASE58_PREFIX  53
 
 struct monero_nv_state_s {
   /* magic */
   unsigned char magic[8];
+
+  /* network */
+  unsigned char network_id;
 
   /* view key */
   unsigned char A[32];
@@ -53,12 +58,12 @@ struct monero_nv_state_s {
   unsigned char b[32];
 
   /* public address */
-  char public_address[95];
+  char public_address[96];
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
 
-#define MONERO_IO_BUFFER_LENGTH (512)
+#define MONERO_IO_BUFFER_LENGTH (300)
 
 struct monero_v_state_s {
   /* ------------------------------------------ */
@@ -87,8 +92,10 @@ struct monero_v_state_s {
   /* app state: INS|P1 */
   unsigned int   state;
 
-  unsigned int   cmd_counter;
-  unsigned int   subcmd_counter;
+
+  #define SIG_REAL 0
+  #define SIG_FAKE 1
+  unsigned int   sig_mode;
 
   /* ------------------------------------------ */
   /* ---               Crypo                --- */
@@ -101,7 +108,8 @@ struct monero_v_state_s {
   unsigned char R[32];
   unsigned char r[32];
 
-  /* mlsag hash */  
+  /* mlsag hash */
+  cx_sha3_t     keccakF;  
   cx_sha3_t     keccakH;
   unsigned char H[32];
   unsigned char c[32];
@@ -115,21 +123,18 @@ struct monero_v_state_s {
 
   /* -- multiple commands memories -- */
   unsigned char Dinout[32];
-  unsigned char Aout[32];
-  unsigned char Bout[32];
-  unsigned char Pout[32];
-  unsigned char amount[32];
-  unsigned char mask[32];
-  unsigned char commitment[32];
-  unsigned char fees[32];
-  
+ 
 
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */
   /* ------------------------------------------ */
-  /* ux menus */
-  char          menu[32];
-  ux_menu_entry_t ui_dogsays[2] ;
+  /* menu 0: 95-chars + "<monero: >"  + null */
+  char            ux_menu[112];
+  // address to display: 95-chars + null
+  char            ux_address[96];
+  // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
+  char            ux_amount[23];
+  ux_menu_entry_t ui_dogsays[2];
 
   /* ------------------------------------------ */
   /* ---                DEBUG               --- */
@@ -138,6 +143,8 @@ struct monero_v_state_s {
 
 } ;
 typedef struct  monero_v_state_s monero_v_state_t;
+
+#define SIZEOF_TX_VSTATE   (sizeof(monero_v_state_t) - OFFSETOF(monero_v_state_t, state))
 
 /* ---  ...  --- */
 #define STATE_ACTIVATE                      0x07
@@ -180,6 +187,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_AMOUNT_KEY                      0x78
 #define INS_VERIFY_KEY                      0x7A
 #define INS_GET_CHACHA_PREKEY               0x7C
+#define INS_SET_SIGNATURE_MODE              0x7E
 
 
 #define INS_GET_RESPONSE                    0xc0

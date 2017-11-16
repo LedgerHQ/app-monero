@@ -42,7 +42,7 @@ int monero_apdu_stealth() {
     
     //compute mask
     Dout[32] = ENCRYPTED_PAYMENT_ID_TAIL;
-    monero_hash_H(Dout,33,mask);
+    monero_keccak_F(Dout,33,mask);
     
     //stealth!
     for (i=0; i<8;i++) {

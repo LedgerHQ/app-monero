@@ -60,16 +60,147 @@ void ui_info(const char* msg1, const char* msg2, const void *menu_display, unsig
   UX_MENU_DISPLAY(0, G_monero_vstate.ui_dogsays, NULL);
 };
 
-/* ----------------------------- USER VALIDATION ----------------------------- */
+/* ----------------------------- FEE VALIDATION ----------------------------- */
+#define ACCEPT  0xACCE
+#define REJECT  ~ACCEPT
+
+void ui_menu_fee_validation_action(unsigned int value);
+
+const ux_menu_entry_t ui_menu_fee_validation[] = {
+  {NULL,  NULL,                           1,      NULL, " Fee",     "?xmr?",  0, 0},
+  {NULL,  ui_menu_fee_validation_action,  REJECT, NULL,  "Reject",  "TX",     0, 0},
+  {NULL,  ui_menu_fee_validation_action,  ACCEPT, NULL,  "Accept",  "TX",     0, 0},
+  UX_MENU_END
+};
+
+const bagl_element_t* ui_menu_fee_validation_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
+
+  /* --- Amount --- */
+  if (entry == &ui_menu_fee_validation[0]) {
+    if(element->component.userid==0x22) {      
+      element->text = G_monero_vstate.ux_amount;
+    }
+  }
+  return element;
+}
+
+void ui_menu_fee_validation_action(unsigned int value) {
+  unsigned short sw;
+  if (value == ACCEPT) {
+    sw = 0x9000;
+  } else {
+   sw = SW_SECURITY_STATUS_NOT_SATISFIED;
+    monero_abort_tx();
+  }
+  monero_io_insert_u16(sw);  
+  monero_io_do(IO_RETURN_AFTER_TX);
+  ui_menu_main_display(0);
+}
+void ui_menu_fee_validation_display(unsigned int value) {
+  UX_MENU_DISPLAY(0, ui_menu_fee_validation, ui_menu_fee_validation_preprocessor);
+}
+
+/* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
+void ui_menu_validation_action(unsigned int value);
+
+const ux_menu_entry_t ui_menu_validation[] = {
+  {NULL,  NULL,                       1,      NULL, " Amount",       "?xmr?",      0, 0},
+  {NULL,  NULL,                       3,      NULL,  "Destination",  "?dest.1?",   0, 0},
+  {NULL,  NULL,                       4,      NULL,  "?dest.2?",     "?dest.2?",   0, 0},
+  {NULL,  NULL,                       5,      NULL,  "?dest.3?",     "?dest.3?",   0, 0},
+  {NULL,  NULL,                       6,      NULL,  "?dest.4?",     "?dest.4?",   0, 0},
+  {NULL,  NULL,                       7,      NULL,  "?dest.5?",     "?dest.5?",   0, 0},
+  {NULL,  ui_menu_validation_action,  REJECT, NULL,  "Reject",       "TX",         0, 0},
+  {NULL,  ui_menu_validation_action,  ACCEPT, NULL,  "Accept",       "TX",         0, 0},
+  UX_MENU_END
+};
+
+const bagl_element_t* ui_menu_validation_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
+
+  /* --- Amount --- */
+  if (entry == &ui_menu_validation[0]) {
+    if(element->component.userid==0x22) {      
+      element->text = G_monero_vstate.ux_amount;
+    }
+  }
+  #if 0
+  /* --- Fees --- */
+  if (entry == &ui_menu_validation[1]) {
+    if(element->component.userid==0x22) {      
+      element->text = G_monero_vstate.ux_fees;
+    }
+  }
+#endif
+
+   /* --- Destination --- */
+  if (entry == &ui_menu_validation[1]) {
+    if(element->component.userid==0x22) {     
+      os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu)) ;
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*0, 11);
+      element->text = G_monero_vstate.ux_menu;
+    }
+  }
+  if (entry == &ui_menu_validation[2]) {
+    os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu)) ;
+    if(element->component.userid==0x21) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*1, 11);      
+    }
+    if(element->component.userid==0x22) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*2, 11);
+    }
+    element->text = G_monero_vstate.ux_menu;
+  }
+  if (entry == &ui_menu_validation[3]) {
+    os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu)) ;
+    if(element->component.userid==0x21) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*3, 11);      
+    }
+    if(element->component.userid==0x22) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*4, 11);
+    }
+    element->text = G_monero_vstate.ux_menu;
+  }
+  if (entry == &ui_menu_validation[4]) {
+    os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu)) ;
+    if(element->component.userid==0x21) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*5, 11);      
+    }
+    if(element->component.userid==0x22) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*6, 11);
+    }
+    element->text = G_monero_vstate.ux_menu;
+  }
+  if (entry == &ui_menu_validation[5]) {
+    os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu)) ;
+    if(element->component.userid==0x21) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*7, 11);      
+    }
+    if(element->component.userid==0x22) {     
+      os_memmove(G_monero_vstate.ux_menu, G_monero_vstate.ux_address+11*8, 7);
+    }
+    element->text = G_monero_vstate.ux_menu;
+  }
+
+  return element;
+}
 
 void ui_menu_validation_display(unsigned int value) {
-  
+  UX_MENU_DISPLAY(0, ui_menu_validation, ui_menu_validation_preprocessor);
 }
 
-
-void monero_ux_user_validation() {
-  ui_menu_validation_display(0);
+void ui_menu_validation_action(unsigned int value) {
+  unsigned short sw;
+  if (value == ACCEPT) {
+    sw = 0x9000;
+  } else {
+   sw = SW_SECURITY_STATUS_NOT_SATISFIED;
+    monero_abort_tx();
+  }
+  monero_io_insert_u16(sw);  
+  monero_io_do(IO_RETURN_AFTER_TX);
+  ui_menu_main_display(0);
 }
+
 /* -------------------------------- RESET UX --------------------------------- */
 
 const ux_menu_entry_t ui_menu_reset[] = {
@@ -132,12 +263,12 @@ const bagl_element_t* ui_menu_main_preprocessor(const ux_menu_entry_t* entry, ba
   if (entry == &ui_menu_main[0]) {
     if(element->component.userid==0x20) {      
     
-      os_memset(G_monero_vstate.menu, 0, sizeof(G_monero_vstate.menu));
-      snprintf(G_monero_vstate.menu,  sizeof(G_monero_vstate.menu), "< Monero >");
+      os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu));
+      snprintf(G_monero_vstate.ux_menu,  sizeof(G_monero_vstate.ux_menu), "< Monero: %s >", N_monero_pstate->public_address);
       
       element->component.stroke = 10; // 1 second stop in each way
-      element->component.icon_id = 26; // roundtrip speed in pixel/s
-      element->text = G_monero_vstate.menu;
+      element->component.icon_id = 48; // roundtrip speed in pixel/s
+      element->text = G_monero_vstate.ux_menu;
       UX_CALLBACK_SET_INTERVAL(bagl_label_roundtrip_duration_ms(element, 7));
     }
   }

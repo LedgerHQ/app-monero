@@ -61,15 +61,15 @@ int monero_apdu_get_input_key() {
     os_memset(Pin, 0, 32);
     os_memset(Iin, 0, 32);
     //derive xin
-    monero_derive_secret_key(xin, G_monero_vstate.Dinout, out_index, N_monero_pstate->b);
-    monero_io_insert_encrypt(xin,32);
-
+    monero_derive_secret_key(xin, G_monero_vstate.Dinout, out_index, N_monero_pstate->b);    
     //Compute Pin
     monero_ecmul_G(Pin,xin);
-    monero_io_insert(Pin,32);
-
-    ////Compute Iin
+    //Compute Iin
     monero_generate_key_image(Iin, Pin, xin);
+    //send all
+    monero_io_insert_encrypt(xin,32);
+    monero_io_insert(Pin,32);
     monero_io_insert(Iin,32);
+
     return SW_OK;
 }

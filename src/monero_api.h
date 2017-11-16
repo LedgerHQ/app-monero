@@ -23,10 +23,11 @@ int  monero_install(unsigned char app_state) ;
 int  monero_dispatch(void);
 
 int monero_apdu_put_key();
+int monero_apdu_get_key();
 
 int monero_apdu_open_tx(void);
 int monero_apdu_open_subtx(void) ;
-
+int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth();
 
 int monero_apdu_get_derivation_data();
@@ -53,6 +54,22 @@ int monero_apdu_verify_key(void);
 int monero_apdu_get_chacha_prekey(void);
 
 /* ----------------------------------------------------------------------- */
+/* ---                               MISC                             ---- */
+/* ----------------------------------------------------------------------- */
+#define OFFSETOF(type, field)    ((unsigned int)&(((type*)NULL)->field))
+
+int monero_base58_public_key( char* str_b58, unsigned char *view, unsigned char *spend);
+/** unsigned varint amount to str */
+int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len);
+/** binary little endian unsigned  int amount to str */
+int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len);
+/** uint64  amount to str */
+int monero_amount2str(uint64_t xmr,  char *str, unsigned int str_len);
+int monero_abort_tx() ;
+int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout);
+void ui_menu_validation_display(unsigned int value) ;
+void ui_menu_fee_validation_display(unsigned int value) ;
+/* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
 /* ----------------------------------------------------------------------- */
 extern const unsigned char C_ED25519_ORDER[];
@@ -66,34 +83,37 @@ void monero_hash_init_keccak(cx_hash_t * hasher);
 void monero_hash_init_sha256(cx_hash_t * hasher);
 void monero_hash_update(cx_hash_t * hasher, unsigned char* buf, unsigned int len) ;
 int  monero_hash_final(cx_hash_t * hasher, unsigned char* out);
-int  monero_hash(cx_hash_t * hasher, unsigned char* buf, unsigned int len, unsigned char* out);
+int  monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsigned int len, unsigned char* out);
 
-#define monero_hash_init_H() \
+#define monero_keccak_F(buf,len,out) \
+    monero_hash(CX_KECCAK, (cx_hash_t *)&G_monero_vstate.keccakF, (buf),(len), (out))
+
+#define monero_keccak_init_H() \
     monero_hash_init_keccak((cx_hash_t *)&G_monero_vstate.keccakH)
-#define monero_hash_update_H(buf,len)  \
+#define monero_keccak_update_H(buf,len)  \
     monero_hash_update((cx_hash_t *)&G_monero_vstate.keccakH,(buf), (len))
-#define monero_hash_final_H(out) \
+#define monero_keccak_final_H(out) \
     monero_hash_final((cx_hash_t *)&G_monero_vstate.keccakH, (out)?(out):G_monero_vstate.H)
-#define monero_hash_H(buf,len,out) \
-    monero_hash((cx_hash_t *)&G_monero_vstate.keccakH, (buf),(len), (out)?(out):G_monero_vstate.H)
+#define monero_keccak_H(buf,len,out) \
+    monero_hash(CX_KECCAK, (cx_hash_t *)&G_monero_vstate.keccakH, (buf),(len), (out)?(out):G_monero_vstate.H)
 
-#define monero_hash_init_C() \
+#define monero_sha256_init_C() \
     monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256C)
-#define monero_hash_update_C(buf,len) \
+#define monero_sha256_update_C(buf,len) \
     monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256C,(buf), (len))
-#define monero_hash_final_C(out) \
+#define monero_sha256_final_C(out) \
     monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256C, (out)?(out):G_monero_vstate.C)
 #define monero_hash_C(buf,len,out) \
-    monero_hash((cx_hash_t *)&G_monero_vstate.sha256C, (buf), (len), (out)?(out):G_monero_vstate.C)
+    monero_hash(CX_SHA256, (cx_hash_t *)&G_monero_vstate.sha256C, (buf), (len), (out)?(out):G_monero_vstate.C)
 
-#define monero_hash_init_L() \
+#define monero_sha256_init_L() \
     monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256L)
-#define monero_hash_update_L(buf,len) \
+#define monero_sha256_update_L(buf,len) \
     monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256L, (buf), (len))
-#define monero_hash_final_L(out) \
+#define monero_sha256_final_L(out) \
     monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256L, (out)?(out):G_monero_vstate.L)
-#define monero_hash_L(buf,len,out) \
-    monero_hash((cx_hash_t *)&G_monero_vstate.sha256L, (buf), (len), (out)?(out):G_monero_vstate.L)
+#define monero_sha256_L(buf,len,out) \
+    monero_hash(CX_SHA256, (cx_hash_t *)&G_monero_vstate.sha256L, (buf), (len), (out)?(out):G_monero_vstate.L)
 
 /**
  * LE-7-bits encoding. High bit set says one more byte to decode.

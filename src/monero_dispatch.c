@@ -121,7 +121,7 @@ void monero_check_state_machine() {
         } // => STATE_OUTith_BLINDED, STATE_OUT_BLINDED
         break;
 
-    /* -- INS VALIDATE -- */
+    /* -- INS BLIND -- */
 
     case STATE_OUTPUTS_BLINDED :
         if (RECEIVE_OP == OP(INS_VALIDATE,1)) {
@@ -207,6 +207,11 @@ if (G_monero_vstate.io_ins == INS_RESET) {
     }
     break;
   
+     /* --- SIG MODE --- */
+  case INS_SET_SIGNATURE_MODE:
+    sw = monero_apdu_set_signature_mode();
+    break;
+
     /* --- STEATH PAYMENT --- */
   case INS_STEALTH:
     if ((G_monero_vstate.io_p1 != 0) || 

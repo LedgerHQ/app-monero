@@ -49,8 +49,8 @@ int monero_apdu_open_tx() {
 
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-    monero_hash_init_L();
-    monero_hash_init_C();
+    monero_sha256_init_L();
+    monero_sha256_init_C();
     return SW_OK;
 }
 
@@ -64,3 +64,43 @@ int monero_apdu_open_subtx() {
     THROW(SW_WRONG_P1P2);
     return SW_WRONG_P1P2;
 }
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/* 
+ * Sub dest address not yet supported: P1 = 2 not supported
+ */
+int monero_abort_tx() {
+    os_memset(&G_monero_vstate.state, 0, SIZEOF_TX_VSTATE);
+    return 0;
+}
+
+
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/* 
+ * Sub dest address not yet supported: P1 = 2 not supported
+ */
+int monero_apdu_set_signature_mode() {
+    unsigned int sig_mode;
+    
+    G_monero_vstate.sig_mode = SIG_REAL;
+
+    sig_mode = monero_io_fetch_u8();
+    monero_io_discard(0);
+    switch(sig_mode) {
+    case SIG_REAL:
+    case SIG_FAKE:
+        break;
+    default:
+        THROW(SW_WRONG_DATA);
+    }
+    G_monero_vstate.sig_mode = sig_mode;
+   
+    monero_io_insert_u32( G_monero_vstate.sig_mode );
+    return SW_OK;
+}
+

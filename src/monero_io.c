@@ -171,8 +171,14 @@ void monero_io_insert_tlv(unsigned int T, unsigned int L, unsigned char const *V
 /* ----------------------------------------------------------------------- */
 /* FECTH data from received buffer                                         */
 /* ----------------------------------------------------------------------- */
+void monero_io_assert_availabe(int sz) {
+  if ((G_monero_vstate.io_length-G_monero_vstate.io_offset) < sz) {
+    THROW(SW_WRONG_LENGTH + (sz&0xFF));
+  }
+}
 
 int monero_io_fetch(unsigned char* buffer, int len) {
+  monero_io_assert_availabe(len);
   if (buffer) {
     os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
   }
@@ -181,6 +187,7 @@ int monero_io_fetch(unsigned char* buffer, int len) {
 }
 
 int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
+  monero_io_assert_availabe(len);
   if (buffer) {
 #ifdef IOCRYPT    
     cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
@@ -199,8 +206,10 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
   G_monero_vstate.io_offset += len;
   return len;
 }
+
 unsigned int monero_io_fetch_u32() {
   unsigned int  v32;
+  monero_io_assert_availabe(4);
   v32 =  ( (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+0] << 24) |
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+1] << 16) |
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+2] << 8) |
@@ -211,6 +220,7 @@ unsigned int monero_io_fetch_u32() {
 
 unsigned int monero_io_fetch_u24() {
   unsigned int  v24;
+  monero_io_assert_availabe(3);
   v24 =  ( (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+0] << 16) |
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+1] << 8) |
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+2] << 0) );
@@ -220,6 +230,7 @@ unsigned int monero_io_fetch_u24() {
 
 unsigned int monero_io_fetch_u16() {
   unsigned int  v16;
+  monero_io_assert_availabe(2);
   v16 =  ( (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+0] << 8) |
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+1] << 0) );
   G_monero_vstate.io_offset += 2;
@@ -228,38 +239,33 @@ unsigned int monero_io_fetch_u16() {
 
 unsigned int monero_io_fetch_u8() {
   unsigned int  v8;
+  monero_io_assert_availabe(1);
   v8 = G_monero_vstate.io_buffer[G_monero_vstate.io_offset] ;
   G_monero_vstate.io_offset += 1;
   return v8;
 }
 
 int monero_io_fetch_t(unsigned int *T) {
-  *T = G_monero_vstate.io_buffer[G_monero_vstate.io_offset];
-  G_monero_vstate.io_offset++;
+  *T = monero_io_fetch_u8();
   if ((*T & 0x1F) == 0x1F) {
-    *T = (*T << 8) | G_monero_vstate.io_buffer[G_monero_vstate.io_offset];
-    G_monero_vstate.io_offset++;
+    *T = (*T << 8) | monero_io_fetch_u8();
   }
   return 0;
 }
 
 int monero_io_fetch_l(unsigned int *L) {
-  *L = G_monero_vstate.io_buffer[G_monero_vstate.io_offset];
+  *L = monero_io_fetch_u8();
 
   if ((*L & 0x80) != 0) {
     *L &= 0x7F;
     if (*L == 1) {
-      *L =  G_monero_vstate.io_buffer[G_monero_vstate.io_offset+1];
-      G_monero_vstate.io_offset += 2;
+      *L =  monero_io_fetch_u8();
     } else if (*L == 2) {
-      *L =  (G_monero_vstate.io_buffer[G_monero_vstate.io_offset+1] << 8) | G_monero_vstate.io_buffer[G_monero_vstate.io_offset+2] ;
-      G_monero_vstate.io_offset += 3 ;
+      *L =  monero_io_fetch_u16() ;
     } else {
       *L = -1;
     }
-  } else {
-    G_monero_vstate.io_offset += 1 ;
-  }
+  } 
   return 0;
 }
 
@@ -270,6 +276,7 @@ int monero_io_fetch_tl(unsigned int *T, unsigned int *L) {
 }
 
 int monero_io_fetch_nv(unsigned char* buffer, int len) {
+  monero_io_assert_availabe(len);
   monero_nvm_write(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
   G_monero_vstate.io_offset += len;
   return len;
