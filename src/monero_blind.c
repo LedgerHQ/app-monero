@@ -23,18 +23,29 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+// default: Ak = F(pubTX,a,i)
+//option 1: Ak = F(derivation,a,i)
 int monero_apdu_get_amount_key() {
     unsigned char Pub_tx[32];     
     unsigned char drv[32];
     unsigned int  index;
 
-    monero_io_fetch(Pub_tx,32); 
+    //compute derivation data
+    switch (G_monero_vstate.options) {
+    case 0:
+        monero_io_fetch(Pub_tx,32); 
+        monero_generate_key_derivation(drv, Pub_tx, N_monero_pstate->a);
+        break;
+    case 1:
+        monero_io_fetch_decrypt(drv,32); 
+        break;
+    default:
+      THROW(SW_REFERENCED_DATA_NOT_FOUND);
+      return 0;
+    }
     index = monero_io_fetch_u32();
     monero_io_discard(1);
 
-    //compute derivation data
-    monero_gerenrate_key_derivation(drv, Pub_tx, N_monero_pstate->a);
-    
     //compute amountkey, update LHash
     monero_derivation_to_scalar(Pub_tx, drv, index);
     monero_io_insert_encrypt(Pub_tx,32);

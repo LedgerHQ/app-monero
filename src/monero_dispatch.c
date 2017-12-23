@@ -19,158 +19,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-enum monero_state_e{
-    STATE_NONE,
-
-    STATE_TX_OPENED,
-    STATE_TX_SUBOPENED,
-
-    STATE_STEALH_PAID,
-
-    STATE_INith_DERIVATTION_RETRIEVED,
-    STATE_INith_KEY_RETRIEVED,
-    STATE_INPUTS_PROCESSED,
-
-    STATE_OUTjth_KEY_RETRIEVED,
-    STATE_OUTPUTS_PROCESSED,
-
-    STATE_OUTith_BLINDED,
-    STATE_OUTPUTS_BLINDED,
-
-    STATE_VALIDATE_INITED,
-    STATE_OUTith_VALIDATED,
-    STATE_OUTPUTS_VALIDATED,
-    STATE_OUTPUTS_HASHED,
-
-    STATE_MLSAG_INith_PREPARED,
-    STATE_MLSAG_PREPARED,
-    STATE_MLSAG_STARTED,
-    STATE_MSLSAG_INith_DONE,
-    STATE_MSLSAG_DONE,
-
-    STATE_TX_CLOSED
-} ;
-
-#define OP(ins,p1)  (((ins)<<8)|(p1))
-
-void monero_reset_state_machine() {
-    G_monero_vstate.state = STATE_NONE;
-}
-
-void monero_check_state_machine() {
-    switch (G_monero_vstate.state) {
-
-#define RECEIVE_OP OP(G_monero_vstate.io_ins, G_monero_vstate.io_p1)
-
-    /* -- INS OPEN TX -- */
-    
-    case STATE_NONE : 
-    case STATE_TX_CLOSED:
-        if (RECEIVE_OP == OP(INS_OPEN_TX,1)) {
-            return;
-        }//  => STATE_TX_OPENED
-        break;
-
-    case STATE_TX_OPENED :
-        if ( (RECEIVE_OP == OP(INS_OPEN_TX,2)) ||
-             (RECEIVE_OP == OP(INS_PROCESS_INPUT,1))  ||
-             (RECEIVE_OP == OP(INS_STEALTH,1)) ) {
-            return;
-        }// => STATE_TX_SUBOPENED
-        break;
-  
-
-    /* -- INS STEALTH -- */
-    
-    case STATE_TX_SUBOPENED :
-        if ( (RECEIVE_OP == OP(INS_STEALTH,1)) ||
-             (RECEIVE_OP == OP(INS_PROCESS_INPUT,1)) ) {
-          return;
-        } // => STATE_STEALH_PAID
-        break;
-  
-    /** -- INS PROCESS INPUT -- */
-
-    case STATE_STEALH_PAID :
-    case STATE_INith_KEY_RETRIEVED :
-        if (RECEIVE_OP == OP(INS_PROCESS_INPUT,1)) {
-            return;
-        } // => STATE_INith_DERIVATTION_RETRIEVED
-        break;
-
-    case STATE_INith_DERIVATTION_RETRIEVED :
-        if (RECEIVE_OP == OP(INS_PROCESS_INPUT,2)) {
-            return;
-        }// => STATE_INith_KEY_RETRIEVED, STATE_INPUTS_PROCESSED
-        break;
-  
-    /** -- INS PROCESS OUTPUT -- */
-
-     case STATE_INPUTS_PROCESSED:
-     case STATE_OUTjth_KEY_RETRIEVED:
-       if (RECEIVE_OP == OP(INS_PROCESS_OUTPUT,1)) {
-            return;
-        } // => STATE_OUTjth_KEY_RETRIEVED, STATE_OUPUTS_PROCESSED
-  
-    /** -- INS BLIND -- */
-
-    case STATE_OUTPUTS_PROCESSED:
-    case STATE_OUTith_BLINDED:
-        if (RECEIVE_OP == OP(INS_BLIND,1)) {
-            return;
-        } // => STATE_OUTith_BLINDED, STATE_OUT_BLINDED
-        break;
-
-    /* -- INS BLIND -- */
-
-    case STATE_OUTPUTS_BLINDED :
-        if (RECEIVE_OP == OP(INS_VALIDATE,1)) {
-            return;
-        } // => STATE_VALIDATE_INITED
-        break;
-  
-    case STATE_VALIDATE_INITED :
-    case STATE_OUTith_VALIDATED:
-        if (RECEIVE_OP == OP(INS_VALIDATE,2)) {
-            return;
-        } // => STATE_OUTith_VALIDATED, STATE_OUTPUTS_VALIDATED
-        break;
-  
-    case STATE_OUTPUTS_VALIDATED:
-        if (RECEIVE_OP == OP(INS_VALIDATE,3)) {
-            return;
-        } //=> STATE_OUTPUTS_HASHED
-        break;
-
-    /* -- INS MLSAG -- */
-
-    case STATE_OUTPUTS_HASHED:
-    case STATE_MLSAG_INith_PREPARED:
-        if (RECEIVE_OP == OP(INS_MLSAG,1)) {
-            return;
-        } // => STATE_MLSAG_INith_PREPARED, STATE_MLSAG_PREPARED
-        break;
-     
-    case STATE_MLSAG_PREPARED:
-        if (RECEIVE_OP == OP(INS_MLSAG,2)) {
-            return;
-        } //=> STATE_MLSAG_STARTED
-        break;
-
-    case STATE_MLSAG_STARTED:
-    case STATE_MSLSAG_INith_DONE:
-        if (RECEIVE_OP == OP(INS_MLSAG,3)) {
-            return;
-        } //=> STATE_MSLSAG_INith_SIGNED, STATE_TX_CLOSED
-        break;
-
-    }
-    THROW(SW_CLA_NOT_SUPPORTED);
-    return ;
-}
-
-
-
 int monero_dispatch() {
 
   int sw;
@@ -180,7 +28,7 @@ int monero_dispatch() {
     return SW_CLA_NOT_SUPPORTED;
   }
 
-if (G_monero_vstate.io_ins == INS_RESET) {
+  if (G_monero_vstate.io_ins == INS_RESET) {
     G_monero_vstate.rnd = 1;
     monero_io_discard(0);
     return 0x9000;
@@ -206,7 +54,8 @@ if (G_monero_vstate.io_ins == INS_RESET) {
       THROW(SW_WRONG_P1P2);
     }
     break;
-  
+    
+
      /* --- SIG MODE --- */
   case INS_SET_SIGNATURE_MODE:
     sw = monero_apdu_set_signature_mode();
@@ -221,22 +70,79 @@ if (G_monero_vstate.io_ins == INS_RESET) {
     sw = monero_apdu_stealth();
     break;
 
-    /* --- PROCESS IN TX --- */
-  case INS_PROCESS_INPUT:
 
-    if (G_monero_vstate.io_p1 == 1) {
-      sw = monero_apdu_get_derivation_data();
-    }  else if (G_monero_vstate.io_p1 == 2) {
-      sw = monero_apdu_get_input_key();      
-    } else {
-      THROW(SW_WRONG_P1P2);
-    }
+   /* --- KEYS --- */
+  case INS_PUT_KEY:
+    sw = monero_apdu_put_key();
     break;
 
+  case INS_GET_KEY:
+    sw = monero_apdu_get_key();
+    break;
+  
+  case INS_VERIFY_KEY:
+    sw = monero_apdu_verify_key();
+    break;
 
-    /* --- PROCESS OUT TX --- */
-  case INS_PROCESS_OUTPUT:
-    sw = monero_apdu_get_output_key();
+  case INS_GET_CHACHA8_PREKEY:
+    sw = monero_apdu_get_chacha8_prekey();
+    break;
+  
+  case INS_SECRET_KEY_TO_PUBLIC_KEY:
+    sw = monero_apdu_secret_key_to_public_key();
+    break;
+
+  case INS_GEN_KEY_DERIVATION:
+    sw = monero_apdu_generate_key_derivation();
+    break;
+
+  case INS_DERIVATION_TO_SCALAR:
+    sw = monero_apdu_derivation_to_scalar();
+    break;
+
+  case INS_DERIVE_PUBLIC_KEY:
+    sw = monero_apdu_derive_public_key();
+    break;
+
+  case INS_DERIVE_SECRET_KEY:
+    sw = monero_apdu_derive_secret_key();
+    break;
+
+  case INS_GEN_KEY_IMAGE:
+    sw = monero_apdu_generate_key_image();
+    break;
+
+  case INS_SECRET_KEY_ADD:
+    sw = monero_apdu_sc_add();
+
+  case INS_SECRET_KEY_SUB:
+    sw = monero_apdu_sc_sub();
+    break;
+
+  case INS_GENERATE_KEYPAIR:
+    sw = monero_apdu_generate_keypair();
+    break;
+
+  case INS_SECRET_SCAL_MUL_KEY:
+    sw = monero_apdu_scal_mul_key();
+    break;
+
+  case INS_SECRET_SCAL_MUL_BASE:
+    sw = monero_apdu_scal_mul_base();
+    break;
+
+  /* --- ADRESSES --- */
+  case INS_DERIVE_SUBADDRESS_PUBLIC_KEY:
+    sw = monero_apdu_derive_subaddress_public_key();
+    break;
+  case INS_GET_SUBADDRESS:
+    sw = monero_apdu_get_subaddress();
+    break;
+  case INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY:
+     sw = monero_apdu_get_subaddress_spend_public_key();
+    break;
+  case INS_GET_SUBADDRESS_SECRET_KEY:
+    sw = monero_apdu_get_subaddress_secret_key();
     break;
 
     /* --- BLIND --- */
@@ -277,35 +183,7 @@ if (G_monero_vstate.io_ins == INS_RESET) {
     break;
 
   /* --- KEYS --- */
-  case INS_PUT_KEY:
-    sw = monero_apdu_put_key();
-    break;
-
-  case INS_GET_KEY:
-    sw = monero_apdu_get_key();
-    break;
-  
-  case INS_VERIFY_KEY:
-    sw = monero_apdu_verify_key();
-    break;
-
-  case INS_GET_CHACHA_PREKEY:
-    sw = monero_apdu_get_chacha_prekey();
-    break;
-  
-  /* --- LOW  --- */
-  case INS_GEN_KEY_DERIVATION_DATA:
-    sw = monero_apdu_generate_key_derivation();
-    break;
-#if 0  
-  case INS_DERIVE_SEC_KEY:
-    sw = monero_apdu_derive_secret_key();
-    break;
  
-  case INS_DERIVE_PUB_KEY:
-     sw = monero_apdu_derive_public_key();
-    break;
-#endif
   default:
     THROW(SW_INS_NOT_SUPPORTED);
     return SW_INS_NOT_SUPPORTED;

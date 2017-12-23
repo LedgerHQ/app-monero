@@ -152,7 +152,6 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define IO_OFFSET_MARK                      (unsigned int)-2
 
 
-#define OPTION_KEEP_r                       0x01
 
 #define ENCRYPTED_PAYMENT_ID_TAIL            0x8d
 /* ---  Errors  --- */
@@ -166,31 +165,51 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 
 /* ---  INS  --- */
-#define INS_NONE                            0x00
-#define INS_GET_KEY                         0x30
-#define INS_PUT_KEY                         0x32
 
-#define INS_RESET                           0x02
+  #define INS_NONE                            0x00
+  #define INS_RESET                           0x02
 
-#define INS_OPEN_TX                         0x50
-#define INS_STEALTH                         0x52
-#define INS_PROCESS_INPUT                   0x54 
-#define INS_PROCESS_OUTPUT                  0x56
-#define INS_BLIND                           0x58
-#define INS_VALIDATE                        0x5A
-#define INS_MLSAG                           0x5C
-            
-#define INS_GEN_KEY_DERIVATION_DATA         0x70
-#define INS_DERIVE_SEC_KEY                  0x72
-#define INS_DERIVE_PUB_KEY                  0x74
-#define INS_UNBLIND                         0x76
-#define INS_AMOUNT_KEY                      0x78
-#define INS_VERIFY_KEY                      0x7A
-#define INS_GET_CHACHA_PREKEY               0x7C
-#define INS_SET_SIGNATURE_MODE              0x7E
+  #define INS_GET_KEY                         0x20
+  #define INS_PUT_KEY                         0x22
+  #define INS_GET_CHACHA8_PREKEY              0x24
+  #define INS_VERIFY_KEY                      0x26
 
+  #define INS_SECRET_KEY_TO_PUBLIC_KEY        0x30
+  #define INS_GEN_KEY_DERIVATION              0x32
+  #define INS_DERIVATION_TO_SCALAR            0x34
+  #define INS_DERIVE_PUBLIC_KEY               0x36
+  #define INS_DERIVE_SECRET_KEY               0x38
+  #define INS_GEN_KEY_IMAGE                   0x3A
+  #define INS_SECRET_KEY_ADD                  0x3C
+  #define INS_SECRET_KEY_SUB                  0x3E
+  #define INS_GENERATE_KEYPAIR                0x40
+  #define INS_SECRET_SCAL_MUL_KEY             0x42
+  #define INS_SECRET_SCAL_MUL_BASE            0x44
 
-#define INS_GET_RESPONSE                    0xc0
+  #define INS_DERIVE_SUBADDRESS_PUBLIC_KEY    0x46
+  #define INS_GET_SUBADDRESS                  0x48
+  #define INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY 0x4A
+  #define INS_GET_SUBADDRESS_SECRET_KEY       0x4C
+
+  #define INS_OPEN_TX                         0x70
+  #define INS_SET_SIGNATURE_MODE              0x72
+  #define INS_GET_ADDITIONAL_KEY              0x74
+  #define INS_STEALTH                         0x76
+  #define INS_PROCESS_INPUT                   0x78 
+  #define INS_PROCESS_OUTPUT                  0x7A
+  #define INS_AMOUNT_KEY                      0x7C
+  #define INS_BLIND                           0x7E
+  #define INS_UNBLIND                         0x80
+  #define INS_VALIDATE                        0x82
+  #define INS_MLSAG                           0x84
+  #define INS_CLOSE_TX                        0x86        
+
+  
+  #define INS_GET_RESPONSE                    0xc0
+
+/* --- OPTIONS --- */
+#define IN_OPTION_MASK                      0x000000FF
+#define OUT_OPTION_MASK                     0x0000FF00
 
 
 /* ---  IO constants  --- */

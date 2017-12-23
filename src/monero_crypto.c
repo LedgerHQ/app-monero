@@ -401,18 +401,17 @@ static void monero_ge_fromfe_frombytes(unsigned char *ge , unsigned char *bytes)
     #undef Pxy
 }
 
+/* ======================================================================= */
+/*                            DERIVATION & KEY                             */
+/* ======================================================================= */
+
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data, unsigned int out_idx) {
-    unsigned char varint[32+8];
-    unsigned int len_varint;
-    
-    os_memmove(varint, drv_data, 32);
-    len_varint = monero_encode_varint(varint+32, out_idx);
-    len_varint += 32;
-    monero_keccak_F(varint,len_varint,varint);
-    monero_reduce(scalar, varint);
+void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw) {
+    monero_keccak_F(raw,32,scalar);
+    monero_reduce(scalar, scalar);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -427,26 +426,33 @@ void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char* x) {
-    unsigned char I[32];
-    monero_hash_to_ec(I,P);
-    monero_ecmul_k(img, I,x);
+void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv) {
+    monero_rng(ec_priv,32);
+    monero_reduce(ec_priv, ec_priv);
+    monero_ecmul_G(ec_pub, ec_priv);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw) {
-    monero_keccak_F(raw,32,scalar);
-    monero_reduce(scalar, scalar);
-}
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
-void monero_gerenrate_key_derivation(unsigned char *drv_data, unsigned char *P, unsigned char *scalar) {
+void monero_generate_key_derivation(unsigned char *drv_data, unsigned char *P, unsigned char *scalar) {
     monero_ecmul_8k(drv_data,P,scalar);
 }
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data, unsigned int out_idx) {
+    unsigned char varint[32+8];
+    unsigned int len_varint;
+    
+    os_memmove(varint, drv_data, 32);
+    len_varint = monero_encode_varint(varint+32, out_idx);
+    len_varint += 32;
+    monero_keccak_F(varint,len_varint,varint);
+    monero_reduce(scalar, varint);
+}
+
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -474,6 +480,80 @@ void monero_derive_public_key(unsigned char *x,
     monero_ecmul_G(tmp,tmp);
     monero_ecadd(x,tmp,ec_pub);
 }
+
+
+void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv) {
+    monero_ecmul_G(ec_pub, ec_priv);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char* x) {
+    unsigned char I[32];
+    monero_hash_to_ec(I,P);
+    monero_ecmul_k(img, I,x);
+}
+
+
+/* ======================================================================= */
+/*                               SUB ADDRESS                               */
+/* ======================================================================= */
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_derive_subaddress_public_key(unsigned char *x, 
+                                         unsigned char *pub, unsigned char* drv_data, unsigned int index) {
+  unsigned char scalarG[32];
+
+  monero_derivation_to_scalar(scalarG , drv_data, index);
+  monero_ecmul_G(scalarG, scalarG);
+  monero_ecsub(x, pub, scalarG);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_get_subaddress_spend_public_key(unsigned char *x,unsigned char *index) {
+   
+    // m = Hs(a || index_major || index_minor)
+    monero_get_subaddress_secret_key(x, N_monero_pstate->a, index);
+
+    // M = m*G
+    monero_secret_key_to_public_key(x,x);
+
+    // D = B + M
+    monero_ecadd(x,x,N_monero_pstate->B);
+}
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index) {
+    //retrieve D
+    monero_get_subaddress_spend_public_key(D, index);
+    // C = a*D
+    monero_ecmul_k(C,D,N_monero_pstate->a);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+static const  char *sub_address_prefix = "SubAddr";
+
+void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index) {
+    unsigned char in[sizeof(sub_address_prefix)+32+8];
+
+    os_memmove(in,                               sub_address_prefix, sizeof(sub_address_prefix)),
+    os_memmove(in+sizeof(sub_address_prefix),    s,                  32);
+    os_memmove(in+sizeof(sub_address_prefix)+32, index,              8);
+    //hash_to_scalar with more that 32bytes:
+    monero_keccak_F(in, sizeof(sub_address_prefix)+32+8, sub_s);
+    monero_reduce(sub_s, sub_s);
+}
+
+/* ======================================================================= */
+/*                                  MATH                                   */
+/* ======================================================================= */
 
 
 /* ----------------------------------------------------------------------- */
@@ -544,6 +624,29 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
     os_memmove(&Qxy[1], Q, 32);
     cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy);
     
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
+    
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    os_memmove(W, &Pxy[1], 32);
+}
+
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
+    unsigned char Pxy[65];
+    unsigned char Qxy[65];
+    
+    Pxy[0] = 0x02;
+    os_memmove(&Pxy[1], P, 32);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    
+    Qxy[0] = 0x02;
+    os_memmove(&Qxy[1], Q, 32);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy);
+    
+    cx_math_subm(Qxy+33, (unsigned char *)C_ED25519_ORDER,  Qxy+33, (unsigned char *)C_ED25519_ORDER, 32);
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
     
     cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);

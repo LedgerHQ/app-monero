@@ -21,6 +21,9 @@
 #include "usbd_ccid_impl.h"
 
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_apdu_put_key() {
     unsigned char raw[32];
     unsigned char pub[32];
@@ -60,6 +63,9 @@ int monero_apdu_put_key() {
 }
 
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_apdu_get_key() {
     monero_io_discard(0);
     switch (G_monero_vstate.io_p1) {
@@ -89,6 +95,9 @@ int monero_apdu_get_key() {
     return SW_OK;
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_apdu_verify_key() {
     unsigned char key[32];
 
@@ -116,20 +125,324 @@ int monero_apdu_verify_key() {
 }
 
 
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 #define CHACHA8_KEY_TAIL 0x8c
+int monero_apdu_get_chacha8_prekey(/*char  *prekey*/) {
+  unsigned char abt[65];
+  unsigned char pre[32];
 
-
-int monero_apdu_get_chacha_prekey() {
-    unsigned char abt[65];
-    unsigned char pre[32];
-    monero_io_discard(0);
-    os_memmove(abt, N_monero_pstate->a, 32);
-    os_memmove(abt+32, N_monero_pstate->b, 32);
-    abt[64] = CHACHA8_KEY_TAIL;
-    monero_keccak_F(abt, 65, pre);
-    monero_io_insert((unsigned char*)G_monero_vstate.keccakF.acc, 200);
-    return SW_OK;
+  monero_io_discard(0);
+  os_memmove(abt, N_monero_pstate->a, 32);
+  os_memmove(abt+32, N_monero_pstate->b, 32);
+  abt[64] = CHACHA8_KEY_TAIL;
+  monero_keccak_F(abt, 65, pre);
+  monero_io_insert((unsigned char*)G_monero_vstate.keccakF.acc, 200);
+  return SW_OK;
 }
+#undef CHACHA8_KEY_TAIL
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_sc_add(/*unsigned char *r, unsigned char *s1, unsigned char *s2*/) {
+  unsigned char s1[32];
+  unsigned char s2[32];
+  unsigned char r[32];
+  //fetch 
+  monero_io_fetch_decrypt(s1,32);
+  monero_io_fetch_decrypt(s2,32);
+  monero_io_discard(0);
+  monero_addm(r,s1,s2);
+  monero_io_insert(r,32);
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_sc_sub(/*unsigned char *r, unsigned char *s1, unsigned char *s2*/) {
+  unsigned char s1[32];
+  unsigned char s2[32];
+  unsigned char r[32];
+  //fetch 
+  monero_io_fetch_decrypt(s1,32);
+  monero_io_fetch_decrypt(s2,32);
+  monero_io_discard(0);
+  monero_subm(r,s1,s2);
+  monero_io_insert(r,32);
+  return SW_OK;
+}
+
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_scal_mul_key(/*const rct::key &pub, const rct::key &sec, rct::key mulkey*/) {
+  unsigned char pub[32];
+  unsigned char sec[32];
+  unsigned char r[32];
+  //fetch 
+  monero_io_fetch(pub,32);
+  monero_io_fetch_decrypt(sec,32);
+  monero_io_discard(0);
+
+  monero_ecmul_k(r,pub,sec);
+  monero_io_insert(r, 32);
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_scal_mul_base(/*const rct::key &sec, rct::key mulkey*/) {
+  unsigned char sec[32];
+  unsigned char r[32];
+  //fetch 
+  monero_io_fetch_decrypt(sec,32);
+  monero_io_discard(0);
+
+  monero_ecmul_G(r,sec);
+  monero_io_insert(r, 32);
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_generate_keypair(/*crypto::public_key &pub, crypto::secret_key &sec*/) {
+  unsigned char sec[32];
+  unsigned char pub[32];
+
+  monero_io_discard(0);
+  monero_generate_keypair(sec,pub);
+  monero_io_insert(pub,32);
+  monero_io_insert(sec,32);
+  return SW_OK;
+}  
+
+
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_secret_key_to_public_key(/*const crypto::secret_key &sec, crypto::public_key &pub*/) {
+  unsigned char sec[32];
+  unsigned char pub[32];
+  //fetch 
+  monero_io_fetch_decrypt(sec,32);
+  monero_io_discard(0);
+  //pub
+  monero_ecmul_G(pub,sec);
+  //pub key
+  monero_io_insert(pub,32); 
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_generate_key_derivation(/*const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_derivation &derivation*/) {
+  unsigned char pub[32];
+  unsigned char sec[32];
+  //fetch 
+  monero_io_fetch(pub,32);
+   switch(G_monero_vstate.options) {
+    case 0:
+    monero_io_fetch_decrypt(sec,32);
+    break;
+  case 1:
+    os_memmove(sec, N_monero_pstate->a, 32);
+    break;
+  case 2:
+    os_memmove(sec, N_monero_pstate->b, 32);
+    break;
+  default:
+    THROW(SW_INCORRECT_P1P2);
+    return SW_INCORRECT_P1P2;
+  }
+  monero_io_discard(0);
+
+  //Derive  and keep
+  monero_generate_key_derivation(G_monero_vstate.Dinout, pub, sec);
+
+  monero_io_insert(G_monero_vstate.Dinout,32); 
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_derivation_to_scalar(/*const crypto::key_derivation &derivation, const size_t output_index, ec_scalar &res*/) {
+  unsigned char derivation[32];
+  unsigned int  output_index;
+  unsigned char res[32];
+
+  //fetch 
+  monero_io_fetch_decrypt(derivation,32);
+  output_index = monero_io_fetch_u32();
+  monero_io_discard(0);
+
+  //pub
+  monero_derivation_to_scalar(res, derivation, output_index);
+
+  //pub key
+  monero_io_insert(res,32); 
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_derive_public_key(/*const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::public_key &pub, public_key &derived_pub*/) {    
+  unsigned char derivation[32];
+  unsigned int  output_index;
+  unsigned char pub[32];
+  unsigned char drvpub[32];
+
+  //fetch 
+  monero_io_fetch_decrypt(derivation,32);
+  output_index = monero_io_fetch_u32();
+  monero_io_fetch(pub, 32);
+  monero_io_discard(0);
+
+  //pub
+  monero_derive_public_key(drvpub, derivation, output_index, pub);
+
+  //pub key
+  monero_io_insert(drvpub,32); 
+  return SW_OK;
+}
+  
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_derive_secret_key(/*const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::secret_key &sec, secret_key &derived_sec*/){
+  unsigned char derivation[32];
+  unsigned int  output_index;
+  unsigned char sec[32];
+  unsigned char drvsec[32];
+  
+  //fetch 
+  monero_io_fetch_decrypt(derivation,32);
+  output_index = monero_io_fetch_u32();
+  monero_io_fetch_decrypt(sec, 32);
+  monero_io_discard(0);
+  
+  //pub
+  monero_derive_secret_key(drvsec, derivation, output_index, sec);
+
+  //pub key
+  monero_io_insert(drvsec,32); 
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_generate_key_image(/*const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_image &image*/){
+  unsigned char pub[32];
+  unsigned char sec[32];
+  unsigned char image[32];
+
+  //fetch 
+  monero_io_fetch(pub,32);
+  monero_io_fetch_decrypt(sec, 32);
+  monero_io_discard(0);
+
+  //pub
+  monero_generate_key_image(image, pub, sec);
+
+  //pub key
+  monero_io_insert(image,32);
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_derive_subaddress_public_key(/*const crypto::public_key &pub, const crypto::key_derivation &derivation, const std::size_t output_index, public_key &derived_pub*/) {
+  unsigned char pub[32];
+  unsigned char derivation[32];
+  unsigned int  output_index;
+  unsigned char sub_pub[32];
+
+  //fetch 
+  monero_io_fetch(pub,32);
+  monero_io_fetch_decrypt(derivation, 32);
+  output_index = monero_io_fetch_u32();
+  monero_io_discard(0);
+
+  //pub
+  monero_derive_subaddress_public_key(sub_pub, derivation, pub, output_index);
+  //pub key
+  monero_io_insert(sub_pub,32);
+  return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_get_subaddress(/*const cryptonote::subaddress_index& index, cryptonote::account_public_address &address*/) {
+  unsigned char index[8];
+  unsigned char C[32];
+  unsigned char D[32];
+
+  //fetch 
+  monero_io_fetch(index,8);
+  monero_io_discard(0);
+
+  //pub
+  monero_get_subaddress(C,D,index);
+
+  //pub key
+  monero_io_insert(C,32);
+  monero_io_insert(D,32);
+  return SW_OK;  
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_get_subaddress_spend_public_key(/*const cryptonote::subaddress_index& index, crypto::public_key D*/) {
+  unsigned char index[8];
+  unsigned char D[32];
+
+  //fetch 
+  monero_io_fetch(index,8);
+  monero_io_discard(0);
+
+  //pub 
+  monero_get_subaddress_spend_public_key(D, index);
+
+  //pub key
+  monero_io_insert(D,32);
+  return SW_OK;  
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const cryptonote::subaddress_index& index, crypto::secret_key &sub_sec*/) {
+  unsigned char s[32];
+  unsigned char index[8];
+  unsigned char sub_s[32];
+
+  //fetch 
+  monero_io_fetch_decrypt(s,32);
+  monero_io_fetch(index,8);
+  monero_io_discard(0);
+
+  //pub
+  monero_get_subaddress_secret_key(sub_s,s,index);
+
+  //pub key
+  monero_io_insert(sub_s,32);
+  return SW_OK;
+}
+
 
 
 

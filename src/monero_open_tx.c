@@ -27,7 +27,9 @@
 /*  
  * HD wallet not yet supported : account is assumed to be zero
  */
+#define OPTION_KEEP_r 1
 int monero_apdu_open_tx() {
+
     unsigned int account;
 
     G_monero_vstate.rnd = 1;
@@ -49,20 +51,41 @@ int monero_apdu_open_tx() {
 
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-    monero_sha256_init_L();
-    monero_sha256_init_C();
+
+    return SW_OK;
+}
+#undef OPTION_KEEP_r
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_open_subtx() {
+    monero_io_fetch(G_monero_vstate.R, 32);
+    monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
+    monero_io_discard(1);
+    monero_io_insert(G_monero_vstate.R,32);
     return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* 
- * Sub dest address not yet supported: P1 = 2 not supported
- */
-int monero_apdu_open_subtx() {
-    THROW(SW_WRONG_P1P2);
-    return SW_WRONG_P1P2;
+int monero_apdu_get_additional_key() {
+    unsigned char s[32];
+    unsigned char R[32];
+    monero_io_discard(1);
+
+    monero_rng(s,32);
+    monero_reduce(s, s);
+    if (G_monero_vstate.options&1) {
+        monero_ecmul_k(R, N_monero_pstate->B,s);
+    } else {
+        monero_ecmul_G(R, s);
+    }
+
+    monero_io_insert(R,32);
+    monero_io_insert_encrypt(s,32);
+    return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -75,8 +98,6 @@ int monero_abort_tx() {
     os_memset(&G_monero_vstate.state, 0, SIZEOF_TX_VSTATE);
     return 0;
 }
-
-
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -103,4 +124,3 @@ int monero_apdu_set_signature_mode() {
     monero_io_insert_u32( G_monero_vstate.sig_mode );
     return SW_OK;
 }
-

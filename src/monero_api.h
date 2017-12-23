@@ -22,19 +22,30 @@ void monero_init_ux(void);
 int  monero_install(unsigned char app_state) ;
 int  monero_dispatch(void);
 
-int monero_apdu_put_key();
-int monero_apdu_get_key();
+int monero_apdu_put_key(void);
+int monero_apdu_get_key(void);
+int monero_apdu_verify_key(void);
+int monero_apdu_get_chacha8_prekey(void);
+int monero_apdu_sc_add(void);
+int monero_apdu_sc_sub(void);
+int monero_apdu_scal_mul_key(void);
+int monero_apdu_scal_mul_base(void);
+int monero_apdu_generate_keypair(void);
+int monero_apdu_secret_key_to_public_key(void);
+int monero_apdu_generate_key_derivation(void);
+int monero_apdu_derivation_to_scalar(void);
+int monero_apdu_derive_public_key(void);
+int monero_apdu_derive_secret_key(void);
+int monero_apdu_generate_key_image(void);
+int monero_apdu_derive_subaddress_public_key(void);
+int monero_apdu_get_subaddress(void);
+int monero_apdu_get_subaddress_spend_public_key(void);
+int monero_apdu_get_subaddress_secret_key(void);
 
 int monero_apdu_open_tx(void);
 int monero_apdu_open_subtx(void) ;
 int monero_apdu_set_signature_mode(void) ;
-int monero_apdu_stealth();
-
-int monero_apdu_get_derivation_data();
-int monero_apdu_get_input_key(void);
-
-int monero_apdu_get_output_key(void);
-
+int monero_apdu_stealth(void);
 int monero_apdu_blind(void);
 int monero_apdu_unblind(void);
 int monero_apdu_get_amount_key(void);
@@ -46,13 +57,8 @@ int monero_apdu_mlsag_prehash_finalize(void);
 int monero_apdu_mlsag_prepare(void);
 int monero_apdu_mlsag_hash(void);
 int monero_apdu_mlsag_sign(void);
-
-int monero_apdu_generate_key_derivation(void) ;
-int monero_apdu_derive_secret_key(void);
-int monero_apdu_derive_public_key(void);
-int monero_apdu_verify_key(void);
-int monero_apdu_get_chacha_prekey(void);
-
+int monero_apdu_close_tx(void);
+ 
 /* ----------------------------------------------------------------------- */
 /* ---                               MISC                             ---- */
 /* ----------------------------------------------------------------------- */
@@ -69,6 +75,48 @@ int monero_abort_tx() ;
 int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout);
 void ui_menu_validation_display(unsigned int value) ;
 void ui_menu_fee_validation_display(unsigned int value) ;
+
+/* ----------------------------------------------------------------------- */
+/* ---                          KEYS & ADDRESS                        ---- */
+/* ----------------------------------------------------------------------- */
+void monero_sc_add(unsigned char *r, unsigned char *s1, unsigned char *s2);
+void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
+void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub);
+void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv);
+/*
+ *  compute s = 8 * (k*P)
+ *
+ * s [out] 32 bytes derivation value
+ * P [in]  point in 02 y or 04 x y format
+ * k [in]  32 bytes scalar
+ */
+void monero_generate_key_derivation(unsigned char *drv_data, unsigned char *P, unsigned char *scalar);
+void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data, unsigned int out_idx);
+/*
+ *  compute x = Hps(drv_data,out_idx) + ec_pv
+ *
+ * x        [out] 32 bytes private key
+ * drv_data [in]  32 bytes derivation data (point) 
+ * ec_pv    [in]  32 bytes private key
+ */
+void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv);
+/*
+ *  compute x = Hps(drv_data,out_idx)*G + ec_pub
+ *
+ * x        [out] 32 bytes public key
+ * drv_data [in]  32 bytes derivation data (point) 
+ * ec_pub   [in]  32 bytes public key
+ */
+void monero_derive_public_key(unsigned char *x, unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub);
+void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv);
+void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char* x);
+
+void monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub, unsigned char* drv_data, unsigned int index);
+void monero_get_subaddress_spend_public_key(unsigned char *x,unsigned char *index);
+void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index);
+void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index);
+
+
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
 /* ----------------------------------------------------------------------- */
@@ -131,39 +179,6 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
 /** */
 void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
  
-/*
- *  compute s = 8 * (k*P)
- *
- * s [out] 32 bytes derivation value
- * P [in]  point in 02 y or 04 x y format
- * k [in]  32 bytes scalar
- */
-void monero_gerenrate_key_derivation(unsigned char *s, unsigned char *P, unsigned char *k);
-
-
-/*
- *  compute x = Hps(drv_data,out_idx) + ec_pv
- *
- * x        [out] 32 bytes private key
- * drv_data [in]  32 bytes derivation data (point) 
- * ec_pv    [in]  32 bytes private key
- */
-void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv);
-
-/*
- *  compute x = Hps(drv_data,out_idx)*G + ec_pub
- *
- * x        [out] 32 bytes public key
- * drv_data [in]  32 bytes derivation data (point) 
- * ec_pub   [in]  32 bytes public key
- */
-void monero_derive_public_key(unsigned char *P, unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub);
-
-/*
- *
- */
-void monero_generate_key_image(unsigned char *img, unsigned char* x, unsigned char *P);
-
 
 /*
  * W = k.P
@@ -187,6 +202,10 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32);
  * W = P+Q
  */
 void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q);
+/*
+ * W = P-Q
+ */
+void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q);
 
 /* r = (a+b) %order */
 void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b);
