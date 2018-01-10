@@ -58,7 +58,7 @@ int monero_apdu_mlsag_prepare(void);
 int monero_apdu_mlsag_hash(void);
 int monero_apdu_mlsag_sign(void);
 int monero_apdu_close_tx(void);
- 
+
 /* ----------------------------------------------------------------------- */
 /* ---                               MISC                             ---- */
 /* ----------------------------------------------------------------------- */
@@ -96,7 +96,7 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
  *  compute x = Hps(drv_data,out_idx) + ec_pv
  *
  * x        [out] 32 bytes private key
- * drv_data [in]  32 bytes derivation data (point) 
+ * drv_data [in]  32 bytes derivation data (point)
  * ec_pv    [in]  32 bytes private key
  */
 void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx, unsigned char *ec_priv);
@@ -104,7 +104,7 @@ void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigne
  *  compute x = Hps(drv_data,out_idx)*G + ec_pub
  *
  * x        [out] 32 bytes public key
- * drv_data [in]  32 bytes derivation data (point) 
+ * drv_data [in]  32 bytes derivation data (point)
  * ec_pub   [in]  32 bytes public key
  */
 void monero_derive_public_key(unsigned char *x, unsigned char* drv_data, unsigned int out_idx, unsigned char *ec_pub);
@@ -178,7 +178,7 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
 
 /** */
 void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
- 
+
 
 /*
  * W = k.P
@@ -257,6 +257,7 @@ int monero_io_fetch_tl(unsigned int *T, unsigned int *L) ;
 int monero_io_fetch_nv(unsigned char* buffer, int len) ;
 int monero_io_fetch(unsigned char* buffer, int len) ;
 int monero_io_fetch_decrypt(unsigned char* buffer, int len);
+int monero_io_fetch_decrypt_key(unsigned char* buffer);
 
 int monero_io_do(unsigned int io_flags) ;
 /* ----------------------------------------------------------------------- */

@@ -75,58 +75,45 @@ int monero_dispatch() {
   case INS_PUT_KEY:
     sw = monero_apdu_put_key();
     break;
-
   case INS_GET_KEY:
     sw = monero_apdu_get_key();
     break;
-  
   case INS_VERIFY_KEY:
     sw = monero_apdu_verify_key();
     break;
-
   case INS_GET_CHACHA8_PREKEY:
     sw = monero_apdu_get_chacha8_prekey();
     break;
-  
   case INS_SECRET_KEY_TO_PUBLIC_KEY:
     sw = monero_apdu_secret_key_to_public_key();
     break;
-
   case INS_GEN_KEY_DERIVATION:
     sw = monero_apdu_generate_key_derivation();
     break;
-
   case INS_DERIVATION_TO_SCALAR:
     sw = monero_apdu_derivation_to_scalar();
     break;
-
   case INS_DERIVE_PUBLIC_KEY:
     sw = monero_apdu_derive_public_key();
     break;
-
   case INS_DERIVE_SECRET_KEY:
     sw = monero_apdu_derive_secret_key();
     break;
-
   case INS_GEN_KEY_IMAGE:
     sw = monero_apdu_generate_key_image();
     break;
-
   case INS_SECRET_KEY_ADD:
     sw = monero_apdu_sc_add();
-
+    break;
   case INS_SECRET_KEY_SUB:
     sw = monero_apdu_sc_sub();
     break;
-
   case INS_GENERATE_KEYPAIR:
     sw = monero_apdu_generate_keypair();
     break;
-
   case INS_SECRET_SCAL_MUL_KEY:
     sw = monero_apdu_scal_mul_key();
     break;
-
   case INS_SECRET_SCAL_MUL_BASE:
     sw = monero_apdu_scal_mul_base();
     break;

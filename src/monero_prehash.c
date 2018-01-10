@@ -34,7 +34,7 @@ int monero_apdu_mlsag_prehash_init() {
     }
     monero_keccak_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
                           G_monero_vstate.io_length-G_monero_vstate.io_offset);
-    
+
     if ((G_monero_vstate.sig_mode == SIG_REAL) &&(G_monero_vstate.io_p2==1)) {
         // skip type
         monero_io_fetch_u8();
@@ -45,6 +45,7 @@ int monero_apdu_mlsag_prehash_init() {
         ui_menu_fee_validation_display(0);
         return 0;
     } else {
+        monero_io_discard(1);
         return SW_OK;
     }
 }
@@ -79,7 +80,7 @@ int monero_apdu_mlsag_prehash_update() {
 
     monero_keccak_update_H(k,32);
     monero_keccak_update_H(v,32);
-   
+
     if ((G_monero_vstate.sig_mode == SIG_REAL)&& !changed) {
         //unblind amount to str
         monero_unblind(v,k, AKout);
@@ -108,7 +109,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_fetch(H,32);
         monero_io_discard(1);
         monero_keccak_update_H(H,32);
-#ifdef DEBUGLEDGER   
+#ifdef DEBUGLEDGER
         monero_io_insert(H, 32);
 #endif
     } else {
@@ -121,12 +122,12 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_update_H(H,32);
         monero_keccak_update_H(proof,32);
         monero_keccak_final_H(NULL);
-#ifdef DEBUGLEDGER   
+#ifdef DEBUGLEDGER
         monero_io_insert(G_monero_vstate.H, 32);
         monero_io_insert(H, 32);
 #endif
     }
-   
+
     return SW_OK;
 }
 

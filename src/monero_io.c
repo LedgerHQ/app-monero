@@ -19,10 +19,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#define IODUMMYCRYPT 1
-//#define  IONOCRYPT 1
-
-
 /*
  * io_buff: contains current message part
  * io_off: offset in current message part
@@ -97,7 +93,7 @@ void monero_io_insert(unsigned char const *buff, unsigned int len) {
 void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   monero_io_hole(len);
 
-  
+
 #ifdef IOCRYPT
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
@@ -106,7 +102,7 @@ void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   for (int i = 0; i<len; i++) {
        G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] = buffer[i] ^ 0x55;
     }
-#elif defined(IONOCRYPT) 
+#elif defined(IONOCRYPT)
   os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
 #endif
   G_monero_vstate.io_offset += len;
@@ -167,7 +163,6 @@ void monero_io_insert_tlv(unsigned int T, unsigned int L, unsigned char const *V
   monero_io_insert(V, L);
 }
 
-
 /* ----------------------------------------------------------------------- */
 /* FECTH data from received buffer                                         */
 /* ----------------------------------------------------------------------- */
@@ -189,22 +184,49 @@ int monero_io_fetch(unsigned char* buffer, int len) {
 int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
   monero_io_assert_availabe(len);
   if (buffer) {
-#ifdef IOCRYPT    
+#ifdef IOCRYPT
     cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
            G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
            buffer);
-#elif defined(IODUMMYCRYPT) 
+#elif defined(IODUMMYCRYPT)
     for (int i = 0; i<len; i++) {
       buffer[i] = G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] ^ 0x55;
     }
-#elif defined(IONOCRYPT) 
+#elif defined(IONOCRYPT)
      os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
 #else
-     #error 'PLEASE DEFINED ON OF IO CRYPT MODE'
+     #error 'PLEASE DEFINED ONE OF IO CRYPT MODE'
 #endif
   }
   G_monero_vstate.io_offset += len;
   return len;
+}
+
+int monero_io_fetch_decrypt_key(unsigned char* buffer) {
+  int i;
+  unsigned char* k;
+  monero_io_assert_availabe(32);
+
+  k = G_monero_vstate.io_buffer+G_monero_vstate.io_offset;
+  //view?
+  for (i =0; i <32; i++) {
+    if (k[i] != 0x00) break;
+  }
+  if(i==32) {
+    os_memmove(buffer, N_monero_pstate->a,32);
+    G_monero_vstate.io_offset += 32;
+    return 32;
+  }
+  //spend?
+  for (i =0; i <32; i++) {
+    if (k [i] != 0xff) break;
+  }
+  if(i==32) {
+    os_memmove(buffer, N_monero_pstate->b,32);
+    G_monero_vstate.io_offset += 32;
+    return 32;
+  }
+  return monero_io_fetch_decrypt(buffer, 32);
 }
 
 unsigned int monero_io_fetch_u32() {
@@ -265,7 +287,7 @@ int monero_io_fetch_l(unsigned int *L) {
     } else {
       *L = -1;
     }
-  } 
+  }
   return 0;
 }
 
@@ -301,7 +323,7 @@ int monero_io_do(unsigned int io_flags) {
 
   if (io_flags & IO_ASYNCH_REPLY) {
     // if IO_ASYNCH_REPLY has been  set,
-    //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui 
+    //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
     monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
   } else {
     // --- full out chaining ---
@@ -331,7 +353,7 @@ int monero_io_do(unsigned int io_flags) {
       }
     }
     os_memmove(G_io_apdu_buffer,  G_monero_vstate.io_buffer+G_monero_vstate.io_offset, G_monero_vstate.io_length);
-    
+
     if (io_flags & IO_RETURN_AFTER_TX) {
       monero_io_exchange(CHANNEL_APDU |IO_RETURN_AFTER_TX, G_monero_vstate.io_length);
       return 0;
@@ -351,7 +373,7 @@ int monero_io_do(unsigned int io_flags) {
   G_monero_vstate.io_le  = 0;
 
   switch (G_monero_vstate.io_ins) {
-  
+
   case INS_GET_RESPONSE:
     G_monero_vstate.io_le  = G_io_apdu_buffer[4];
     break;
@@ -363,7 +385,7 @@ int monero_io_do(unsigned int io_flags) {
     break;
   }
 
-  while(G_monero_vstate.io_cla  & 0x10) {    
+  while(G_monero_vstate.io_cla  & 0x10) {
 
     G_io_apdu_buffer[0] = 0x90;
     G_io_apdu_buffer[1] = 0x00;
