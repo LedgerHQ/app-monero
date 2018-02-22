@@ -29,32 +29,25 @@ int monero_dispatch() {
   }
 
   if (G_monero_vstate.io_ins == INS_RESET) {
-    G_monero_vstate.rnd = 1;
     monero_io_discard(0);
     return 0x9000;
   }
 
   G_monero_vstate.options = monero_io_fetch_u8();
   //monero_check_state_machine();
-  
+
   sw = 0x6F01;
 
   switch (G_monero_vstate.io_ins) {
 
     /* --- START TX --- */
-  case INS_OPEN_TX:  
-    if (G_monero_vstate.io_p2 != 0) {
-      THROW(SW_WRONG_P1P2);
-    }
-    if (G_monero_vstate.io_p1 == 1) {
-      sw = monero_apdu_open_tx();
-    }  else if (G_monero_vstate.io_p1 == 2) {
-      sw = monero_apdu_open_subtx();
-    } else {
-      THROW(SW_WRONG_P1P2);
-    }
+  case INS_OPEN_TX:
+    sw = monero_apdu_open_tx();
     break;
-    
+
+  case INS_CLOSE_TX:
+    sw = monero_apdu_close_tx();
+    break;
 
      /* --- SIG MODE --- */
   case INS_SET_SIGNATURE_MODE:
@@ -63,7 +56,7 @@ int monero_dispatch() {
 
     /* --- STEATH PAYMENT --- */
   case INS_STEALTH:
-    if ((G_monero_vstate.io_p1 != 0) || 
+    if ((G_monero_vstate.io_p1 != 0) ||
         (G_monero_vstate.io_p2 != 0)) {
       THROW(SW_WRONG_P1P2);
     }
@@ -78,6 +71,8 @@ int monero_dispatch() {
   case INS_GET_KEY:
     sw = monero_apdu_get_key();
     break;
+
+   /* --- PROVISIONING--- */
   case INS_VERIFY_KEY:
     sw = monero_apdu_verify_key();
     break;
@@ -139,9 +134,6 @@ int monero_dispatch() {
   case INS_UNBLIND:
     sw = monero_apdu_unblind();
     break;
-  case INS_AMOUNT_KEY:
-    sw = monero_apdu_get_amount_key();
-    break;
 
     /* --- VALIDATE/PREHASH --- */
   case INS_VALIDATE:
@@ -170,7 +162,7 @@ int monero_dispatch() {
     break;
 
   /* --- KEYS --- */
- 
+
   default:
     THROW(SW_INS_NOT_SUPPORTED);
     return SW_INS_NOT_SUPPORTED;

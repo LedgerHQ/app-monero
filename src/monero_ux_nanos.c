@@ -96,6 +96,7 @@ void ui_menu_fee_validation_action(unsigned int value) {
   monero_io_do(IO_RETURN_AFTER_TX);
   ui_menu_main_display(0);
 }
+
 void ui_menu_fee_validation_display(unsigned int value) {
   UX_MENU_DISPLAY(0, ui_menu_fee_validation, ui_menu_fee_validation_preprocessor);
 }
@@ -201,12 +202,25 @@ void ui_menu_validation_action(unsigned int value) {
   ui_menu_main_display(0);
 }
 
+/* -------------------------------- NETWORK UX --------------------------------- */
+void ui_menu_network_action(unsigned int value);
+const ux_menu_entry_t ui_menu_network[] = {
+  {NULL,   NULL,                   0,                                               NULL, "It will reset", "the device!", 0, 0},
+  {NULL,   ui_menu_network_action, MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX, NULL, "Mainnet",       NULL,          0, 0},
+  {NULL,   ui_menu_network_action, TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX, NULL, "Testnet",       NULL,          0, 0},
+  {NULL,   ui_menu_main_display,   0,                                      &C_badge_back, "Abort",         NULL,          61, 40},
+  UX_MENU_END
+};
+
+void ui_menu_network_action(unsigned int value) {
+  monero_install(value);
+  monero_init();
+  ui_menu_main_display(0);
+}
+
 /* -------------------------------- RESET UX --------------------------------- */
 
 const ux_menu_entry_t ui_menu_reset[] = {
-  #if MONERO_KEYS_SLOTS != 3
-  #error menu definition not correct for current value of MONERO_KEYS_SLOTS
-  #endif
   {NULL,   NULL,                 0, NULL,          "Really Reset ?", NULL, 0, 0},
   {NULL,   ui_menu_main_display, 0, &C_badge_back, "No",         NULL, 61, 40},
   {NULL,   ui_menu_reset_action, 0, NULL,          "Yes",           NULL, 0, 0},
@@ -218,12 +232,12 @@ void ui_menu_reset_action(unsigned int value) {
   magic[0] = 0; magic[1] = 0; magic[2] = 0; magic[3] = 0;
   monero_nvm_write(N_monero_pstate->magic, magic, 4);
   monero_init();
-  ui_CCID_reset();
   ui_menu_main_display(0);
 }
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
 const ux_menu_entry_t ui_menu_settings[] = {
+  {ui_menu_network,             NULL,     0, NULL,          "Change Network",        NULL, 0, 0},
   {ui_menu_reset,               NULL,     0, NULL,          "Reset",        NULL, 0, 0},
   {NULL,        ui_menu_main_display,     2, &C_badge_back, "Back",         NULL, 61, 40},
   UX_MENU_END
@@ -263,7 +277,7 @@ const bagl_element_t* ui_menu_main_preprocessor(const ux_menu_entry_t* entry, ba
   if (entry == &ui_menu_main[0]) {
     if(element->component.userid==0x20) {      
     
-      os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu));
+      os_memset(G_monero_vstate.ux_menu, '#', sizeof(G_monero_vstate.ux_menu));
       snprintf(G_monero_vstate.ux_menu,  sizeof(G_monero_vstate.ux_menu), "< Monero: %s >", N_monero_pstate->public_address);
       
       element->component.stroke = 10; // 1 second stop in each way

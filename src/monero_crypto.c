@@ -34,6 +34,11 @@ static unsigned char const WIDE  C_ED25519_G[] = {
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x58};
 
+static unsigned char const WIDE  C_ED25519_Hy[] = {
+    0x8b, 0x65, 0x59, 0x70, 0x15, 0x37, 0x99, 0xaf, 0x2a, 0xea, 0xdc, 0x9f, 0xf1, 0xad, 0xd0, 0xea,
+    0x6c, 0x72, 0x51, 0xd5, 0x41, 0x54, 0xcf, 0xa9, 0x2c, 0x17, 0x3a, 0x0d, 0xd3, 0x9c, 0x1f, 0x94
+};
+
 unsigned char const C_ED25519_ORDER[32] = {
     //l: 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed
     0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -516,7 +521,7 @@ void monero_derive_subaddress_public_key(unsigned char *x,
 /* ----------------------------------------------------------------------- */
 void monero_get_subaddress_spend_public_key(unsigned char *x,unsigned char *index) {
     // m = Hs(a || index_major || index_minor)
-    monero_get_subaddress_secret_key(x, N_monero_pstate->a, index);
+    monero_get_subaddress_secret_key(x, G_monero_vstate.a, index);
     // M = m*G
     monero_secret_key_to_public_key(x,x);
     // D = B + M
@@ -529,7 +534,7 @@ void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *in
     //retrieve D
     monero_get_subaddress_spend_public_key(D, index);
     // C = a*D
-    monero_ecmul_k(C,D,N_monero_pstate->a);
+    monero_ecmul_k(C,D,G_monero_vstate.a);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -569,15 +574,38 @@ void monero_ecmul_G(unsigned char *W,  unsigned char *scalar32) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+void monero_ecmul_H(unsigned char *W,  unsigned char *scalar32) {
+    unsigned char Pxy[65];
+    unsigned char s[32];
+
+    monero_reverse32(s, scalar32);
+
+    Pxy[0] = 0x02;
+    os_memmove(&Pxy[1], C_ED25519_Hy, 32);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, s, 32);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+
+    os_memmove(W, &Pxy[1], 32);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
     unsigned char Pxy[65];
     unsigned char s[32];
+
     monero_reverse32(s, scalar32);
+
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
     cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+
     cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, s, 32);
     cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+
     os_memmove(W, &Pxy[1], 32);
 }
 

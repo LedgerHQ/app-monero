@@ -24,7 +24,7 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/*  
+/*
  * HD wallet not yet supported : account is assumed to be zero
  */
 #define OPTION_KEEP_r 1
@@ -32,26 +32,22 @@ int monero_apdu_open_tx() {
 
     unsigned int account;
 
-    G_monero_vstate.rnd = 1;
+    //monero_sha256_commitment_init();
+    monero_sha256_amount_init();
 
     account = monero_io_fetch_u32();
 
     monero_io_discard(1);
-   
+
     monero_rng(G_monero_vstate.r,32);
     monero_reduce(G_monero_vstate.r, G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
 
-    if (G_monero_vstate.options & OPTION_KEEP_r) {
-        monero_aes_derive(&G_monero_vstate.spk,
-                          G_monero_vstate.R, N_monero_pstate->a,  N_monero_pstate->b);
-    } else {
-        monero_aes_generate(&G_monero_vstate.spk);
-    }
-
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-
+#ifdef DEBUGLEDGER    
+    monero_io_insert(G_monero_vstate.r,32);
+#endif
     return SW_OK;
 }
 #undef OPTION_KEEP_r
@@ -59,55 +55,35 @@ int monero_apdu_open_tx() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_open_subtx() {
-    monero_io_fetch(G_monero_vstate.R, 32);
-    monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
-    monero_io_discard(1);
-    monero_io_insert(G_monero_vstate.R,32);
-    return SW_OK;
+int monero_apdu_close_tx() {
+   monero_io_discard(0);
+   return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_get_additional_key() {
-    unsigned char s[32];
-    unsigned char R[32];
-    monero_io_discard(1);
-
-    monero_rng(s,32);
-    monero_reduce(s, s);
-    if (G_monero_vstate.options&1) {
-        monero_ecmul_k(R, N_monero_pstate->B,s);
-    } else {
-        monero_ecmul_G(R, s);
-    }
-
-    monero_io_insert(R,32);
-    monero_io_insert_encrypt(s,32);
-    return SW_OK;
-}
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
-/* 
+/*
  * Sub dest address not yet supported: P1 = 2 not supported
  */
 int monero_abort_tx() {
-    os_memset(&G_monero_vstate.state, 0, SIZEOF_TX_VSTATE);
+    os_memset(G_monero_vstate.r, 0, 32);
+    os_memset(G_monero_vstate.R, 0, 32);
+    monero_keccak_init_H();
+    monero_sha256_commitment_init();
+    monero_sha256_amount_init();
     return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* 
+/*
  * Sub dest address not yet supported: P1 = 2 not supported
  */
 int monero_apdu_set_signature_mode() {
     unsigned int sig_mode;
-    
+
     G_monero_vstate.sig_mode = SIG_REAL;
 
     sig_mode = monero_io_fetch_u8();
@@ -120,7 +96,7 @@ int monero_apdu_set_signature_mode() {
         THROW(SW_WRONG_DATA);
     }
     G_monero_vstate.sig_mode = sig_mode;
-   
+
     monero_io_insert_u32( G_monero_vstate.sig_mode );
     return SW_OK;
 }

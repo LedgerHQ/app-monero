@@ -93,16 +93,23 @@ void monero_io_insert(unsigned char const *buff, unsigned int len) {
 void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   monero_io_hole(len);
 
+  //for now, only 32bytes block are allowed
+  if (len != 32) {
+    THROW(SW_SECURE_MESSAGING_NOT_SUPPORTED);
+    return ;
+  }
 
 #ifdef IOCRYPT
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
          G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
 #elif defined(IODUMMYCRYPT)
+  #warning IODUMMYCRYPT activated
   for (int i = 0; i<len; i++) {
        G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] = buffer[i] ^ 0x55;
     }
 #elif defined(IONOCRYPT)
+  #warning IONOCRYPT activated
   os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
 #endif
   G_monero_vstate.io_offset += len;
@@ -183,6 +190,13 @@ int monero_io_fetch(unsigned char* buffer, int len) {
 
 int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
   monero_io_assert_availabe(len);
+
+  //for now, only 32bytes block allowed
+  if (len != 32) {
+    THROW(SW_SECURE_MESSAGING_NOT_SUPPORTED);
+    return 0;
+  }
+
   if (buffer) {
 #ifdef IOCRYPT
     cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
@@ -213,7 +227,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer) {
     if (k[i] != 0x00) break;
   }
   if(i==32) {
-    os_memmove(buffer, N_monero_pstate->a,32);
+    os_memmove(buffer, G_monero_vstate.a,32);
     G_monero_vstate.io_offset += 32;
     return 32;
   }
@@ -222,7 +236,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer) {
     if (k [i] != 0xff) break;
   }
   if(i==32) {
-    os_memmove(buffer, N_monero_pstate->b,32);
+    os_memmove(buffer, G_monero_vstate.b,32);
     G_monero_vstate.io_offset += 32;
     return 32;
   }

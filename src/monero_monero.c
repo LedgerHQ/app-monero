@@ -3,11 +3,10 @@
  * Adpated by  Cedric Mesnil <cslashm@gmail.com> <cedric@ledger.fr>, Ledger SAS 
  */
 #include "os.h"
-#include "cx.h"
 #include "monero_types.h"
 #include "monero_api.h"
 #include "monero_vars.h"
-#include "usbd_ccid_impl.h"
+
 
 
 // Copyright (c) 2014-2017, The Monero Project
@@ -75,7 +74,6 @@ static void encode_block(const unsigned char* block, unsigned int  size,  char* 
     }
 }
 
-
 int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend) {
     #define DATA_SIZE 69
     unsigned char data[69];
@@ -83,7 +81,7 @@ int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *
     data[0] = N_monero_pstate->network_id;
     os_memmove(data+1,spend,32);
     os_memmove(data+1+32,view,32);
-    monero_keccak_F(data, 65, NULL);
+    monero_keccak_F(data, 65, G_monero_vstate.H);
     os_memmove(data+1+32+32, G_monero_vstate.H, 4);
 
     unsigned int full_block_count = DATA_SIZE / full_block_size;

@@ -26,34 +26,33 @@
 /* ----------------------------------------------------------------------- */
 int monero_apdu_stealth() {
     int i ;
-    unsigned char Dout[33];
+    unsigned char pub[32];
+    unsigned char sec[32];
+    unsigned char drv[33];
     unsigned char payID[8];
-    unsigned char mask[32];
     
-    //fetch Aout
-    monero_io_fetch(Dout,32);
+    //fetch pub
+    monero_io_fetch(pub,32);
+    //fetch sec
+    monero_io_fetch_decrypt_key(sec);
     //fetch paymentID
     monero_io_fetch(payID,8);
 
     monero_io_discard(0);
 
     //Compute Dout
-    monero_generate_key_derivation(Dout, Dout, (void*)&G_monero_vstate.r);
+    monero_generate_key_derivation(drv, pub, sec);
     
     //compute mask
-    Dout[32] = ENCRYPTED_PAYMENT_ID_TAIL;
-    monero_keccak_F(Dout,33,mask);
+    drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;
+    monero_keccak_F(drv,33,sec);
     
     //stealth!
-    for (i=0; i<8;i++) {
-        payID[i] = payID[i] ^ mask[i];
+    for (i=0; i<8; i++) {
+        payID[i] = payID[i] ^ sec[i];
     }
     
     monero_io_insert(payID,8);
-#ifdef LEDGERDEBUG    
-    monero_io_insert(Dout,32);
-    monero_io_insert(mask,32);
-#endif
 
     return SW_OK;
 }

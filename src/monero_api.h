@@ -17,10 +17,11 @@
 #define  MONERO_API_H
 
 
+void monero_install(unsigned char netId);
 void monero_init(void);
+void monero_init_private_key(void);
 void monero_init_ux(void);
-int  monero_install(unsigned char app_state) ;
-int  monero_dispatch(void);
+int monero_dispatch(void);
 
 int monero_apdu_put_key(void);
 int monero_apdu_get_key(void);
@@ -48,7 +49,7 @@ int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth(void);
 int monero_apdu_blind(void);
 int monero_apdu_unblind(void);
-int monero_apdu_get_amount_key(void);
+int monero_apdu_close_tx(void);
 
 int monero_apdu_mlsag_prehash_init(void);
 int monero_apdu_mlsag_prehash_update(void);
@@ -145,23 +146,19 @@ int  monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsi
 #define monero_keccak_H(buf,len,out) \
     monero_hash(CX_KECCAK, (cx_hash_t *)&G_monero_vstate.keccakH, (buf),(len), (out)?(out):G_monero_vstate.H)
 
-#define monero_sha256_init_C() \
-    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256C)
-#define monero_sha256_update_C(buf,len) \
-    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256C,(buf), (len))
-#define monero_sha256_final_C(out) \
-    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256C, (out)?(out):G_monero_vstate.C)
-#define monero_hash_C(buf,len,out) \
-    monero_hash(CX_SHA256, (cx_hash_t *)&G_monero_vstate.sha256C, (buf), (len), (out)?(out):G_monero_vstate.C)
+#define monero_sha256_commitment_init() \
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_commitment)
+#define monero_sha256_commitment_update(buf,len) \
+    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_commitment,(buf), (len))
+#define monero_sha256_commitment_final(out) \
+    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_commitment, (out)?(out):G_monero_vstate.C)
 
-#define monero_sha256_init_L() \
-    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256L)
-#define monero_sha256_update_L(buf,len) \
-    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256L, (buf), (len))
-#define monero_sha256_final_L(out) \
-    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256L, (out)?(out):G_monero_vstate.L)
-#define monero_sha256_L(buf,len,out) \
-    monero_hash(CX_SHA256, (cx_hash_t *)&G_monero_vstate.sha256L, (buf), (len), (out)?(out):G_monero_vstate.L)
+#define monero_sha256_amount_init() \
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_amount)
+#define monero_sha256_amount_update(buf,len) \
+    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_amount, (buf), (len))
+#define monero_sha256_amount_final(out) \
+    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_amount, (out)?(out):G_monero_vstate.KV)
 
 /**
  * LE-7-bits encoding. High bit set says one more byte to decode.
@@ -198,6 +195,13 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P);
  * W = k.G
  */
 void monero_ecmul_G(unsigned char *W, unsigned char *scalar32);
+
+/*
+ * W = k.H
+ */
+void monero_ecmul_H(unsigned char *W, unsigned char *scalar32);
+
+
 /*
  * W = P+Q
  */

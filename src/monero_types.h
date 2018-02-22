@@ -29,18 +29,15 @@
 #define MONERO_EXT_CARD_HOLDER_CERT_LENTH        2560
 /* random choice */
 #define MONERO_EXT_CHALLENGE_LENTH               254
-/* accpet long PW, but less than one sha256 block */
-#define MONERO_MAX_PW_LENGTH                     12
 
-#define MONERO_KEYS_SLOTS                        3
+/* --- ... --- */
+#define MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX             18
+#define MAINNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX  19
+#define MAINNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX          42
 
-#define  MONERO_KEY_ATTRIBUTES_LENGTH            12
-
-#define MONERO_RSA_DEFAULT_PUB 0x010001U
-
-
-#define  CRYPTONOTE_MAINNET_PUBLIC_ADDRESS_BASE58_PREFIX  18
-#define  CRYPTONOTE_TESTNET_PUBLIC_ADDRESS_BASE58_PREFIX  53
+#define TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX             53
+#define TESTNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX  54
+#define TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX          63
 
 struct monero_nv_state_s {
   /* magic */
@@ -49,10 +46,16 @@ struct monero_nv_state_s {
   /* network */
   unsigned char network_id;
 
+  /* key mode */
+  #define KEY_MODE_EXTERNAL 0x21
+  #define KEY_MODE_SEED     0x42
+  unsigned char key_mode;
+
+
   /* view key */
   unsigned char A[32];
   unsigned char a[32];
-  
+
   /* spend key */
   unsigned char B[32];
   unsigned char b[32];
@@ -66,10 +69,12 @@ typedef struct monero_nv_state_s monero_nv_state_t;
 #define MONERO_IO_BUFFER_LENGTH (300)
 
 struct monero_v_state_s {
+  unsigned char   state; 
+
   /* ------------------------------------------ */
   /* ---                  IO                --- */
   /* ------------------------------------------ */
-  
+
   /* io state*/
   unsigned char   io_cla;
   unsigned char   io_ins;
@@ -82,16 +87,12 @@ struct monero_v_state_s {
   unsigned short  io_mark;
   unsigned char   io_buffer[MONERO_IO_BUFFER_LENGTH];
 
-  
+
   unsigned int    options;
 
   /* ------------------------------------------ */
   /* ---            State Machine           --- */
   /* ------------------------------------------ */
-  
-  /* app state: INS|P1 */
-  unsigned int   state;
-
 
   #define SIG_REAL 0
   #define SIG_FAKE 1
@@ -101,29 +102,34 @@ struct monero_v_state_s {
   /* ---               Crypo                --- */
   /* ------------------------------------------ */
 
+  unsigned char a[32];
+  unsigned char b[32];
+
   /* SPK */
   cx_aes_key_t spk;
+
+  /* Tx state machine */
+  unsigned int    tx_state; 
 
   /* Tx key */
   unsigned char R[32];
   unsigned char r[32];
 
   /* mlsag hash */
-  cx_sha3_t     keccakF;  
+  cx_sha3_t     keccakF;
   cx_sha3_t     keccakH;
   unsigned char H[32];
   unsigned char c[32];
 
   /* -- track tx-in/out and commitment -- */
-  cx_sha256_t   sha256L;
-  unsigned char L[32];
-  
-  cx_sha256_t   sha256C;
+  cx_sha256_t   sha256_amount;
+  unsigned char KV[32];
+
+  cx_sha256_t   sha256_commitment;
   unsigned char C[32];
 
   /* -- multiple commands memories -- */
   unsigned char Dinout[32];
- 
 
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */
@@ -136,81 +142,72 @@ struct monero_v_state_s {
   char            ux_amount[23];
   ux_menu_entry_t ui_dogsays[2];
 
-  /* ------------------------------------------ */
-  /* ---                DEBUG               --- */
-  /* ------------------------------------------ */
-  unsigned char rnd;
-
 } ;
 typedef struct  monero_v_state_s monero_v_state_t;
+
+
+
 
 #define SIZEOF_TX_VSTATE   (sizeof(monero_v_state_t) - OFFSETOF(monero_v_state_t, state))
 
 /* ---  ...  --- */
-#define STATE_ACTIVATE                      0x07
 #define IO_OFFSET_END                       (unsigned int)-1
 #define IO_OFFSET_MARK                      (unsigned int)-2
 
-
-
 #define ENCRYPTED_PAYMENT_ID_TAIL            0x8d
-/* ---  Errors  --- */
 
+/* ---  Errors  --- */
 #define ERROR(x)                            ((x)<<16)
 
 #define ERROR_IO_OFFSET                     ERROR(1)
 #define ERROR_IO_FULL                       ERROR(2)
 
-
-
-
 /* ---  INS  --- */
 
-  #define INS_NONE                            0x00
-  #define INS_RESET                           0x02
+#define INS_NONE                            0x00
+#define INS_RESET                           0x02
 
-  #define INS_GET_KEY                         0x20
-  #define INS_PUT_KEY                         0x22
-  #define INS_GET_CHACHA8_PREKEY              0x24
-  #define INS_VERIFY_KEY                      0x26
+#define INS_GET_KEY                         0x20
+#define INS_PUT_KEY                         0x22
+#define INS_GET_CHACHA8_PREKEY              0x24
+#define INS_VERIFY_KEY                      0x26
 
-  #define INS_SECRET_KEY_TO_PUBLIC_KEY        0x30
-  #define INS_GEN_KEY_DERIVATION              0x32
-  #define INS_DERIVATION_TO_SCALAR            0x34
-  #define INS_DERIVE_PUBLIC_KEY               0x36
-  #define INS_DERIVE_SECRET_KEY               0x38
-  #define INS_GEN_KEY_IMAGE                   0x3A
-  #define INS_SECRET_KEY_ADD                  0x3C
-  #define INS_SECRET_KEY_SUB                  0x3E
-  #define INS_GENERATE_KEYPAIR                0x40
-  #define INS_SECRET_SCAL_MUL_KEY             0x42
-  #define INS_SECRET_SCAL_MUL_BASE            0x44
+#define INS_SECRET_KEY_TO_PUBLIC_KEY        0x30
+#define INS_GEN_KEY_DERIVATION              0x32
+#define INS_DERIVATION_TO_SCALAR            0x34
+#define INS_DERIVE_PUBLIC_KEY               0x36
+#define INS_DERIVE_SECRET_KEY               0x38
+#define INS_GEN_KEY_IMAGE                   0x3A
+#define INS_SECRET_KEY_ADD                  0x3C
+#define INS_SECRET_KEY_SUB                  0x3E
+#define INS_GENERATE_KEYPAIR                0x40
+#define INS_SECRET_SCAL_MUL_KEY             0x42
+#define INS_SECRET_SCAL_MUL_BASE            0x44
 
-  #define INS_DERIVE_SUBADDRESS_PUBLIC_KEY    0x46
-  #define INS_GET_SUBADDRESS                  0x48
-  #define INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY 0x4A
-  #define INS_GET_SUBADDRESS_SECRET_KEY       0x4C
+#define INS_DERIVE_SUBADDRESS_PUBLIC_KEY    0x46
+#define INS_GET_SUBADDRESS                  0x48
+#define INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY 0x4A
+#define INS_GET_SUBADDRESS_SECRET_KEY       0x4C
 
-  #define INS_OPEN_TX                         0x70
-  #define INS_SET_SIGNATURE_MODE              0x72
-  #define INS_GET_ADDITIONAL_KEY              0x74
-  #define INS_STEALTH                         0x76
-  #define INS_PROCESS_INPUT                   0x78 
-  #define INS_PROCESS_OUTPUT                  0x7A
-  #define INS_AMOUNT_KEY                      0x7C
-  #define INS_BLIND                           0x7E
-  #define INS_UNBLIND                         0x80
-  #define INS_VALIDATE                        0x82
-  #define INS_MLSAG                           0x84
-  #define INS_CLOSE_TX                        0x86        
+#define INS_OPEN_TX                         0x70
+#define INS_SET_SIGNATURE_MODE              0x72
+#define INS_GET_ADDITIONAL_KEY              0x74
+#define INS_STEALTH                         0x76
+#define INS_BLIND                           0x78
+#define INS_UNBLIND                         0x7A
+#define INS_VALIDATE                        0x7C
+#define INS_MLSAG                           0x7E
+#define INS_CLOSE_TX                        0x80
 
-  
-  #define INS_GET_RESPONSE                    0xc0
+
+
+#define INS_GET_RESPONSE                    0xc0
 
 /* --- OPTIONS --- */
 #define IN_OPTION_MASK                      0x000000FF
 #define OUT_OPTION_MASK                     0x0000FF00
 
+#define IN_OPTION_MORE_COMMAND              0x00000080
 
 /* ---  IO constants  --- */
 #define OFFSET_CLA                          0
@@ -222,45 +219,51 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define OFFSET_EXT_CDATA                    7
 
 
-#define SW_OK                               0x9000
-#define SW_ALGORITHM_UNSUPPORTED            0x9484
+#define SW_OK                                0x9000
+#define SW_ALGORITHM_UNSUPPORTED             0x9484
 
-#define SW_BYTES_REMAINING_00               0x6100
+#define SW_BYTES_REMAINING_00                0x6100
 
-#define SW_WARNING_STATE_UNCHANGED          0x6200
-#define SW_STATE_TERMINATED                 0x6285
+#define SW_WARNING_STATE_UNCHANGED           0x6200
+#define SW_STATE_TERMINATED                  0x6285
 
-#define SW_MORE_DATA_AVAILABLE              0x6310
+#define SW_MORE_DATA_AVAILABLE               0x6310
 
-#define SW_WRONG_LENGTH                     0x6700
+#define SW_WRONG_LENGTH                      0x6700
 
-#define SW_LOGICAL_CHANNEL_NOT_SUPPORTED    0x6881
-#define SW_SECURE_MESSAGING_NOT_SUPPORTED   0x6882
-#define SW_LAST_COMMAND_EXPECTED            0x6883
-#define SW_COMMAND_CHAINING_NOT_SUPPORTED   0x6884
+#define SW_LOGICAL_CHANNEL_NOT_SUPPORTED     0x6881
+#define SW_SECURE_MESSAGING_NOT_SUPPORTED    0x6882
+#define SW_LAST_COMMAND_EXPECTED             0x6883
+#define SW_COMMAND_CHAINING_NOT_SUPPORTED    0x6884
 
-#define SW_SECURITY_STATUS_NOT_SATISFIED    0x6982
-#define SW_FILE_INVALID                     0x6983
-#define SW_PIN_BLOCKED                      0x6983
-#define SW_DATA_INVALID                     0x6984
-#define SW_CONDITIONS_NOT_SATISFIED         0x6985
-#define SW_COMMAND_NOT_ALLOWED              0x6986
-#define SW_APPLET_SELECT_FAILED             0x6999
 
-#define SW_WRONG_DATA                       0x6a80
-#define SW_FUNC_NOT_SUPPORTED               0x6a81
-#define SW_FILE_NOT_FOUND                   0x6a82
-#define SW_RECORD_NOT_FOUND                 0x6a83
-#define SW_FILE_FULL                        0x6a84
-#define SW_INCORRECT_P1P2                   0x6a86
-#define SW_REFERENCED_DATA_NOT_FOUND        0x6a88
+#define SW_SECURITY_LOAD_KEY                 0x6900
+#define SW_SECURITY_COMMITMENT_CONTROL       0x6911
+#define SW_SECURITY_AMOUNT_CHAIN_CONTROL     0x6912
+#define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
 
-#define SW_WRONG_P1P2                       0x6b00
-#define SW_CORRECT_LENGTH_00                0x6c00
-#define SW_INS_NOT_SUPPORTED                0x6d00
-#define SW_CLA_NOT_SUPPORTED                0x6e00
+#define SW_SECURITY_STATUS_NOT_SATISFIED     0x6982
+#define SW_FILE_INVALID                      0x6983
+#define SW_PIN_BLOCKED                       0x6983
+#define SW_DATA_INVALID                      0x6984
+#define SW_CONDITIONS_NOT_SATISFIED          0x6985
+#define SW_COMMAND_NOT_ALLOWED               0x6986
+#define SW_APPLET_SELECT_FAILED              0x6999
 
-#define SW_UNKNOWN                          0x6f00
+#define SW_WRONG_DATA                        0x6a80
+#define SW_FUNC_NOT_SUPPORTED                0x6a81
+#define SW_FILE_NOT_FOUND                    0x6a82
+#define SW_RECORD_NOT_FOUND                  0x6a83
+#define SW_FILE_FULL                         0x6a84
+#define SW_INCORRECT_P1P2                    0x6a86
+#define SW_REFERENCED_DATA_NOT_FOUND         0x6a88
+
+#define SW_WRONG_P1P2                        0x6b00
+#define SW_CORRECT_LENGTH_00                 0x6c00
+#define SW_INS_NOT_SUPPORTED                 0x6d00
+#define SW_CLA_NOT_SUPPORTED                 0x6e00
+
+#define SW_UNKNOWN                           0x6f00
 
 
 #endif

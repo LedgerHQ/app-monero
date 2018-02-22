@@ -23,50 +23,21 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-// default: Ak = F(pubTX,a,i)
-//option 1: Ak = F(derivation,a,i)
-int monero_apdu_get_amount_key() {
-    unsigned char Pub_tx[32];     
-    unsigned char drv[32];
-    unsigned int  index;
-
-    //compute derivation data
-    switch (G_monero_vstate.options) {
-    case 0:
-        monero_io_fetch(Pub_tx,32); 
-        monero_generate_key_derivation(drv, Pub_tx, N_monero_pstate->a);
-        break;
-    case 1:
-        monero_io_fetch_decrypt(drv,32); 
-        break;
-    default:
-      THROW(SW_REFERENCED_DATA_NOT_FOUND);
-      return 0;
-    }
-    index = monero_io_fetch_u32();
-    monero_io_discard(1);
-
-    //compute amountkey, update LHash
-    monero_derivation_to_scalar(Pub_tx, drv, index);
-    monero_io_insert_encrypt(Pub_tx,32);
-
-    return SW_OK;
-}
-
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
 int monero_apdu_blind() {
     unsigned char v[32];
     unsigned char k[32];
     unsigned char AKout[32];
 
-    monero_io_fetch(v,32);
-    monero_io_fetch(k,32);
-
     monero_io_fetch_decrypt(AKout,32);
+    monero_io_fetch(k,32);
+    monero_io_fetch(v,32);
+
     monero_io_discard(1);
+
+    //Update Hkv
+    monero_sha256_amount_update(AKout,32);
+    monero_sha256_amount_update(k,32);
+    monero_sha256_amount_update(v,32);
 
     //blind mask
     monero_hash_to_scalar(AKout, AKout);
@@ -75,7 +46,7 @@ int monero_apdu_blind() {
     monero_hash_to_scalar(AKout, AKout);
     monero_addm(v,v,AKout);
 
-    //ret all    
+    //ret all
     monero_io_insert(v,32);
     monero_io_insert(k,32);
 
@@ -102,10 +73,10 @@ int monero_apdu_unblind() {
     unsigned char k[32];
     unsigned char AKout[32];
 
-    monero_io_fetch(v,32);
-    monero_io_fetch(k,32);
-
     monero_io_fetch_decrypt(AKout,32);
+    monero_io_fetch(k,32);
+    monero_io_fetch(v,32);
+
     monero_io_discard(1);
 
     //unblind mask
@@ -115,7 +86,7 @@ int monero_apdu_unblind() {
     monero_hash_to_scalar(AKout, AKout);
     monero_subm(v,v,AKout);
 
-    //ret all    
+    //ret all
     monero_io_insert(v,32);
     monero_io_insert(k,32);
 
