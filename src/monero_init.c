@@ -61,7 +61,7 @@ void monero_init() {
 
   //first init ?
   if (os_memcmp(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
-    monero_install(TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX);
+    monero_install(TESTNET);
   }
 
   //generate key protection
@@ -106,11 +106,13 @@ void monero_init_private_key() {
     #else
     os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, G_monero_vstate.a);
     monero_keccak_F(seed,32,G_monero_vstate.b);
-    G_monero_vstate.b[0]  &= 0xF8;
-    G_monero_vstate.b[31]  = (G_monero_vstate.b[31] & 0x7F) | 0x40;
+    monero_reduce(G_monero_vstate.b,G_monero_vstate.b);
+    //G_monero_vstate.b[0]  &= 0xF8;
+    //G_monero_vstate.b[31]  = (G_monero_vstate.b[31] & 0x7F) | 0x40;
     monero_keccak_F(G_monero_vstate.b,32,G_monero_vstate.a);
-    G_monero_vstate.a[0]  &= 0xF8;
-    G_monero_vstate.a[31]  = (G_monero_vstate.a[31] & 0x7F) | 0x40;
+    monero_reduce(G_monero_vstate.a,G_monero_vstate.a);
+    //G_monero_vstate.a[0]  &= 0xF8;
+    //G_monero_vstate.a[31]  = (G_monero_vstate.a[31] & 0x7F) | 0x40;
     #endif
     break;
 
@@ -158,7 +160,7 @@ void monero_install(unsigned char netId) {
   monero_ecmul_G(B, G_monero_vstate.b);
   monero_nvm_write(N_monero_pstate->A, A, 32);
   monero_nvm_write(N_monero_pstate->B, B, 32);
-  monero_base58_public_key((char*)G_monero_vstate.io_buffer, N_monero_pstate->A,N_monero_pstate->B);
+  monero_base58_public_key((char*)G_monero_vstate.io_buffer, N_monero_pstate->A,N_monero_pstate->B, 0);
   G_monero_vstate.io_buffer[95] = 0;
   monero_nvm_write(N_monero_pstate->public_address, G_monero_vstate.io_buffer, 96);
 

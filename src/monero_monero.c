@@ -1,12 +1,31 @@
-/*
- * Initial source from Monero Project
- * Adpated by  Cedric Mesnil <cslashm@gmail.com> <cedric@ledger.fr>, Ledger SAS 
+/* Copyright 2017-2018 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #include "os.h"
 #include "monero_types.h"
 #include "monero_api.h"
 #include "monero_vars.h"
 
+const unsigned char C_MAINNET_NETWORK_ID[] = {
+    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x10
+};
+const unsigned char C_TESTNET_NETWORK_ID[] =  {
+    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x11
+};
+const unsigned char C_STAGENET_NETWORK_ID[] =  {
+    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x12
+};
 
 
 // Copyright (c) 2014-2017, The Monero Project
@@ -41,9 +60,9 @@
 const char         alphabet[]              = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 #define            alphabet_size           (sizeof(alphabet) - 1)
 const unsigned int encoded_block_sizes[]   = {0, 2, 3, 5, 6, 7, 9, 10, 11};
-#define  full_block_size                   8 //(sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1)
-#define  full_encoded_block_size           11 //encoded_block_sizes[full_block_size];
-#define  addr_checksum_size                4
+#define  FULL_BLOCK_SIZE                   8 //(sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1)
+#define  FULL_ENCODED_BLOCK_SIZE           11 //encoded_block_sizes[full_block_size];
+#define  ADDR_CHECKSUM_SIZE                4
 
 
 static uint64_t uint_8be_to_64(const unsigned char* data, size_t size) {
@@ -74,24 +93,38 @@ static void encode_block(const unsigned char* block, unsigned int  size,  char* 
     }
 }
 
-int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend) {
-    #define DATA_SIZE 69
-    unsigned char data[69];
+int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress) {
+    unsigned char data[72];
+    unsigned int offset;
+    unsigned int prefix;
 
-    data[0] = N_monero_pstate->network_id;
-    os_memmove(data+1,spend,32);
-    os_memmove(data+1+32,view,32);
-    monero_keccak_F(data, 65, G_monero_vstate.H);
-    os_memmove(data+1+32+32, G_monero_vstate.H, 4);
+    //data[0] = N_monero_pstate->network_id;
+    switch(N_monero_pstate->network_id) {
+        case TESTNET:
+            prefix = is_subbadress ? TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            break;
+        case STAGENET:
+            prefix = is_subbadress ? STAGENET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : STAGENET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            break;
+        case MAINNET:
+            prefix = is_subbadress ? MAINNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            break;
+    }
+    offset = monero_encode_varint(data, prefix);
+    
+    os_memmove(data+offset,spend,32);
+    os_memmove(data+offset+32,view,32);
+    monero_keccak_F(data, offset+64, G_monero_vstate.H);
+    os_memmove(data+offset+32+32, G_monero_vstate.H, 4);
 
-    unsigned int full_block_count = DATA_SIZE / full_block_size;
-    unsigned int last_block_size = DATA_SIZE % full_block_size;
+    unsigned int full_block_count = (offset+32+32+4) / FULL_BLOCK_SIZE;
+    unsigned int last_block_size  = (offset+32+32+4) % FULL_BLOCK_SIZE;
     for (size_t i = 0; i < full_block_count; ++i) {
-        encode_block(data + i * full_block_size, full_block_size, &str_b58[i * full_encoded_block_size]);
+        encode_block(data + i * FULL_BLOCK_SIZE, FULL_BLOCK_SIZE, &str_b58[i * FULL_ENCODED_BLOCK_SIZE]);
     }
 
     if (0 < last_block_size) {
-        encode_block(data + full_block_count * full_block_size, last_block_size, &str_b58[full_block_count * full_encoded_block_size]);
+        encode_block(data + full_block_count * FULL_BLOCK_SIZE, last_block_size, &str_b58[full_block_count * FULL_ENCODED_BLOCK_SIZE]);
     }
 
     return 0;

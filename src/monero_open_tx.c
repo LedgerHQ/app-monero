@@ -45,7 +45,7 @@ int monero_apdu_open_tx() {
 
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-#ifdef DEBUGLEDGER    
+#ifdef DEBUG_HWDEVICE    
     monero_io_insert(G_monero_vstate.r,32);
 #endif
     return SW_OK;

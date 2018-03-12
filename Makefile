@@ -1,4 +1,6 @@
-# Copyright 2017 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS
+#*******************************************************************************
+#   Ledger Nano S
+#   (c) 2016 Ledger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -11,7 +13,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-#
+#*******************************************************************************
 
 ifeq ($(BOLOS_SDK),)
 $(error Environment variable BOLOS_SDK is not set)
@@ -19,64 +21,85 @@ endif
 include $(BOLOS_SDK)/Makefile.defines
 
 #Monero /44'/128'
+#--appFlags 0x40
+APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS)
 APPNAME = "Monero"
-APP_LOAD_PARAMS=--appFlags 0x40  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS)
+
+ifeq ($(TARGET_NAME),TARGET_BLUE)
+ICONNAME = images/icon_monero_blue.gif
+else
+ICONNAME = images/icon_monero.gif
+endif
 
 APPVERSION_M=0
-APPVERSION_N=2
+APPVERSION_N=7
 APPVERSION_P=0
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
-SPECVERSION="0.9"
-ICONNAME=images/icon_monero.gif
+SPECVERSION="0.7.0"
+
+DEFINES   += $(MONERO_CONFIG) MONERO_VERSION=$(APPVERSION) MONERO_NAME=$(APPNAME) SPEC_VERSION=$(SPECVERSION)
 
 
 ################
 # Default rule #
 ################
+
 all: default
 
 ############
 # Platform #
 ############
-DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
-DEFINES   += HAVE_BAGL HAVE_PRINTF HAVE_SPRINTF
-DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=7 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
+
+ifneq ($(NO_CONSENT),)
+DEFINES   += NO_CONSENT
+endif
+
+DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES   += HAVE_BAGL HAVE_SPRINTF
+#DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+DEFINES   += PRINTF\(...\)=
+DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
+#DEFINES  += HAVE_BLE
+DEFINES   += UNUSED\(x\)=\(void\)x
+DEFINES   += APPVERSION=\"$(APPVERSION)\"
+DEFINES   += CUSTOM_IO_APDU_BUFFER_SIZE=\(255+5+64\)
+
 DEFINES   += HAVE_USB_CLASS_CCID
 
-## App Conf
-DEFINES   += $(MONERO_CONFIG) MONERO_VERSION=$(APPVERSION) MONERO_NAME=$(APPNAME) SPEC_VERSION=$(SPECVERSION)
 
 #DEFINES += IOCRYPT
 ## Debug options
-#DEFINES   += DEBUGLEDGER
-DEFINES   += IODUMMYCRYPT
+#DEFINES   += DEBUG_HWDEVICE
+#DEFINES   += IODUMMYCRYPT
 #DEFINES   += IONOCRYPT
 #DEFINES   += TESTKEY
 
 ##############
-#  Compiler  #
+# Compiler #
 ##############
 #GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
 #CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-CC       := $(CLANGPATH)clang
+CC       := $(CLANGPATH)clang 
 
 #CFLAGS   += -O0 -gdwarf-2  -gstrict-dwarf
 CFLAGS   += -O3 -Os
+#CFLAGS   += -fno-jump-tables -fno-lookup-tables -fsave-optimization-record
+#$(info $(CFLAGS))
 
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc
+LDLIBS   += -lm -lgcc -lc 
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
 
-### computed variables
+### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
 APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
+SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl 
 
 
 load: all
@@ -89,5 +112,5 @@ delete:
 include $(BOLOS_SDK)/Makefile.rules
 
 #add dependency on custom makefile filename
-dep/%.d: %.c Makefile.genericwallet
+dep/%.d: %.c Makefile
 

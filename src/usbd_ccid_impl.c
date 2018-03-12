@@ -398,14 +398,14 @@ static uint8_t  *USBD_GetDeviceQualifierDesc_impl (uint16_t *length)
   return (uint8_t*)USBD_DeviceQualifierDesc;
 }
 
-
+/*
 uint8_t SC_AnswerToReset (uint8_t voltage, uint8_t* atr_buffer) {
   // return the atr length
   atr_buffer[0] = 0x3B;
   atr_buffer[1] = 0;
   return 2;
 }
-
+*/
 
 // note: how core lib usb calls the hid class
 static const USBD_DescriptorsTypeDef const CCID_Desc = {

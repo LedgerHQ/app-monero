@@ -48,7 +48,7 @@ void ui_CCID_reset(void) {
   io_usb_ccid_set_card_inserted(0);
   io_usb_ccid_set_card_inserted(1);
 }
-
+/*
 void ui_info(const char* msg1, const char* msg2, const void *menu_display, unsigned int value) {
   os_memset(&G_monero_vstate.ui_dogsays[0], 0, sizeof(ux_menu_entry_t));
   G_monero_vstate.ui_dogsays[0].callback = menu_display;
@@ -59,7 +59,7 @@ void ui_info(const char* msg1, const char* msg2, const void *menu_display, unsig
   os_memset(&G_monero_vstate.ui_dogsays[1],0, sizeof(ux_menu_entry_t));
   UX_MENU_DISPLAY(0, G_monero_vstate.ui_dogsays, NULL);
 };
-
+*/
 /* ----------------------------- FEE VALIDATION ----------------------------- */
 #define ACCEPT  0xACCE
 #define REJECT  ~ACCEPT
@@ -205,10 +205,11 @@ void ui_menu_validation_action(unsigned int value) {
 /* -------------------------------- NETWORK UX --------------------------------- */
 void ui_menu_network_action(unsigned int value);
 const ux_menu_entry_t ui_menu_network[] = {
-  {NULL,   NULL,                   0,                                               NULL, "It will reset", "the device!", 0, 0},
-  {NULL,   ui_menu_network_action, MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX, NULL, "Mainnet",       NULL,          0, 0},
-  {NULL,   ui_menu_network_action, TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX, NULL, "Testnet",       NULL,          0, 0},
+  {NULL,   NULL,                   0,        NULL, "It will reset", "the device!", 0, 0},
   {NULL,   ui_menu_main_display,   0,                                      &C_badge_back, "Abort",         NULL,          61, 40},
+  {NULL,   ui_menu_network_action, TESTNET,  NULL, "Test Network",  NULL,          0, 0},
+  {NULL,   ui_menu_network_action, STAGENET, NULL, "Stage Network", NULL,          0, 0},
+  {NULL,   ui_menu_network_action, MAINNET,  NULL, "Main Network",  NULL,          0, 0},
   UX_MENU_END
 };
 

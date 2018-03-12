@@ -468,8 +468,12 @@ void monero_derive_secret_key(unsigned char *x,
 
     //derivation to scalar
     monero_derivation_to_scalar(tmp,drv_data,out_idx);
+
     //generate
     monero_addm(x, tmp, ec_priv);
+    monero_io_insert(tmp,32);
+    monero_io_insert(ec_priv,32);
+    monero_io_insert(x,32);
 }
 
 /* ----------------------------------------------------------------------- */

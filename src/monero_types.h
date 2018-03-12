@@ -35,9 +35,20 @@
 #define MAINNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX  19
 #define MAINNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX          42
 
+#define STAGENET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX            24
+#define STAGENET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX 25
+#define STAGENET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX         36
+
 #define TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX             53
 #define TESTNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX  54
 #define TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX          63
+
+enum network_type {
+    MAINNET = 0,
+    TESTNET,
+    STAGENET,
+    FAKECHAIN
+};
 
 struct monero_nv_state_s {
   /* magic */
@@ -140,7 +151,6 @@ struct monero_v_state_s {
   char            ux_address[96];
   // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
   char            ux_amount[23];
-  ux_menu_entry_t ui_dogsays[2];
 
 } ;
 typedef struct  monero_v_state_s monero_v_state_t;

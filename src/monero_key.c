@@ -89,7 +89,7 @@ int monero_apdu_get_key() {
     monero_io_insert((unsigned char*)N_monero_pstate->public_address, 95);
     break;
 
-#ifdef DEBUGLEDGER
+#ifdef DEBUG_HWDEVICE
   //get private
   case 2:
     //view key
@@ -342,7 +342,9 @@ int monero_apdu_derive_secret_key(/*const crypto::key_derivation &derivation, co
   monero_derive_secret_key(drvsec, derivation, output_index, sec);
 
   //pub key
+  monero_io_set_offset(0);
   monero_io_insert_encrypt(drvsec,32);
+  monero_io_set_offset(IO_OFFSET_END);
   return SW_OK;
 }
 

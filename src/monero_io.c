@@ -19,6 +19,14 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
+#if defined(IODUMMYCRYPT)
+  #warning IODUMMYCRYPT activated
+#endif
+#if defined(IONOCRYPT)
+  #warning IONOCRYPT activated
+#endif
+
+
 /*
  * io_buff: contains current message part
  * io_off: offset in current message part
@@ -37,7 +45,7 @@ void monero_io_set_offset(unsigned int offset) {
     G_monero_vstate.io_offset = G_monero_vstate.io_mark;
   }
   else if (offset < G_monero_vstate.io_length) {
-    G_monero_vstate.io_offset = G_monero_vstate.io_length;
+    G_monero_vstate.io_offset = offset;
   }
   else {
     THROW(ERROR_IO_OFFSET);
@@ -99,18 +107,17 @@ void monero_io_insert_encrypt(unsigned char* buffer, int len) {
     return ;
   }
 
-#ifdef IOCRYPT
-  cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
-         buffer, len,
-         G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
-#elif defined(IODUMMYCRYPT)
-  #warning IODUMMYCRYPT activated
+
+#if defined(IODUMMYCRYPT)
   for (int i = 0; i<len; i++) {
        G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] = buffer[i] ^ 0x55;
     }
 #elif defined(IONOCRYPT)
-  #warning IONOCRYPT activated
   os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
+#else 
+  cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
+         buffer, len,
+         G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
 #endif
   G_monero_vstate.io_offset += len;
 }
@@ -198,18 +205,16 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
   }
 
   if (buffer) {
-#ifdef IOCRYPT
-    cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
-           G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
-           buffer);
-#elif defined(IODUMMYCRYPT)
+#if defined(IODUMMYCRYPT)
     for (int i = 0; i<len; i++) {
       buffer[i] = G_monero_vstate.io_buffer[G_monero_vstate.io_offset+i] ^ 0x55;
     }
 #elif defined(IONOCRYPT)
      os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
-#else
-     #error 'PLEASE DEFINED ONE OF IO CRYPT MODE'
+#else IOCRYPT
+    cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
+           G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
+           buffer);
 #endif
   }
   G_monero_vstate.io_offset += len;

@@ -56,6 +56,7 @@ int monero_apdu_mlsag_prehash_init() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_update() {
+    unsigned char is_subaddress;
     unsigned char Aout[32];
     unsigned char Bout[32];
     #define aH    Aout
@@ -65,14 +66,15 @@ int monero_apdu_mlsag_prehash_update() {
     unsigned char v[32];
     unsigned char k[32];
     int changed;
-
     changed = 0;
+
+    is_subaddress = monero_io_fetch_u8();
     monero_io_fetch(Aout,32);
     monero_io_fetch(Bout,32);
     if (G_monero_vstate.sig_mode == SIG_REAL) {
         if (os_memcmp(Aout, N_monero_pstate->A, 32) || os_memcmp(Bout, N_monero_pstate->B, 32) ) {
             //encode dest adress
-            monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout);
+            monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress);
         } else {
             changed = 1;
         }
@@ -96,10 +98,14 @@ int monero_apdu_mlsag_prehash_update() {
 
     //check C = aH+kG
     monero_ecmul_G(kG, k);
-    monero_ecmul_H(aH, v);
-    monero_ecadd(k, kG, aH);
+    if (!cx_math_is_zero(v, 32)) {
+        monero_ecmul_H(aH, v);
+        monero_ecadd(k, kG, aH);
+    } else {
+        os_memmove(k, kG, 32);
+    }
     if (os_memcmp(C, k, 32)) {
-        //THROW(SW_SECURITY_COMMITMENT_CONTROL);
+        THROW(SW_SECURITY_COMMITMENT_CONTROL);
     }
 
     //update commitment hash control
@@ -146,7 +152,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_discard(1);
         monero_keccak_update_H(H,32);
         monero_sha256_commitment_update(H,32);
-#ifdef DEBUGLEDGER
+#ifdef DEBUG_HWDEVICE
         monero_io_insert(H, 32);
 #endif
 
@@ -167,7 +173,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_update_H(H,32);
         monero_keccak_update_H(proof,32);
         monero_keccak_final_H(NULL);
-#ifdef DEBUGLEDGER
+#ifdef DEBUG_HWDEVICE
         monero_io_insert(G_monero_vstate.H, 32);
         monero_io_insert(H, 32);
 #endif
