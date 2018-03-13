@@ -105,14 +105,13 @@ void monero_init_private_key() {
     os_memmove(G_monero_vstate.b, C_b, 32);
     #else
     os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, G_monero_vstate.a);
+
     monero_keccak_F(seed,32,G_monero_vstate.b);
     monero_reduce(G_monero_vstate.b,G_monero_vstate.b);
-    //G_monero_vstate.b[0]  &= 0xF8;
-    //G_monero_vstate.b[31]  = (G_monero_vstate.b[31] & 0x7F) | 0x40;
+    
     monero_keccak_F(G_monero_vstate.b,32,G_monero_vstate.a);
     monero_reduce(G_monero_vstate.a,G_monero_vstate.a);
-    //G_monero_vstate.a[0]  &= 0xF8;
-    //G_monero_vstate.a[31]  = (G_monero_vstate.a[31] & 0x7F) | 0x40;
+   
     #endif
     break;
 
