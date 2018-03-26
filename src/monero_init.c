@@ -54,9 +54,6 @@ const unsigned char C_b[32] = {
 /* ----------------------------------------------------------------------- */
 
 void monero_init() {
-  unsigned char A[32];
-  unsigned char B[32];
-
   os_memset(&G_monero_vstate, 0, sizeof(monero_v_state_t));
 
   //first init ?
@@ -69,12 +66,8 @@ void monero_init() {
 
   //load key
   monero_init_private_key();
-  monero_ecmul_G(A, G_monero_vstate.a);
-  monero_ecmul_G(B, G_monero_vstate.b);
-  if (os_memcmp(N_monero_pstate->A, A, 32) || os_memcmp(N_monero_pstate->B, B, 32)) {
-    THROW(SW_SECURITY_LOAD_KEY);
-    return;
-  }
+  monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a);
+  monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b);
 
   //ux conf
   monero_init_ux();
@@ -136,9 +129,6 @@ void monero_init_ux() {
 /* ---  Install/ReInstall Monero app                                   --- */
 /* ----------------------------------------------------------------------- */
 void monero_install(unsigned char netId) {
-  //init BIP44 key
-  unsigned char A[32];
-  unsigned char B[32];
   unsigned char c;
 
   //full reset data
@@ -150,18 +140,6 @@ void monero_install(unsigned char netId) {
 
   //set net id
   monero_nvm_write(&N_monero_pstate->network_id, &netId, 1);
-
-  //set private
-  monero_init_private_key();
-
-  //set public
-  monero_ecmul_G(A, G_monero_vstate.a);
-  monero_ecmul_G(B, G_monero_vstate.b);
-  monero_nvm_write(N_monero_pstate->A, A, 32);
-  monero_nvm_write(N_monero_pstate->B, B, 32);
-  monero_base58_public_key((char*)G_monero_vstate.io_buffer, N_monero_pstate->A,N_monero_pstate->B, 0);
-  G_monero_vstate.io_buffer[95] = 0;
-  monero_nvm_write(N_monero_pstate->public_address, G_monero_vstate.io_buffer, 96);
 
   //write magic
   monero_nvm_write(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC));

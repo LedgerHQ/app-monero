@@ -529,7 +529,7 @@ void monero_get_subaddress_spend_public_key(unsigned char *x,unsigned char *inde
     // M = m*G
     monero_secret_key_to_public_key(x,x);
     // D = B + M
-    monero_ecadd(x,x,N_monero_pstate->B);
+    monero_ecadd(x,x,G_monero_vstate.B);
  }
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */

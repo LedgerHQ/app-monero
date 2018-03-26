@@ -202,6 +202,93 @@ void ui_menu_validation_action(unsigned int value) {
   ui_menu_main_display(0);
 }
 
+
+
+/* -------------------------------- EXPORT VIEW KEY UX --------------------------------- */
+unsigned int ui_export_viewkey_prepro(const  bagl_element_t* element);
+unsigned int ui_export_viewkey_button(unsigned int button_mask, unsigned int button_mask_counter);
+
+
+const bagl_element_t ui_export_viewkey[] = {
+  // type             userid    x    y    w    h    str   rad  fill              fg        bg     font_id                   icon_id  
+  { {BAGL_RECTANGLE,  0x00,     0,   0, 128,  32,    0,    0,  BAGL_FILL,  0x000000, 0xFFFFFF,    0,                         0}, 
+    NULL, 
+    0, 
+    0, 0, 
+    NULL, NULL, NULL},
+
+  { {BAGL_ICON,       0x00,    3,   12,   7,   7,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CROSS  }, 
+    NULL, 
+    0, 
+    0, 0, 
+    NULL, NULL, NULL },
+    
+  { {BAGL_ICON,       0x00,  117,   13,   8,   6,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CHECK  }, 
+     NULL, 
+     0, 
+     0, 0, 
+     NULL, NULL, NULL },
+
+  { {BAGL_LABELINE,   0x01,    0,   12, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  }, 
+    G_monero_vstate.ux_menu,  
+    0, 
+    0, 0, 
+    NULL, NULL, NULL },
+    
+  { {BAGL_LABELINE,   0x02,    0,   26, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  }, 
+    G_monero_vstate.ux_menu,  
+    0, 
+    0, 0, 
+    NULL, NULL, NULL },
+    
+};
+
+void ui_export_viewkey_display(unsigned int value) {
+ UX_DISPLAY(ui_export_viewkey, (void*)ui_export_viewkey_prepro);   
+}
+
+unsigned int ui_export_viewkey_prepro(const  bagl_element_t* element) {
+  if (element->component.userid == 1) {
+    snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "Export");
+    return 1;
+  }
+  if (element->component.userid == 2) {
+    snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "View Key");
+    return 1;
+  }
+  snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "Please Cancel");
+  return 1;
+}
+ 
+unsigned int ui_export_viewkey_button(unsigned int button_mask, unsigned int button_mask_counter) {
+  unsigned int sw;
+  unsigned char x[32];
+
+  monero_io_discard(0);
+  os_memset(x,0,32);
+  sw = 0x9000;
+  
+  switch(button_mask) {
+  case BUTTON_EVT_RELEASED|BUTTON_LEFT: // CANCEL
+    monero_io_insert(x, 32);      
+    break;
+
+  case BUTTON_EVT_RELEASED|BUTTON_RIGHT:  // OK
+    monero_io_insert(G_monero_vstate.a, 32);
+#ifdef DEBUG_HWDEVICE
+    monero_io_insert(G_monero_vstate.b, 32);    
+#endif
+    break;
+  
+  default:
+    return 0;
+  }
+  monero_io_insert_u16(sw);
+  monero_io_do(IO_RETURN_AFTER_TX);
+  ui_menu_main_display(0);
+  return 0;
+}
+
 /* -------------------------------- NETWORK UX --------------------------------- */
 void ui_menu_network_action(unsigned int value);
 const ux_menu_entry_t ui_menu_network[] = {
@@ -276,10 +363,12 @@ const ux_menu_entry_t ui_menu_main[] = {
 extern const  uint8_t N_USBD_CfgDesc[];
 const bagl_element_t* ui_menu_main_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
   if (entry == &ui_menu_main[0]) {
-    if(element->component.userid==0x20) {      
-    
-      os_memset(G_monero_vstate.ux_menu, '#', sizeof(G_monero_vstate.ux_menu));
-      snprintf(G_monero_vstate.ux_menu,  sizeof(G_monero_vstate.ux_menu), "< Monero: %s >", N_monero_pstate->public_address);
+    if(element->component.userid==0x20) {  
+      os_memset(G_monero_vstate.ux_menu, 0, sizeof(G_monero_vstate.ux_menu));
+      os_memmove(G_monero_vstate.ux_menu, "< Monero: ", 10);
+      monero_base58_public_key(G_monero_vstate.ux_menu+10, G_monero_vstate.A,G_monero_vstate.B, 0);
+      G_monero_vstate.ux_menu[10+95+0] = ' ';
+      G_monero_vstate.ux_menu[10+95+1] = '>';
       
       element->component.stroke = 10; // 1 second stop in each way
       element->component.icon_id = 48; // roundtrip speed in pixel/s

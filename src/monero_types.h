@@ -64,20 +64,22 @@ struct monero_nv_state_s {
 
 
   /* view key */
-  unsigned char A[32];
   unsigned char a[32];
 
   /* spend key */
-  unsigned char B[32];
   unsigned char b[32];
 
-  /* public address */
-  char public_address[96];
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
 
 #define MONERO_IO_BUFFER_LENGTH (300)
+enum device_mode {
+  NONE,
+  TRANSACTION_CREATE_REAL,
+  TRANSACTION_CREATE_FAKE,
+  TRANSACTION_PARSE
+};
 
 struct monero_v_state_s {
   unsigned char   state; 
@@ -105,8 +107,7 @@ struct monero_v_state_s {
   /* ---            State Machine           --- */
   /* ------------------------------------------ */
 
-  #define SIG_REAL 0
-  #define SIG_FAKE 1
+
   unsigned int   sig_mode;
 
   /* ------------------------------------------ */
@@ -114,7 +115,9 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
 
   unsigned char a[32];
+  unsigned char A[32];
   unsigned char b[32];
+  unsigned char B[32];
 
   /* SPK */
   cx_aes_key_t spk;
@@ -138,9 +141,6 @@ struct monero_v_state_s {
 
   cx_sha256_t   sha256_commitment;
   unsigned char C[32];
-
-  /* -- multiple commands memories -- */
-  unsigned char Dinout[32];
 
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */

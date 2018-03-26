@@ -100,10 +100,10 @@ int monero_apdu_mlsag_sign() {
     unsigned char ss[32];
     unsigned char ss2[32];
     
-    if (G_monero_vstate.sig_mode == SIG_FAKE) {
+    if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin,32);
         monero_io_fetch(alpha,32);
-    } else if (G_monero_vstate.sig_mode == SIG_REAL) {
+    } else if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
         monero_io_fetch_decrypt(xin,32); 
         monero_io_fetch_decrypt(alpha,32);
     } else {

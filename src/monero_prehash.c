@@ -37,7 +37,7 @@ int monero_apdu_mlsag_prehash_init() {
     }
     monero_keccak_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
                           G_monero_vstate.io_length-G_monero_vstate.io_offset);
-    if ((G_monero_vstate.sig_mode == SIG_REAL) &&(G_monero_vstate.io_p2==1)) {
+    if ((G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) &&(G_monero_vstate.io_p2==1)) {
         // skip type
         monero_io_fetch_u8();
         // fee str
@@ -71,8 +71,8 @@ int monero_apdu_mlsag_prehash_update() {
     is_subaddress = monero_io_fetch_u8();
     monero_io_fetch(Aout,32);
     monero_io_fetch(Bout,32);
-    if (G_monero_vstate.sig_mode == SIG_REAL) {
-        if (os_memcmp(Aout, N_monero_pstate->A, 32) || os_memcmp(Bout, N_monero_pstate->B, 32) ) {
+    if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
+        if (os_memcmp(Aout, G_monero_vstate.A, 32) || os_memcmp(Bout, G_monero_vstate.B, 32) ) {
             //encode dest adress
             monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress);
         } else {
@@ -122,7 +122,7 @@ int monero_apdu_mlsag_prehash_update() {
         monero_sha256_commitment_init();
     }
 
-    if (G_monero_vstate.sig_mode == SIG_REAL) {
+    if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
         //ask user
         if (!changed) {
             monero_bamount2str(v, G_monero_vstate.ux_amount, 15);
