@@ -32,8 +32,8 @@ int monero_apdu_mlsag_prehash_init() {
     if (G_monero_vstate.io_p2 == 1) {
         monero_sha256_amount_final(NULL);
         monero_sha256_amount_init();
-        monero_keccak_init_H();
         monero_sha256_commitment_init();
+        monero_keccak_init_H();
     }
     monero_keccak_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
                           G_monero_vstate.io_length-G_monero_vstate.io_offset);
@@ -115,7 +115,7 @@ int monero_apdu_mlsag_prehash_update() {
         //finalize and check amount hash_control
         monero_sha256_amount_final(k);
         if (os_memcmp(k, G_monero_vstate.KV, 32)) {
-            //THROW(SW_SECURITY_AMOUNT_CHAIN_CONTROL);
+            THROW(SW_SECURITY_AMOUNT_CHAIN_CONTROL);
         }
         //finalize commitment hash control
         monero_sha256_commitment_final(NULL);
@@ -160,7 +160,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         //Finalize and check commitment hash control
         monero_sha256_commitment_final(H);
         if (os_memcmp(H,G_monero_vstate.C,32)) {
-            //THROW(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
+            THROW(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
         }
         //compute last H
         monero_keccak_final_H(H);
