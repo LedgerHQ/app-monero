@@ -6,6 +6,13 @@ Monero wallet application for Ledger Blue and Nano S
 
 # Revision 
 
+## v 0.12.3 / Beta 4
+
+Targeted Client: Monero 0.12.1
+
+- SDK 1.4.2.1 port
+- activate Mainnet 'Beta stage: USE AT YOUR OWN RISK'
+
 ## v 0.12.2 / Beta 3
 
 Targeted Client: Monero 0.12.1

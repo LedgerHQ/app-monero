@@ -121,14 +121,14 @@ void monero_hash_init_keccak(cx_hash_t * hasher) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 void monero_hash_update(cx_hash_t * hasher, unsigned char* buf, unsigned int len) {
-    cx_hash(hasher, 0, buf, len, NULL);
+    cx_hash(hasher, 0, buf, len, NULL, 0);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_hash_final(cx_hash_t * hasher, unsigned char* out) {
-    return cx_hash(hasher, CX_LAST, NULL, 0, out);
+    return cx_hash(hasher, CX_LAST, NULL, 0, out, 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -141,7 +141,7 @@ int monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsig
     } else {
         cx_keccak_init((cx_sha3_t *)hasher, 256);
     }
-    return cx_hash(hasher, CX_LAST|CX_NO_REINIT, buf, len, out);
+    return cx_hash(hasher, CX_LAST|CX_NO_REINIT, buf, len, out, 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -387,7 +387,7 @@ static void monero_ge_fromfe_frombytes(unsigned char *ge , unsigned char *bytes)
    Pxy[0] = 0x04;
    cx_math_multm(&Pxy[1],    rX, u, MOD);
    cx_math_multm(&Pxy[1+32], rY, u, MOD);
-   cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+   cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
    os_memmove(ge, &Pxy[1], 32);
 
     #undef u
@@ -570,8 +570,8 @@ void monero_ecmul_G(unsigned char *W,  unsigned char *scalar32) {
     unsigned char s[32];
     monero_reverse32(s, scalar32);
     os_memmove(Pxy, C_ED25519_G, 65);
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     os_memmove(W, &Pxy[1], 32);
 }
 
@@ -586,10 +586,10 @@ void monero_ecmul_H(unsigned char *W,  unsigned char *scalar32) {
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], C_ED25519_Hy, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     os_memmove(W, &Pxy[1], 32);
 }
@@ -605,10 +605,10 @@ void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32)
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     os_memmove(W, &Pxy[1], 32);
 }
@@ -630,11 +630,11 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P) {
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     os_memmove(W, &Pxy[1], 32);
 }
 
@@ -647,15 +647,15 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     os_memmove(&Qxy[1], Q, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
 
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     os_memmove(W, &Pxy[1], 32);
 }
 
@@ -669,16 +669,16 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
 
     Pxy[0] = 0x02;
     os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     os_memmove(&Qxy[1], Q, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy);
+    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
     cx_math_subm(Qxy+1, (unsigned char *)C_ED25519_FIELD,  Qxy+1, (unsigned char *)C_ED25519_FIELD, 32);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
+    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
 
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy);
+    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     os_memmove(W, &Pxy[1], 32);
 }
 

@@ -117,7 +117,7 @@ void monero_io_insert_encrypt(unsigned char* buffer, int len) {
 #else 
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
-         G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
+         G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
 #endif
   G_monero_vstate.io_offset += len;
 }
@@ -211,10 +211,10 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len) {
     }
 #elif defined(IONOCRYPT)
      os_memmove(buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
-#else IOCRYPT
+#else //IOCRYPT
     cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
            G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len,
-           buffer);
+           buffer, len);
 #endif
   }
   G_monero_vstate.io_offset += len;
