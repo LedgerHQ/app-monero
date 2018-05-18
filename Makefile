@@ -33,7 +33,7 @@ endif
 
 APPVERSION_M=0
 APPVERSION_N=12
-APPVERSION_P=3
+APPVERSION_P=4
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 SPECVERSION="0.x.0"
@@ -55,7 +55,7 @@ ifneq ($(NO_CONSENT),)
 DEFINES   += NO_CONSENT
 endif
 
-DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
 DEFINES   += HAVE_BAGL HAVE_SPRINTF
 #DEFINES   += HAVE_PRINTF PRINTF=screen_printf
 DEFINES   += PRINTF\(...\)=
@@ -74,6 +74,10 @@ DEFINES   += HAVE_USB_CLASS_CCID
 #DEFINES   += IODUMMYCRYPT
 #DEFINES   += IONOCRYPT
 #DEFINES   += TESTKEY
+
+DEFINES   += USB_SEGMENT_SIZE=64 
+DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
+DEFINES   += HAVE_IO_U2F HAVE_U2F 
 
 ##############
 # Compiler #
@@ -99,7 +103,7 @@ include $(BOLOS_SDK)/Makefile.glyphs
 
 ### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
 APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl 
+SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
 
 
 load: all

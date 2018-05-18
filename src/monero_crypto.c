@@ -18,7 +18,6 @@
 #include "monero_types.h"
 #include "monero_api.h"
 #include "monero_vars.h"
-#include "usbd_ccid_impl.h"
 
 
 /* ----------------------------------------------------------------------- */
