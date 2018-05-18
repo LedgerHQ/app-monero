@@ -165,8 +165,10 @@ __attribute__((section(".boot"))) int main(void) {
         //start communication with MCU
         io_seproxyhal_init();
 
-        USB_CCID_power(1);
+        USB_power(1);
+        #ifdef HAVE_USB_CLASS_CCID
         io_usb_ccid_set_card_inserted(1);
+        #endif
   
 
         //set up

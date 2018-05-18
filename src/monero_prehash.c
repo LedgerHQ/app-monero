@@ -23,7 +23,6 @@
 #include "monero_api.h"
 #include "monero_ux_nanos.h"
 #include "monero_vars.h"
-#include "usbd_ccid_impl.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */

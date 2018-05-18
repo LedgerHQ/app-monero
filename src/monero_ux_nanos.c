@@ -23,7 +23,6 @@
 
 #include "monero_ux_msg.h"
 #include "os_io_seproxyhal.h"
-#include "usbd_ccid_impl.h"
 #include "string.h"
 #include "glyphs.h"
 
@@ -296,7 +295,7 @@ const ux_menu_entry_t ui_menu_network[] = {
   {NULL,   ui_menu_main_display,   0,                                      &C_badge_back, "Abort",         NULL,          61, 40},
   {NULL,   ui_menu_network_action, TESTNET,  NULL, "Test Network ",  NULL,          0, 0},
   {NULL,   ui_menu_network_action, STAGENET, NULL, "Stage Network", NULL,          0, 0},
-  //{NULL,   ui_menu_network_action, MAINNET,  NULL, "Main Network ",  NULL,          0, 0},
+  {NULL,   ui_menu_network_action, MAINNET,  NULL, "Main Network",  "At Your Own Risk",          0, 0},
   UX_MENU_END
 };
 
