@@ -57,7 +57,7 @@ void monero_init() {
 
   //first init ?
   if (os_memcmp(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
-    monero_install(TESTNET);
+    monero_install(MAINNET);
   }
 
   //generate key protection
