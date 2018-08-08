@@ -14,8 +14,8 @@ The following python package are required:
 - Ecpy
 - pycrytodome
 
-    pip install pycryptodomex
-    pip install ECPy
+    pip3 install pycryptodomex
+    pip3 install ECPy
 
 ### Usage
 
