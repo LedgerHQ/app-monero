@@ -40,7 +40,7 @@ const ux_menu_entry_t ui_menu_main[];
 void ui_menu_main_display(unsigned int value) ;
 const bagl_element_t* ui_menu_main_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element);
 
-
+void ui_menu_settings_display(unsigned int value);
 
 /* ------------------------------- Helpers  UX ------------------------------- */
 void ui_CCID_reset(void) {
@@ -100,6 +100,54 @@ void ui_menu_fee_validation_display(unsigned int value) {
   UX_MENU_DISPLAY(0, ui_menu_fee_validation, ui_menu_fee_validation_preprocessor);
 }
 
+
+/* -------------------------------------- 25 WORDS --------------------------------------- */
+void ui_menu_words_clear(unsigned int value);
+void ui_menu_words_back(unsigned int value);
+#define WORDS N_monero_pstate->words
+const ux_menu_entry_t ui_menu_words[] = {
+  {NULL,  ui_menu_words_back,                  0,      NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  2,      NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  4,      NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  6,      NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  8,      NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  10,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  12,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  14,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  16,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  18,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  20,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  22,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_back,                  24,     NULL,  "",  "",    0, 0},
+  {NULL,  ui_menu_words_clear,                 -1,     NULL,  "CLEAR WORDS",  "(NO WIPE)",    0, 0},
+  UX_MENU_END
+};
+
+const bagl_element_t* ui_menu_words_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
+  if ((entry->userid >= 0) && (entry->userid <25)) {
+  
+    if(element->component.userid==0x21) {      
+      element->text = N_monero_pstate->words[entry->userid];
+    }
+  
+    if ((element->component.userid==0x22)&&(entry->userid<24)) {      
+      element->text = N_monero_pstate->words[entry->userid+1];
+    }
+  }
+
+  return element;
+}
+
+void ui_menu_words_display(unsigned int value) {
+  UX_MENU_DISPLAY(0, ui_menu_words, ui_menu_words_preprocessor);
+}
+void ui_menu_words_clear(unsigned int value) {
+  monero_clear_words();
+  ui_menu_main_display(0);
+}
+void ui_menu_words_back(unsigned int value) {
+  ui_menu_settings_display(1);
+}
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
 void ui_menu_validation_action(unsigned int value);
 
@@ -348,13 +396,17 @@ void ui_menu_reset_action(unsigned int value) {
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
 const ux_menu_entry_t ui_menu_settings[] = {
-  {NULL,     ui_menu_network_display,     0, NULL,          "Change Network",        NULL, 0, 0},
-  {ui_menu_reset,               NULL,     0, NULL,          "Reset",        NULL, 0, 0},
-  {NULL,        ui_menu_main_display,     2, &C_badge_back, "Back",         NULL, 61, 40},
+  {NULL,     ui_menu_network_display,     0, NULL,          "Change Network",  NULL, 0, 0},
+  {NULL,        ui_menu_words_display,    0, NULL,          "Show 25 words",   NULL, 0, 0},
+  {ui_menu_reset,               NULL,     0, NULL,          "Reset",           NULL, 0, 0},
+  {NULL,        ui_menu_main_display,     2, &C_badge_back, "Back",            NULL, 61, 40},
   UX_MENU_END
 };
 
 
+void ui_menu_settings_display(unsigned int value) {
+   UX_MENU_DISPLAY(value, ui_menu_settings, NULL);
+}
 
 /* --------------------------------- INFO UX --------------------------------- */
 

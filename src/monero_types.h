@@ -69,6 +69,10 @@ struct monero_nv_state_s {
   /* spend key */
   unsigned char b[32];
 
+  /*words*/
+  #define WORDS_MAX_LENGTH 20
+  char words[26][20];
+
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -145,14 +149,20 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */
   /* ------------------------------------------ */
-  /* menu 0: 95-chars + "<monero: >"  + null */
-  char            ux_menu[112];
-  // address to display: 95-chars + null
-  char            ux_address[96];
-  // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
-  char            ux_amount[23];
-
-} ;
+  union {
+    struct {
+      /* menu 0: 95-chars + "<monero: >"  + null */
+      char            ux_menu[112];
+      // address to display: 95-chars + null
+      char            ux_address[96];
+      // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
+      char            ux_amount[23];
+    };
+    struct {
+      char words[340];
+    };
+  };
+};
 typedef struct  monero_v_state_s monero_v_state_t;
 
 
@@ -181,6 +191,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_PUT_KEY                         0x22
 #define INS_GET_CHACHA8_PREKEY              0x24
 #define INS_VERIFY_KEY                      0x26
+#define INS_MANAGE_SEEDWORDS                0x28
 
 #define INS_SECRET_KEY_TO_PUBLIC_KEY        0x30
 #define INS_GEN_KEY_DERIVATION              0x32

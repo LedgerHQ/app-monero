@@ -71,6 +71,9 @@ int monero_dispatch() {
   case INS_GET_KEY:
     sw = monero_apdu_get_key();
     break;
+  case INS_MANAGE_SEEDWORDS:
+    sw = monero_apdu_manage_seedwords();
+    break;
 
    /* --- PROVISIONING--- */
   case INS_VERIFY_KEY:

@@ -83,6 +83,7 @@ void monero_init_private_key() {
   unsigned int  path[5];
   unsigned char seed[32];
 
+  // m/44'/128'/0'/0/0
   path[0] = 0x8000002C;
   path[1] = 0x80000080;
   path[2] = 0x80000000;
