@@ -9,10 +9,10 @@ Convert the 24 Ledger words to 25 Electrum/Monero words.
 
 ### Requirements
 
-libusb-dev
+libusb-1.0-0-dev
 libudev-dev
 
-     sudo apt install libusb-dev libudev-dev
+     sudo apt install libusb-1.0-0-dev libudev-dev
 
 The following python package are required:
 
