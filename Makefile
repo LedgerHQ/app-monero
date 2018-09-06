@@ -15,6 +15,7 @@
 #  limitations under the License.
 #*******************************************************************************
 
+-include Makefile.env
 ifeq ($(BOLOS_SDK),)
 $(error Environment variable BOLOS_SDK is not set)
 endif
@@ -33,7 +34,7 @@ endif
 
 APPVERSION_M=1
 APPVERSION_N=0
-APPVERSION_P=0
+APPVERSION_P=1
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 SPECVERSION="0.x.0"
@@ -112,7 +113,8 @@ load: all
 delete:
 	python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
 
-# import generic rules from the sdk
+# import generic rules from the user and SDK
+-include Makefile.rules
 include $(BOLOS_SDK)/Makefile.rules
 
 #add dependency on custom makefile filename
