@@ -19,11 +19,11 @@ The following python package are required:
 - Ecpy
 - pycrytodome
 - ledgerblue
-
-    pip3 install pycryptodomex
-    pip3 install ECPy
-    pip3 install ledgerblue
-
+```
+ pip3 install pycryptodomex
+ pip3 install ECPy
+ pip3 install ledgerblue
+```
 ### Usage
 
 In tools/python/ directory:
