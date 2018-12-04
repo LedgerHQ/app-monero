@@ -754,63 +754,57 @@ void monero_rng(unsigned char *r,  int len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+/* return 0 if ok, 1 if missing decimal */
 int monero_amount2str(uint64_t xmr,  char *str, unsigned int str_len) {
+    //max uint64 is 18446744073709551616, aka 20 char, plus dot
+    char stramount[22];
+    unsigned int offset,len,ov;
 
-    uint64_t xmr_rem;
-    int len,i, prune;
     os_memset(str,0,str_len);
 
+    os_memset(stramount,'0',sizeof(stramount));
+    stramount[21] = 0;
     //special case
-   if (xmr == 0) {
+    if (xmr == 0) {
         str[0] = '0';
         return 1;
     }
-    //How many str digit
-    xmr_rem = xmr;
-    len = 0;
-    while (xmr_rem != 0) {
-        len++;
-        xmr_rem /= 10;
-    }
 
     //uint64 units to str
-    str_len--;
-    prune = 1;
-    for (i = 0; i < len; i++) {
-        if ((len - (i + 1)) > (int)str_len) {
-            xmr = xmr / 10;
-            continue;
-        }
-        xmr_rem = xmr % 10;
+    // offset: 0 | 1-20     | 21
+    // ----------------------
+    // value:  0 | xmrunits | 0
+
+    offset = 20;
+    while (xmr) {
+        stramount[offset] = '0' + xmr % 10;
         xmr = xmr / 10;
-        str[len - (i + 1)] = xmr_rem + '0';
+        offset--;
     }
-    str[len] = 0;
-
-    //units to decimal xmr
-    len = 0;
-    while(str[len]) {
-        len++;
+    // offset: 0-7 | 8 | 9-20 |21
+    // ----------------------
+    // value:  xmr | . | units| 0
+    os_memmove(stramount, stramount+1, 8);
+    stramount[8] = '.';
+    offset = 0;
+    while((stramount[offset]=='0') && (stramount[offset] != '.')) {
+        offset++;
     }
-    if (len>12) {
-        os_memmove(str+len-12+1,str+len-12, 12);
-        str[len-12] = '.';
-        len++;
-    } else {
-        i = (12-len)+2;
-        os_memmove(str+i, str, len);
-        os_memset(str,'0',i);
-        str[1] = '.';
-        len += i;
+    if (stramount[offset] == '.') {
+        offset--;
     }
-
-    //trim trailing zero
-    len--;
-    while (str[len] == '0') {
-        str[len] = 0;
+    len = 20;
+    while((stramount[len]=='0') && (stramount[len] != '.')) {
         len--;
     }
-    return len;
+    len = len-offset+1;
+    ov = 0;
+    if (len>(str_len-1)) {
+        len = str_len-1;
+        ov = 1;
+    }
+    os_memmove(str, stramount+offset, len);
+    return ov;
 }
 
 /* ----------------------------------------------------------------------- */
