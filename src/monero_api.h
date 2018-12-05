@@ -67,12 +67,18 @@ int monero_apdu_close_tx(void);
 #define OFFSETOF(type, field)    ((unsigned int)&(((type*)NULL)->field))
 
 int monero_base58_public_key( char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress);
+
+/** unsigned varint amount to uint64 */
+uint64_t monero_vamount2uint64(unsigned char *binary);
+/** binary little endian unsigned  int amount to uint64 */
+uint64_t monero_bamount2uint64(unsigned char *binary);
 /** unsigned varint amount to str */
 int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len);
 /** binary little endian unsigned  int amount to str */
 int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len);
 /** uint64  amount to str */
 int monero_amount2str(uint64_t xmr,  char *str, unsigned int str_len);
+
 int monero_abort_tx() ;
 int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout);
 void ui_menu_validation_display(unsigned int value) ;

@@ -810,20 +810,27 @@ int monero_amount2str(uint64_t xmr,  char *str, unsigned int str_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len) {
+uint64_t monero_bamount2uint64(unsigned char *binary) {
     uint64_t xmr;
     int i;
     xmr = 0;
     for (i=7; i>=0; i--) {
         xmr = xmr*256 + binary[i];
     }
-    return monero_amount2str(xmr, str,str_len);
+    return xmr;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len) {
+int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len) {    
+    return monero_amount2str(monero_bamount2uint64(binary), str,str_len);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+uint64_t monero_vamount2uint64(unsigned char *binary) {
     uint64_t xmr,x;
    int shift = 0;
    xmr = 0;
@@ -838,5 +845,13 @@ int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len) 
    }
    x = *(binary)&0x7f;
    xmr = xmr + (x<<shift);
-   return monero_amount2str(xmr, str,str_len);
+   return xmr;
 }
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len) {
+   return monero_amount2str(monero_vamount2uint64(binary), str,str_len);
+}
+

@@ -123,8 +123,10 @@ int monero_apdu_mlsag_prehash_update() {
 
     if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
         //ask user
-        if (!changed) {
-            monero_bamount2str(v, G_monero_vstate.ux_amount, 15);
+        uint64_t amount;        
+        amount = monero_bamount2uint64(v);
+        if (!changed && amount) {
+            monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
             ui_menu_validation_display(0);
             return 0;
         }
