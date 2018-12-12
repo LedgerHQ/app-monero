@@ -22,8 +22,7 @@ endif
 include $(BOLOS_SDK)/Makefile.defines
 
 #Monero /44'/128'
-#--appFlags 0x40
-APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS) --appFlags 0x40
 APPNAME = "Monero"
 
 ifeq ($(TARGET_NAME),TARGET_BLUE)

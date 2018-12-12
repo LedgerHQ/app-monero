@@ -20,6 +20,8 @@
 void monero_install(unsigned char netId);
 void monero_init(void);
 void monero_init_private_key(void);
+void monero_wipe_private_key(void);
+
 void monero_init_ux(void);
 int monero_dispatch(void);
 
@@ -50,11 +52,11 @@ int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth(void);
 int monero_apdu_blind(void);
 int monero_apdu_unblind(void);
-int monero_apdu_close_tx(void);
 
 int monero_apdu_mlsag_prehash_init(void);
 int monero_apdu_mlsag_prehash_update(void);
 int monero_apdu_mlsag_prehash_finalize(void);
+int monero_apu_generate_txout_keys(void);
 
 int monero_apdu_mlsag_prepare(void);
 int monero_apdu_mlsag_hash(void);

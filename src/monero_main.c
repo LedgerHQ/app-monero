@@ -69,6 +69,11 @@ void monero_main(void) {
 
 
 unsigned char io_event(unsigned char channel) {
+  int s_before ;
+  int s_after  ;
+
+  s_before =  os_global_pin_is_validated();
+  
   // nothing done with the event, throw an error on the transport layer if
   // needed
   // can't have more than one tag in the reply, not supported yet.
@@ -105,6 +110,17 @@ unsigned char io_event(unsigned char channel) {
   if (!io_seproxyhal_spi_is_status_sent()) {
     io_seproxyhal_general_status();
   }
+
+  s_after =  os_global_pin_is_validated();
+  
+  if (s_before!=s_after) {
+    if (s_after == PIN_VERIFIED) {
+      monero_init_private_key();
+    } else {
+      monero_wipe_private_key();
+    }
+  }
+  
   // command has been processed, DO NOT reset the current APDU transport
   return 1;
 }

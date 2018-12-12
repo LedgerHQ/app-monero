@@ -23,6 +23,16 @@ int monero_dispatch() {
 
   int sw;
 
+
+  if (os_global_pin_is_validated() != PIN_VERIFIED) {
+    THROW(SW_SECURITY_STATUS_NOT_SATISFIED);
+    return SW_SECURITY_STATUS_NOT_SATISFIED;
+  }
+  if (G_monero_vstate.key_set == 0) {
+    THROW(SW_CONDITIONS_NOT_SATISFIED);
+    return SW_SECURITY_STATUS_NOT_SATISFIED;
+  }
+
   if ((G_monero_vstate.io_cla != 0x00) && (G_monero_vstate.io_cla != 0x10)) {
     THROW(SW_CLA_NOT_SUPPORTED);
     return SW_CLA_NOT_SUPPORTED;
@@ -34,8 +44,7 @@ int monero_dispatch() {
   }
 
   G_monero_vstate.options = monero_io_fetch_u8();
-  //monero_check_state_machine();
-
+  
   sw = 0x6F01;
 
   switch (G_monero_vstate.io_ins) {

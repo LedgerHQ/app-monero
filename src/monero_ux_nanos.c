@@ -339,7 +339,7 @@ unsigned int ui_export_viewkey_button(unsigned int button_mask, unsigned int but
 /* -------------------------------- NETWORK UX --------------------------------- */
 void ui_menu_network_action(unsigned int value);
 const ux_menu_entry_t ui_menu_network[] = {
-  {NULL,   NULL,                   0,        NULL, "It will reset", "the device!", 0, 0},
+  {NULL,   NULL,                   0,        NULL, "It will reset", "the application!", 0, 0},
   {NULL,   ui_menu_main_display,   0,                                      &C_badge_back, "Abort",         NULL,          61, 40},
   {NULL,   ui_menu_network_action, TESTNET,  NULL, "Test Network ",  NULL,          0, 0},
   {NULL,   ui_menu_network_action, STAGENET, NULL, "Stage Network", NULL,          0, 0},

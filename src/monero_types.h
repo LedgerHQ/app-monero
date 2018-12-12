@@ -17,6 +17,15 @@
 #define MONERO_TYPES_H
 
 #include "os_io_seproxyhal.h"
+
+#if CX_APILEVEL == 8
+#define PIN_VERIFIED (!0)
+#elif CX_APILEVEL == 9
+#define PIN_VERIFIED BOLOS_UX_OK
+#else
+#error CX_APILEVEL not  supported
+#endif
+
 /* cannot send more that F0 bytes in CCID, why? do not know for now
  *  So set up length to F0 minus 2 bytes for SW
  */
@@ -127,7 +136,11 @@ struct monero_v_state_s {
   cx_aes_key_t spk;
 
   /* Tx state machine */
-  unsigned int    tx_state; 
+  struct {
+  unsigned char key_set:1;
+   unsigned int tx_state: 4;
+   
+  }; 
 
   /* Tx key */
   unsigned char R[32];
