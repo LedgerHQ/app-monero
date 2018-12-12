@@ -33,11 +33,6 @@ int monero_apdu_blind() {
 
     monero_io_discard(1);
 
-    //Update Hkv
-    monero_sha256_amount_update(AKout,32);
-    monero_sha256_amount_update(k,32);
-    monero_sha256_amount_update(v,32);
-
     //blind mask
     monero_hash_to_scalar(AKout, AKout);
     monero_addm(k,k,AKout);

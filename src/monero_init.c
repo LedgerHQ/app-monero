@@ -38,16 +38,16 @@ void monero_init() {
     monero_install(MAINNET);
   }
 
+  G_monero_vstate.protocol = 0xff;
+
   //generate key protection
   monero_aes_generate(&G_monero_vstate.spk);
   //load key
   monero_init_private_key();
-  monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a);
-  monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b);
   //ux conf
   monero_init_ux();
   // Let's go!
-  G_monero_vstate.state = 42;
+  G_monero_vstate.state = STATE_IDLE;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -75,6 +75,7 @@ void monero_init_private_key() {
   switch(N_monero_pstate->key_mode) {
   case KEY_MODE_SEED:
     os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, G_monero_vstate.a);
+
     monero_keccak_F(seed,32,G_monero_vstate.b);
     monero_reduce(G_monero_vstate.b,G_monero_vstate.b);
     monero_keccak_F(G_monero_vstate.b,32,G_monero_vstate.a);

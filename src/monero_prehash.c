@@ -29,8 +29,8 @@
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_init() {
     if (G_monero_vstate.io_p2 == 1) {
-        monero_sha256_amount_final(NULL);
-        monero_sha256_amount_init();
+        monero_sha256_outkeys_final(NULL);
+        monero_sha256_outkeys_init();        
         monero_sha256_commitment_init();
         monero_keccak_init_H();
     }
@@ -56,46 +56,58 @@ int monero_apdu_mlsag_prehash_init() {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_update() {
     unsigned char is_subaddress;
-    unsigned char Aout[32];
-    unsigned char Bout[32];
-    #define aH    Aout
-    #define kG    Bout
-    #define AKout Aout
-    unsigned char C[32];
-    unsigned char v[32];
-    unsigned char k[32];
-    int changed;
-    changed = 0;
+    unsigned char *Aout;
+    unsigned char *Bout;
+    unsigned char is_change;
+    unsigned char AKout[32];
+    unsigned char *C;
+    unsigned char *v;
+    unsigned char *k;
 
+    unsigned char aH[32];
+    unsigned char kG[32];
+    
+
+    
+    //fetch destination
     is_subaddress = monero_io_fetch_u8();
-    monero_io_fetch(Aout,32);
-    monero_io_fetch(Bout,32);
+    if (G_monero_vstate.io_protocol_version == 2) {
+        is_change =  monero_io_fetch_u8();
+    } else {
+        is_change = 0;
+    }
+    Aout = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL,32);    
+    Bout = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(Bout,32);
+    /*AKout = G_monero_vstate.io_buffer+G_monero_vstate.io_offset;*/ monero_io_fetch_decrypt(AKout,32);  
+    C = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL, 32);
+    k = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL, 32);
+    v = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL, 32);
+
+    monero_io_discard(0);
+
+    if (G_monero_vstate.io_protocol_version == 2) {        
+        monero_sha256_outkeys_update(Aout,32);
+        monero_sha256_outkeys_update(Bout,32);
+        monero_sha256_outkeys_update(&is_change,1);
+        monero_sha256_outkeys_update(AKout,32);
+    }
+
     if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-        if (os_memcmp(Aout, G_monero_vstate.A, 32) || os_memcmp(Bout, G_monero_vstate.B, 32) ) {
+        if ((os_memcmp(Aout, G_monero_vstate.A, 32) == 0) && (os_memcmp(Bout, G_monero_vstate.B, 32) == 0)) {
+            is_change = 1;
+        }
+        if (is_change == 0) {
             //encode dest adress
             monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress);
-        } else {
-            changed = 1;
         }
     }
-    monero_io_fetch_decrypt(AKout,32);
-    monero_io_fetch(C,32);
-    monero_io_fetch(k,32);
-    monero_io_fetch(v,32);
-
-    monero_io_discard(1);
-
+    
     //update MLSAG prehash
     monero_keccak_update_H(k,32);
     monero_keccak_update_H(v,32);
 
-    //unblind amount, mask and update amount hash control
-    monero_sha256_amount_update(AKout,32);
-    monero_unblind(v,k, AKout);
-    monero_sha256_amount_update(k, 32);
-    monero_sha256_amount_update(v, 32);
-
     //check C = aH+kG
+    monero_unblind(v,k, AKout);
     monero_ecmul_G(kG, k);
     if (!cx_math_is_zero(v, 32)) {
         monero_ecmul_H(aH, v);
@@ -106,15 +118,17 @@ int monero_apdu_mlsag_prehash_update() {
     if (os_memcmp(C, k, 32)) {
         THROW(SW_SECURITY_COMMITMENT_CONTROL);
     }
-
     //update commitment hash control
     monero_sha256_commitment_update(C,32);
 
-    if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND)==0) {
-        //finalize and check amount hash_control
-        monero_sha256_amount_final(k);
-        if (os_memcmp(k, G_monero_vstate.KV, 32)) {
-            THROW(SW_SECURITY_AMOUNT_CHAIN_CONTROL);
+
+    if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND)==0) {     
+        if (G_monero_vstate.io_protocol_version == 2) {   
+        //finalize and check outkeys hash_control
+            monero_sha256_outkeys_final(k);
+            if (os_memcmp(k, G_monero_vstate.OUTK, 32)) {
+                THROW(SW_SECURITY_OUTKEYS_CHAIN_CONTROL);
+            }
         }
         //finalize commitment hash control
         monero_sha256_commitment_final(NULL);
@@ -125,7 +139,7 @@ int monero_apdu_mlsag_prehash_update() {
         //ask user
         uint64_t amount;        
         amount = monero_bamount2uint64(v);
-        if (!changed && amount) {
+        if (!is_change && amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
             ui_menu_validation_display(0);
             return 0;

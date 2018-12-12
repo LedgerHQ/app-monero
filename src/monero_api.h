@@ -47,6 +47,7 @@ int monero_apdu_get_subaddress_spend_public_key(void);
 int monero_apdu_get_subaddress_secret_key(void);
 
 int monero_apdu_open_tx(void);
+void monero_reset_tx(void);
 int monero_apdu_open_subtx(void) ;
 int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth(void);
@@ -162,12 +163,13 @@ int  monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsi
 #define monero_sha256_commitment_final(out) \
     monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_commitment, (out)?(out):G_monero_vstate.C)
 
-#define monero_sha256_amount_init() \
-    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_amount)
-#define monero_sha256_amount_update(buf,len) \
-    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_amount, (buf), (len))
-#define monero_sha256_amount_final(out) \
-    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_amount, (out)?(out):G_monero_vstate.KV)
+#define monero_sha256_outkeys_init() \
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_out_keys)
+#define monero_sha256_outkeys_update(buf,len) \
+    monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_keys, (buf), (len))
+#define monero_sha256_outkeys_final(out) \
+    monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_keys, (out)?(out):G_monero_vstate.OUTK)
+
 
 /**
  * LE-7-bits encoding. High bit set says one more byte to decode.

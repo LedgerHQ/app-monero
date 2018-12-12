@@ -96,13 +96,14 @@ enum device_mode {
 
 struct monero_v_state_s {
   unsigned char   state; 
+  unsigned char   protocol;
 
   /* ------------------------------------------ */
   /* ---                  IO                --- */
   /* ------------------------------------------ */
 
   /* io state*/
-  unsigned char   io_cla;
+  unsigned char   io_protocol_version;
   unsigned char   io_ins;
   unsigned char   io_p1;
   unsigned char   io_p2;
@@ -126,18 +127,18 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
   /* ---               Crypo                --- */
   /* ------------------------------------------ */
-
   unsigned char a[32];
   unsigned char A[32];
   unsigned char b[32];
   unsigned char B[32];
-
+  
   /* SPK */
   cx_aes_key_t spk;
 
   /* Tx state machine */
   struct {
   unsigned char key_set:1;
+   unsigned int tx_in_progress: 1;
    unsigned int tx_state: 4;
    
   }; 
@@ -153,8 +154,8 @@ struct monero_v_state_s {
   unsigned char c[32];
 
   /* -- track tx-in/out and commitment -- */
-  cx_sha256_t   sha256_amount;
-  unsigned char KV[32];
+  cx_sha256_t   sha256_out_keys;
+  unsigned char OUTK[32];
 
   cx_sha256_t   sha256_commitment;
   unsigned char C[32];
@@ -182,6 +183,9 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 
 #define SIZEOF_TX_VSTATE   (sizeof(monero_v_state_t) - OFFSETOF(monero_v_state_t, state))
+
+
+#define STATE_IDLE                          0xC0
 
 /* ---  ...  --- */
 #define IO_OFFSET_END                       (unsigned int)-1
@@ -229,6 +233,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_STEALTH                         0x76
 #define INS_BLIND                           0x78
 #define INS_UNBLIND                         0x7A
+#define INS_GEN_TXOUT_KEYS                  0x7B
 #define INS_VALIDATE                        0x7C
 #define INS_MLSAG                           0x7E
 #define INS_CLOSE_TX                        0x80
@@ -275,6 +280,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_COMMITMENT_CONTROL       0x6911
 #define SW_SECURITY_AMOUNT_CHAIN_CONTROL     0x6912
 #define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
+#define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6914
 
 #define SW_SECURITY_STATUS_NOT_SATISFIED     0x6982
 #define SW_FILE_INVALID                      0x6983

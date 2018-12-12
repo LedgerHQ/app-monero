@@ -19,32 +19,99 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-int monero_dispatch() {
 
-  int sw;
 
+void check_potocol()  {
+  /* the first command enforce the protocol version until application quits */
+  switch(G_monero_vstate.io_protocol_version) {
+   case 0x00: /* the first one: PCSC epoch */
+   case 0x02: /* protocol V2 */
+    if (G_monero_vstate.protocol == 0xff) {
+      G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
+    } 
+    if (G_monero_vstate.protocol == G_monero_vstate.io_protocol_version) {
+        break;
+    }
+    //unknown protocol or hot protocol switch is not allowed
+    //FALL THROUGH
+
+   default:
+    THROW(SW_CLA_NOT_SUPPORTED);
+    return ;
+  }
+}
+
+void check_ins_access() {
 
   if (os_global_pin_is_validated() != PIN_VERIFIED) {
     THROW(SW_SECURITY_STATUS_NOT_SATISFIED);
-    return SW_SECURITY_STATUS_NOT_SATISFIED;
+    return;
   }
   if (G_monero_vstate.key_set == 0) {
     THROW(SW_CONDITIONS_NOT_SATISFIED);
-    return SW_SECURITY_STATUS_NOT_SATISFIED;
+    return;
   }
 
-  if ((G_monero_vstate.io_cla != 0x00) && (G_monero_vstate.io_cla != 0x10)) {
-    THROW(SW_CLA_NOT_SUPPORTED);
-    return SW_CLA_NOT_SUPPORTED;
+  switch (G_monero_vstate.io_ins) {
+  case INS_RESET:
+  case INS_PUT_KEY:
+  case INS_GET_KEY:
+  case INS_VERIFY_KEY:
+  case INS_GET_CHACHA8_PREKEY:
+  case INS_GEN_KEY_DERIVATION:
+  case INS_DERIVATION_TO_SCALAR:
+  case INS_DERIVE_PUBLIC_KEY:
+  case INS_DERIVE_SECRET_KEY:
+  case INS_GEN_KEY_IMAGE:
+  case INS_SECRET_KEY_TO_PUBLIC_KEY:
+  case INS_SECRET_KEY_ADD:
+  case INS_SECRET_KEY_SUB:
+  case INS_GENERATE_KEYPAIR:
+  case INS_SECRET_SCAL_MUL_KEY:
+  case INS_SECRET_SCAL_MUL_BASE:
+  case INS_DERIVE_SUBADDRESS_PUBLIC_KEY:
+  case INS_GET_SUBADDRESS:
+  case INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY:
+  case INS_GET_SUBADDRESS_SECRET_KEY:
+  case INS_MANAGE_SEEDWORDS:
+  case INS_UNBLIND:
+    return;
+
+  case INS_OPEN_TX:
+  case INS_SET_SIGNATURE_MODE:
+    return;
+  case INS_CLOSE_TX:
+  case INS_STEALTH:
+  case INS_GEN_TXOUT_KEYS:
+  case INS_BLIND:
+  case INS_VALIDATE:
+  case INS_MLSAG:
+    if (G_monero_vstate.tx_in_progress == 1) {
+      return;
+    }    
+    break;
   }
+
+  THROW(SW_CONDITIONS_NOT_SATISFIED);
+  return;
+
+}
+
+int monero_dispatch() {
+
+  int sw;
+  
+  check_potocol();
+  check_ins_access();
 
   if (G_monero_vstate.io_ins == INS_RESET) {
-    monero_io_discard(0);
+    monero_init();
     return 0x9000;
   }
 
-  G_monero_vstate.options = monero_io_fetch_u8();
   
+  G_monero_vstate.options = monero_io_fetch_u8();
+
   sw = 0x6F01;
 
   switch (G_monero_vstate.io_ins) {
@@ -137,6 +204,11 @@ int monero_dispatch() {
     break;
   case INS_GET_SUBADDRESS_SECRET_KEY:
     sw = monero_apdu_get_subaddress_secret_key();
+    break;
+
+    /*--- TX OUT KEYS --- */
+  case INS_GEN_TXOUT_KEYS:
+    sw = monero_apu_generate_txout_keys();
     break;
 
     /* --- BLIND --- */

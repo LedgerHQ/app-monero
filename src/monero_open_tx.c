@@ -23,6 +23,19 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+void monero_reset_tx() {
+    os_memset(G_monero_vstate.r, 0, 32);
+    os_memset(G_monero_vstate.R, 0, 32);
+    monero_keccak_init_H();
+    monero_sha256_commitment_init();
+    monero_sha256_outkeys_init();
+    G_monero_vstate.tx_in_progress = 0;
+ }
+
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 /*
  * HD wallet not yet supported : account is assumed to be zero
  */
@@ -31,13 +44,11 @@ int monero_apdu_open_tx() {
 
     unsigned int account;
 
-    //monero_sha256_commitment_init();
-    monero_sha256_amount_init();
-
     account = monero_io_fetch_u32();
 
     monero_io_discard(1);
-
+    
+    monero_reset_tx();
     monero_rng(G_monero_vstate.r,32);
     monero_reduce(G_monero_vstate.r, G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
@@ -47,6 +58,7 @@ int monero_apdu_open_tx() {
 #ifdef DEBUG_HWDEVICE    
     monero_io_insert(G_monero_vstate.r,32);
 #endif
+    G_monero_vstate.tx_in_progress = 1;
     return SW_OK;
 }
 #undef OPTION_KEEP_r
@@ -55,7 +67,9 @@ int monero_apdu_open_tx() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_close_tx() {
-   monero_io_discard(0);
+   monero_io_discard(1);
+   monero_reset_tx();
+   G_monero_vstate.tx_in_progress = 0;
    return SW_OK;
 }
 
@@ -66,11 +80,7 @@ int monero_apdu_close_tx() {
  * Sub dest address not yet supported: P1 = 2 not supported
  */
 int monero_abort_tx() {
-    os_memset(G_monero_vstate.r, 0, 32);
-    os_memset(G_monero_vstate.R, 0, 32);
-    monero_keccak_init_H();
-    monero_sha256_commitment_init();
-    monero_sha256_amount_init();
+    monero_reset_tx();
     return 0;
 }
 

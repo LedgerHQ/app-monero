@@ -334,42 +334,18 @@ int monero_io_fetch_nv(unsigned char* buffer, int len) {
 
 int monero_io_do(unsigned int io_flags) {
 
-  //if pending input chaining
-  if (G_monero_vstate.io_cla & 0x01) {
-    goto in_chaining;
-  }
-
-
+  
+  // if IO_ASYNCH_REPLY has been  set,
+  //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
   if (io_flags & IO_ASYNCH_REPLY) {
-    // if IO_ASYNCH_REPLY has been  set,
-    //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
     monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
-  } else {
-    // --- full out chaining ---
+  } 
+  //else send data now
+  else {  
     G_monero_vstate.io_offset = 0;
-    while(G_monero_vstate.io_length > MAX_OUT) {
-      unsigned int tx,xx;
-      //send chunk
-      tx =  MAX_OUT-2;
-      os_memmove(G_io_apdu_buffer, G_monero_vstate.io_buffer+G_monero_vstate.io_offset, tx);
-      G_monero_vstate.io_length -= tx;
-      G_monero_vstate.io_offset += tx;
-      G_io_apdu_buffer[tx] = 0x61;
-      if (G_monero_vstate.io_length > MAX_OUT-2) {
-        xx = MAX_OUT-2;
-      } else {
-        xx = G_monero_vstate.io_length-2;
-      }
-      G_io_apdu_buffer[tx+1] = xx;
-      monero_io_exchange(CHANNEL_APDU, tx+2);
-      //check get response
-      if ((G_io_apdu_buffer[0] != 0x00) ||
-        (G_io_apdu_buffer[1] != 0xc0) ||
-        (G_io_apdu_buffer[2] != 0x00) ||
-        (G_io_apdu_buffer[3] != 0x00) ) {
-        THROW(SW_COMMAND_NOT_ALLOWED);
-        return 0;
-      }
+    if(G_monero_vstate.io_length > MAX_OUT) {
+      THROW(SW_FILE_FULL);
+      return SW_FILE_FULL;
     }
     os_memmove(G_io_apdu_buffer,  G_monero_vstate.io_buffer+G_monero_vstate.io_offset, G_monero_vstate.io_length);
 
@@ -377,55 +353,23 @@ int monero_io_do(unsigned int io_flags) {
       monero_io_exchange(CHANNEL_APDU |IO_RETURN_AFTER_TX, G_monero_vstate.io_length);
       return 0;
     } else {
-       monero_io_exchange(CHANNEL_APDU,  G_monero_vstate.io_length);
+      monero_io_exchange(CHANNEL_APDU,  G_monero_vstate.io_length);
     }
   }
 
-  //--- full in chaining ---
+  //--- set up received data  ---
   G_monero_vstate.io_offset = 0;
   G_monero_vstate.io_length = 0;
-  G_monero_vstate.io_cla = G_io_apdu_buffer[0];
+  G_monero_vstate.io_protocol_version = G_io_apdu_buffer[0];
   G_monero_vstate.io_ins = G_io_apdu_buffer[1];
   G_monero_vstate.io_p1  = G_io_apdu_buffer[2];
   G_monero_vstate.io_p2  = G_io_apdu_buffer[3];
   G_monero_vstate.io_lc  = 0;
   G_monero_vstate.io_le  = 0;
 
-  switch (G_monero_vstate.io_ins) {
-
-  case INS_GET_RESPONSE:
-    G_monero_vstate.io_le  = G_io_apdu_buffer[4];
-    break;
-
-  default:
-    G_monero_vstate.io_lc  = G_io_apdu_buffer[4];
-    os_memmove(G_monero_vstate.io_buffer, G_io_apdu_buffer+5, G_monero_vstate.io_lc);
-    G_monero_vstate.io_length =  G_monero_vstate.io_lc;
-    break;
-  }
-
-  while(G_monero_vstate.io_cla  & 0x10) {
-
-    G_io_apdu_buffer[0] = 0x90;
-    G_io_apdu_buffer[1] = 0x00;
-    monero_io_exchange(CHANNEL_APDU, 2);
-  in_chaining:
-    if (((G_io_apdu_buffer[0] & 0xEF) !=   (G_monero_vstate.io_cla& 0xEF)) ||
-        (G_io_apdu_buffer[1] != G_monero_vstate.io_ins) ||
-        (G_io_apdu_buffer[2] != G_monero_vstate.io_p1) ||
-        (G_io_apdu_buffer[3] != G_monero_vstate.io_p2) ) {
-      THROW(SW_COMMAND_NOT_ALLOWED);
-      return SW_COMMAND_NOT_ALLOWED;
-    }
-    G_monero_vstate.io_cla = G_io_apdu_buffer[0];
-    G_monero_vstate.io_lc  = G_io_apdu_buffer[4];
-    if ((G_monero_vstate.io_length + G_monero_vstate.io_lc) > MONERO_IO_BUFFER_LENGTH) {
-      return 1;
-    }
-    os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_length, G_io_apdu_buffer+5,  G_monero_vstate.io_lc);
-    G_monero_vstate.io_length +=  G_monero_vstate.io_lc;
-  }
-
+  G_monero_vstate.io_lc  = G_io_apdu_buffer[4];
+  os_memmove(G_monero_vstate.io_buffer, G_io_apdu_buffer+5, G_monero_vstate.io_lc);
+  G_monero_vstate.io_length =  G_monero_vstate.io_lc;
 
   return 0;
 }
