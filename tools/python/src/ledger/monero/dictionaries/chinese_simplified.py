@@ -1,4 +1,5 @@
 words = {
+    'online': False,
     'language_name': u"简体中文 (中国)",
     'english_language_name': u"Chinese (simplified)",
     'prefix_length': 1,

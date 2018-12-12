@@ -34,9 +34,9 @@ from .dictionaries.languages import monero_langs
 # =========================================================================================
 
 MAJOR = 0
-MINOR = 8
+MINOR = 9
 
-def usage():
+def usage(c):
     print('''
 Usage:
     python -m ledger.monero.seedconv online|offline
@@ -44,6 +44,7 @@ Usage:
     online:  Seed will be avalaible on the NanoS screen. It is possible to clear it directly from the device.
     offline: Seed is computed offline (NanoS is not required) from your 24 BIPS32 words
     ''')
+    sys.exit(c)
 
 def banner():
     print('''
@@ -51,7 +52,6 @@ def banner():
 Monero Seed Converter v%s.%s. Copyright (c) Ledger SAS 20018.
 Licensed under the Apache License, Version 2.0
 =============================================================
- 
         '''%(MAJOR,MINOR))
 
 def printdbg(*args):
@@ -66,18 +66,21 @@ def error(msg):
 def NKFDbytes(str):
     return  unicodedata.normalize('NFKD', str).encode()
 
-def retrieve_language():
+def retrieve_language(online):
     print('* Select Language')
-    i = 0
+    i = -1
     dflt = -1
     for l in monero_langs:
+        i += 1
         if len(l['words']) != 1626:
             print('Wrong dictionary length : %d. 1626 expected. Dictionary %s (%s) skipped.'
                   %(len(l['words']), l['language_name'], l['english_language_name']))
+        if online and not l['online']:
+            continue
         print('  %2d : %s (%s)'%(i, l['language_name'], l['english_language_name']))
         if  l['english_language_name'] == 'English':
             dflt = i
-        i += 1
+        
     n = input('Enter the number corresponding to the language of your choice (%d): '%dflt)
     if len(n) == 0:
         n = dflt
@@ -299,6 +302,8 @@ def get_online_seed(lang):
     send_dict_chunk(dongle,lang['prefix_length'], chunk, start, cnt)
     print()
     print("Done.")
+    print("Your key words are avalaible on your device under 'Settings/Show keyword' menu.")
+    print("You can delete it at the end of keyword list.")
 
 def clear_online_seed(lang):
     print("Open device...")
@@ -339,15 +344,15 @@ banner()
 
 if len(sys.argv) != 2 or sys.argv[1] not in ("-h","--help","online","offline"):
     print("Invalid argument")
-    usage()    
+    usage(1)    
     sys.exit(1)
 
-lang  = retrieve_language()
-
+if sys.argv[1] in ("-h","--help"):
+    usage(0)
 
 if sys.argv[1] == "online":
-    get_online_seed(lang)
+    get_online_seed(retrieve_language(True))
 elif sys.argv[1] == "offline":
-    get_offline_seed(lang)
+    get_offline_seed(retrieve_language(False))
 else:
-    usage()
+    usage(1)

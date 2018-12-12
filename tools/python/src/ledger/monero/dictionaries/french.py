@@ -1,4 +1,5 @@
 words = {
+    'online': True,
     'language_name': u"Français",
     'english_language_name': u"French",
     'prefix_length': 4,

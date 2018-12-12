@@ -1,5 +1,5 @@
 words = {
-
+    'online': False,
     'language_name': u"日本語",
     'english_language_name': u"Japanese",
     'prefix_length': 3,

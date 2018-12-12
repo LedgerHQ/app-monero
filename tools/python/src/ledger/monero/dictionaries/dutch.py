@@ -1,4 +1,5 @@
 words = {
+    'online': False,
     'language_name': u"Nederlands",
     'english_language_name': u"Dutch",
     'prefix_length': 4,

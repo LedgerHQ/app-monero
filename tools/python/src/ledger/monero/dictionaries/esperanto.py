@@ -1,4 +1,5 @@
 words = {
+    'online': True,
     'language_name': u"Esperanto",
     'english_language_name': u"Esperanto",
     'prefix_length': 4,

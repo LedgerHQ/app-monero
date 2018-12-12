@@ -1,4 +1,5 @@
 words = {
+    'online': False,
     'language_name': u"русский язык",
     'english_language_name': u"Russian",
     'prefix_length': 4,

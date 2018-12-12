@@ -1,4 +1,5 @@
 words = {
+    'online': True,
     'language_name': u"Lobjan",
     'english_language_name': u"Lobjan",
     'prefix_length': 4,
