@@ -24,7 +24,7 @@ import hmac
 from ecpy import curves
 from Cryptodome.Hash import keccak
 
-from ledgerblue.comm import getDongle
+
 
 from .dictionaries.languages import monero_langs
 
@@ -35,6 +35,7 @@ from .dictionaries.languages import monero_langs
 
 MAJOR = 0
 MINOR = 9
+DEBUG=False
 
 def usage(c):
     print('''
@@ -55,7 +56,8 @@ Licensed under the Apache License, Version 2.0
         '''%(MAJOR,MINOR))
 
 def printdbg(*args):
-    print(*args)
+    if DEBUG:
+        print(*args)
     return
 
 def error(msg):
@@ -302,7 +304,7 @@ def get_online_seed(lang):
     send_dict_chunk(dongle,lang['prefix_length'], chunk, start, cnt)
     print()
     print("Done.")
-    print("Your key words are avalaible on your device under 'Settings/Show keyword' menu.")
+    print("Your key words are avalaible on your device under 'Settings/Show 25 words' menu.")
     print("You can delete it at the end of keyword list.")
 
 def clear_online_seed(lang):
@@ -351,6 +353,7 @@ if sys.argv[1] in ("-h","--help"):
     usage(0)
 
 if sys.argv[1] == "online":
+    from ledgerblue.comm import getDongle
     get_online_seed(retrieve_language(True))
 elif sys.argv[1] == "offline":
     get_offline_seed(retrieve_language(False))
