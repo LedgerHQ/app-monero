@@ -43,11 +43,7 @@ void check_potocol()  {
 
 void check_ins_access() {
 
-  if (os_global_pin_is_validated() != PIN_VERIFIED) {
-    THROW(SW_SECURITY_STATUS_NOT_SATISFIED);
-    return;
-  }
-  if (G_monero_vstate.key_set == 0) {
+  if (G_monero_vstate.key_set != 1) {
     THROW(SW_CONDITIONS_NOT_SATISFIED);
     return;
   }
@@ -79,17 +75,22 @@ void check_ins_access() {
 
   case INS_OPEN_TX:
   case INS_SET_SIGNATURE_MODE:
+    if (os_global_pin_is_validated() != PIN_VERIFIED) {
+      break;
+    }
     return;
+
   case INS_CLOSE_TX:
   case INS_STEALTH:
   case INS_GEN_TXOUT_KEYS:
   case INS_BLIND:
   case INS_VALIDATE:
   case INS_MLSAG:
-    if (G_monero_vstate.tx_in_progress == 1) {
-      return;
-    }    
-    break;
+    if ((os_global_pin_is_validated() != PIN_VERIFIED) ||
+        (G_monero_vstate.tx_in_progress != 1)) {
+      break;
+    }
+    return;
   }
 
   THROW(SW_CONDITIONS_NOT_SATISFIED);

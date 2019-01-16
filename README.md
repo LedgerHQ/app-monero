@@ -6,14 +6,18 @@ Monero wallet application for Ledger Blue and Nano S
 
 # Revision 
 
+## v1.1.1
+
+Allow transaction parsing when screen is locked
+
 ## v1.1.0
 
 Initial Release
 
 Targeted Client: Monero 0.13.0.0+
 
-- Security fix: New protocol V2 for better destination control
 - Security fix: Screen lock management
+- Optimisation: New protocol V2 for future
 - Fix bug in large amount display that was truncated
 - Remove confirmation for zero amount (fake sweep change)
 - Better handling for change address to not display them
