@@ -33,7 +33,7 @@ endif
 
 APPVERSION_M=1
 APPVERSION_N=1
-APPVERSION_P=1
+APPVERSION_P=2
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 SPECVERSION="0.9.0"
@@ -94,6 +94,8 @@ CFLAGS   += -O3 -Os
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
+SCRIPT_LD:=script.ld
+
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc 

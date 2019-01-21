@@ -6,6 +6,10 @@ Monero wallet application for Ledger Blue and Nano S
 
 # Revision 
 
+## v1.1.2
+
+Fix stack overflow for 1.5.5 SDK
+
 ## v1.1.1
 
 Allow transaction parsing when screen is locked
