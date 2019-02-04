@@ -71,6 +71,7 @@ void check_ins_access() {
   case INS_GET_SUBADDRESS_SECRET_KEY:
   case INS_MANAGE_SEEDWORDS:
   case INS_UNBLIND:
+  case INS_STEALTH:
     return;
 
   case INS_OPEN_TX:
@@ -81,7 +82,6 @@ void check_ins_access() {
     return;
 
   case INS_CLOSE_TX:
-  case INS_STEALTH:
   case INS_GEN_TXOUT_KEYS:
   case INS_BLIND:
   case INS_VALIDATE:
