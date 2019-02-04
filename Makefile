@@ -32,8 +32,8 @@ ICONNAME = images/icon_monero.gif
 endif
 
 APPVERSION_M=1
-APPVERSION_N=1
-APPVERSION_P=3
+APPVERSION_N=2
+APPVERSION_P=0
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 SPECVERSION="0.9.0"
@@ -75,16 +75,16 @@ DEFINES   += CUSTOM_IO_APDU_BUFFER_SIZE=\(255+5+64\)
 #DEFINES   += IONOCRYPT
 #DEFINES   += TESTKEY
 
-DEFINES   += USB_SEGMENT_SIZE=64 
+DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
-DEFINES   += HAVE_IO_U2F HAVE_U2F 
+DEFINES   += HAVE_IO_U2F HAVE_U2F
 
 ##############
 # Compiler #
 ##############
 #GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
 #CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-CC       := $(CLANGPATH)clang 
+CC       := $(CLANGPATH)clang
 
 #CFLAGS   += -O0 -gdwarf-2  -gstrict-dwarf
 CFLAGS   += -O3 -Os
@@ -98,7 +98,7 @@ SCRIPT_LD:=script.ld
 
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc 
+LDLIBS   += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs

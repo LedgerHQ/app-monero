@@ -1,6 +1,6 @@
 
 ..
-   Copyright 2017-2018 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
+   Copyright 2017-2019 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -169,8 +169,6 @@ potential malware on the Host. To achieve that we propose to use a Ledger NanoS 
 factor trusted device. Such a device has small amount of memory and is not capable of holding the entire transaction or building the required proofs in RAM. So we need to split the process between the
 host and the NanoS. This draft note explain how.
 
-Moreover this draft note also anticipates a future client feature and proposes a solution to integrate the
-PR2056 for sub-address. This proposal is based on kenshi84 fork, branch sub-address-v2.
 
 To summarize, the signature process is:
 
@@ -289,7 +287,7 @@ All command follow the generic ISO7816 command format, with the following meanin
 +------+--------+------------------------------------------+
 | byte | length | description                              |
 +======+========+==========================================+
-| CLA  | 01     | Always zero '00'                         |
+| CLA  | 01     | Protocol version                         |
 +------+--------+------------------------------------------+
 | INS  | 01     | Command                                  |
 +------+--------+------------------------------------------+
@@ -364,6 +362,8 @@ Put keys
 
 Put sender key pairs.
 
+This command allows to set specific key on the device and should only be used for testing purpose.
+
 The application shall:
 
    | check  |A| ==  |aa|.|G|
@@ -376,7 +376,7 @@ The application shall:
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 32  | 00  | 00  | 80   |                                           |
+| 02  | 32  | 00  | 00  | 80   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -404,19 +404,23 @@ The application shall:
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-|        |                                                                 |
 +--------+-----------------------------------------------------------------+
 
 
 Get Public Key
 ~~~~~~~~~~~~~~
 
+
+**Description**
+
+Retrieves public base58 encoded public key.
+
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 30  | 01  | 00  | 80   |                                           |
+| 02  | 30  | 01  | 00  | 80   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -437,15 +441,23 @@ Get Public Key
 | 5f     | Base58 encoded public key                                       |
 +--------+-----------------------------------------------------------------+
 
-Get Secret Keys
-~~~~~~~~~~~~~~~
+Get Private View Keys
+~~~~~~~~~~~~~~~~~~~~~
+
+**Description**
+
+Retrieves the private view key in order to accelarate the blockchain scan.
+
+The device should ask the user to accept or reject this export. If rejected
+the client will use the device for scanning the blockchain.
+
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 30  | 02  | 00  | 80   |                                           |
+| 02  | 30  | 02  | 00  | 80   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -463,9 +475,7 @@ Get Secret Keys
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-| 20     | Encrypted view key                                              |
-+--------+-----------------------------------------------------------------+
-| 20     | Encrypted send key                                              |
+| 20     | secret view key                                                 |
 +--------+-----------------------------------------------------------------+
 
 
@@ -480,7 +490,8 @@ Low level crypto commands
 Overview
 --------
 
-TODO
+This section describe lowlevel commands that can be used in a transaction or not.
+
 
 Commands
 --------
@@ -490,7 +501,7 @@ Derive Subaddress Public Key
 
 **Monero**
 
-    crypto_ops::derive_subaddress_public_key
+crypto_ops::derive_subaddress_public_key.
 
 **Description**
 
@@ -506,7 +517,7 @@ return |P|'
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 46  | 00  | 00  | 00   |                                           |
+| 02  | 46  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -539,7 +550,7 @@ Get Subaddress Spend Public Key
 
 **Monero**
 
-    get_subaddress_spend_public_key
+device_default::get_subaddress_spend_public_key.
 
 **Description**
 
@@ -559,7 +570,7 @@ return |D|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 4a  | 00  | 00  | 00   |                                           |
+| 02  | 4a  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -587,10 +598,11 @@ Get Subaddress
 
 **Monero**
 
+device_default::get_subaddress_secret_key.
 
 **Description**
 
-get_subaddress_secret_key:
+
 
     | compute  |s|  = |H|("SubAddr" \| |a| \| |idx| )
     | compute  |x|  = |s| % |order|
@@ -607,7 +619,7 @@ return |C|, |D|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 48  | 00  | 00  | 00   |                                           |
+| 02  | 48  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -654,7 +666,7 @@ return |ed|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 4c  | 00  | 00  | 39   |                                           |
+| 02  | 4c  | 00  | 00  | 39   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -684,18 +696,34 @@ Verify Keys
 
 **Monero**
 
+device_default::verify_keys.
 
 **Description**
 
+Verify that the provided private key and public key match.
+
+
+    | compute |x| =  |dec|[|spk|](|ex|)
+    | compute |xP| = |x|.|G|
+    | check   |xP| == |P|
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 26  | 00  | 00  | 00   |                                           |
+| 02  | 26  | xx  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
+if P1 is '00' the provided public key will be used.
+
+if P1 is '01' the public view is key will be used and the provided public key will
+be 'ignored'
+
+if P is '02' the public spend is key will be used and the provided public key will
+be 'ignored'
+
+Any other value will be rejected.
 
 **Command data**
 
@@ -704,7 +732,9 @@ Verify Keys
 +========+=================================================================+
 | 01     | 00                                                              |
 +--------+-----------------------------------------------------------------+
-| 00     |                                                                 |
+| 20     |  secret key |ex|                                                |
++--------+-----------------------------------------------------------------+
+| 20     |  public key or '00'\*32      |P|                                |
 +--------+-----------------------------------------------------------------+
 
 
@@ -713,9 +743,6 @@ Verify Keys
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 00     |                                                                 |
-+--------+-----------------------------------------------------------------+
-| 00     |                                                                 |
 +--------+-----------------------------------------------------------------+
 
 Scalarmult Key
@@ -723,9 +750,11 @@ Scalarmult Key
 
 **Monero**
 
-rct::scalarmultKey
+rct::scalarmultKey.
 
 **Description**
+
+Multiply a secret scalar with a public key.
 
     | compute |x| =  |dec|[|spk|](|ex|)
     | compute |xP| = |x|.|P|
@@ -738,7 +767,7 @@ return |xP|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 42  | 00  | 00  | 00   |                                           |
+| 02  | 42  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -760,7 +789,7 @@ return |xP|
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 00     | new public key |xP|                                             |
+| 20     | new public key |xP|                                             |
 +--------+-----------------------------------------------------------------+
 
 
@@ -769,22 +798,25 @@ Scalarmult Base
 
 **Monero**
 
-rct::scalarmultBase
+rct::scalarmultBase.
 
 
 **Description**
+
+Multiply a secret scalar with the publis base point |G|.
 
     | compute |x| =  |dec|[|spk|](|ex|)
     | compute |xG| = |x|.|G|
 
 return |xG|
 
+
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 44  | 00  | 00  | 00   |                                           |
+| 02  | 44  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -807,7 +839,7 @@ return |xG|
 +========+=================================================================+
 | 00     |                                                                 |
 +--------+-----------------------------------------------------------------+
-| 00     | new public key |xG|                                             |
+| 20     | new public key |xG|                                             |
 +--------+-----------------------------------------------------------------+
 
 Secret Add
@@ -815,7 +847,7 @@ Secret Add
 
 **Monero**
 
-
+sc_add
 
 **Description**
 
@@ -824,14 +856,14 @@ Secret Add
     | compute |x|  = |x1| + |x2|
     | compute |ex| = |enc|[|spk|](|x|)
 
-return |ex|
+return |ex|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 3c  | 00  | 00  | 00   |                                           |
+| 02  | 3c  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -863,21 +895,24 @@ Generate Keys
 
 **Monero**
 
+crypto::generate_keys.
 
 **Description**
+
+Generate a new keypair and return it. The secret key is returned encrypted.
 
     | generate |x|
     | compute  |xP| = |x|.|P|
     | compute  |ex| = |enc|[|spk|](|x|)
 
-return |P|, |ex|
+return |P|, |ex|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 40  | 00  | 00  | 00   |                                           |
+| 02  | 40  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -896,9 +931,9 @@ return |P|, |ex|
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 00     | public key |P|                                                  |
+| 20     | public key |P|                                                  |
 +--------+-----------------------------------------------------------------+
-| 00     | encrypted secret key |ex|                                       |
+| 20     | encrypted secret key |ex|                                       |
 +--------+-----------------------------------------------------------------+
 
 Generate Key Derivation
@@ -906,22 +941,25 @@ Generate Key Derivation
 
 **Monero**
 
+crypto::generate_key_derivation.
 
 **Description**
+
+Compute the secret key derivation and returned it encrypted.
 
  | compute  |x|    = |dec|[|spk|](|ex|)
  | compute  |D|    = |x|.|P|
  | compute  |Drv|  = 8.|D|
  | compute  |eDrv| = |enc|[|spk|](|Drv|)
 
-return |eDrv|
+return |eDrv|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 32  | 00  | 00  | 00   |                                           |
+| 02  | 32  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -952,23 +990,25 @@ Derivation To Scalar
 
 **Monero**
 
-derivation_to_scalar
+crypto::derivation_to_scalar.
 
 **Description**
+
+Transform a secret derivation data to a secret scalar according to its index.
 
     | compute  |Drv|  = |dec|[|spk|](|eDrv|)
     | compute  |s|    = |H|(|Drv| \| varint(|idx|))
     | compute  |s|    = |s| % |order|
     | compute  |es|   = |enc|[|spk|](|s|)
 
-return |es|
+return |es|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 34  | 00  | 00  | 00   |                                           |
+| 02  | 34  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -999,9 +1039,11 @@ Derive Secret Key
 
 **Monero**
 
-derive_scecret_key
+crypto::derive_secret_key.
 
 **Description**
+
+Compute a new secret key from some secret derivation data, a parent secret key and its index.
 
     | compute  |eDrv| = |dec|[|spk|](|eDrv|)
     | compute  |x|    = |dec|[|spk|](|ex|)
@@ -1016,14 +1058,14 @@ then:
     | compute  |x|'    = (|x|+|s|) % |order|
     | compute  |ex|'   = |enc|[|spk|](|x|)
 
-return |ex|
+return |ex|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 38  | 00  | 00  | 00   |                                           |
+| 02  | 38  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1047,19 +1089,20 @@ return |ex|
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 32     | encrypted drevived secret key |ex|'                             |
+| 32     | encrypted derived secret key |ex|'                              |
 +--------+-----------------------------------------------------------------+
 
 
 Derive Public Key
 ~~~~~~~~~~~~~~~~~
 
-
 **Monero**
 
-derive_public_key
+crypto::derive_public_key.
 
 **Description**
+
+Compute a new public key from some secret derivation data, a parent secret key and its index.
 
     | compute  |eDrv| = |dec|[|spk|](|eDrv|)
 
@@ -1072,14 +1115,14 @@ then:
 
     | compute  |P|'   = |P|+|s|.|G|
 
-return |P|
+return |P|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 36  | 00  | 00  | 00   |                                           |
+| 02  | 36  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1112,21 +1155,23 @@ Secret Key To Public Key
 
 **Monero**
 
-secret_key_to_public_key
+crypto::secret_key_to_public_key.
 
 **Description**
+
+Compute a public key from secret a secret key.
 
      | compute  |x| = |dec|[|spk|](|ex|)
      | compute  |P| = |x|.|G|
 
-return |P|
+return |P|.
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 30  | 00  | 00  | 00   |                                           |
+| 02  | 30  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1153,19 +1198,20 @@ return |P|
 Generate Key Image
 ~~~~~~~~~~~~~~~~~~
 
-
 **Monero**
 
-generate_key_image
+crypto::generate_key_image.
 
 **Description**
+
+Compute the key image of a key pair.
 
      | compute  |x|   = |dec|[|spk|](|ex|)
      | compute  |s|   = |H|(|P|')
      | compute  |P|'  = ge_from_fe(|s|)
      | compute  |Img| = |x|.|P|'
 
-return |Img|
+return |Img|.
 
 
 **Command**
@@ -1173,7 +1219,7 @@ return |Img|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  |  LC  | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 3a  | 00  | 00  | 00   |                                           |
+| 02  | 3a  | 00  | 00  | 00   |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1195,7 +1241,7 @@ return |Img|
 +--------+-----------------------------------------------------------------+
 | Length |    Value                                                        |
 +========+=================================================================+
-| 32     | key image  |Img|                                                 |
+| 32     | key image  |Img|                                                |
 +--------+-----------------------------------------------------------------+
 
 
@@ -1206,33 +1252,37 @@ High Level Transaction command
 Transaction process overview
 ----------------------------
 
-The transaction is mainly generated in construct_tx_and_get_tx_key (or construct_tx) and construct_tx_with_tx_key
+The transaction is mainly generated in construct_tx_and_get_tx_key (or construct_tx) and
+construct_tx_with_tx_key
 functions.
 
-First, a new transaction keypai , |r.R| is generated.
+First, a new transaction keypair |r.R| is generated.
 
 Then, the stealth payment id is processed if any.
 
 Then, for each input transaction to spend, the input key image is retrieved.
 
-Then, for each output transaction, the destination key and the change address are computed.
+Then, for each output transaction, the epehemeral destination key and the blinding key
+amount |AKout| are computed.
 
 
 Once |Tin| and |Tout| keys are set up, the genRCT/genRctSimple function is called.
 
 First a commitment |Ct| to each |v| amount and its associated range proof are
-computed to ensure the |v| amount confidentiality. The commitment and its range proof do not imply any secret and generate |Ct|, |k| such |Ctf|.
+computed to ensure the |v| amount confidentiality. The commitment and its range proof
+do not imply any secret and generate |Ct|, |k| such |Ctf|.
 
-Then |k| and |v| are blinded by using the |AKout| which is only known in an encrypted form by the host.
+Then |k| and |v| are blinded by using the |AKout| which is only known in an encrypted
+form by the host.
 
 After all commitments have been setup, the confidential ring signature happens.
 This signature is performed by calling proveRctMG which then calls MLSAG_Gen.
 
 At this point the amounts and destination keys must be validated on the NanoS. This
-information is embedded in the message to sign by calling get_pre_mlsag_hash, prior to calling
-ProveRctMG. So the get_pre_mlsag_hash
-function will have to be modified to serialize the rv transaction to NanoS which
-will validate the tuple <amount,dest> and compute the prehash.
+information is embedded in the message to sign by calling get_pre_mlsag_hash, prior
+to calling ProveRctMG. So the get_pre_mlsag_hash function will have to be modified to
+serialize the rv transaction to NanoS which will validate the tuple <amount,dest> and
+compute the prehash.
 The prehash will be kept inside NanoS to ensure its integrity.
 Any further access to the prehash will be delegated.
 
@@ -1241,17 +1291,16 @@ some matrix and vectors to prepare the signature which is performed by the final
 call MLSAG_Gen.
 
 During this last step some ephemeral key pairs are generated : |ai|, |aGi|.
-All |ai| must be kept secret to protect the x in keys.
+All |ai| must be kept secret to protect the |xin| keys.
 Moreover we must avoid signing arbitrary values during the final loop.
 
 In order to achieve this validation, we need to approve the original destination
-address |Aout|, which is not recoverable from P out . Here the only solution is
-to pass the original destination with the |k|, |v|. (Note this implies to add all
-|Aout| in the rv structure).
-So with |Aout|, we are able to recompute associated |Dout| (see step 3),
-unblind |k| and |v| and then verify the commitment |Ctf|.
-If |Ct| is verified and user validate |Aout| and |v|, |lH| is updated and we process
-the next output.
+address |Aout||Bout|, which is not recoverable from P out . Here the only solution is
+to pass the original destination with the |k|, |v|, |AKout|.
+
+Unblind |k| and |v| and then verify the commitment |Ctf|.
+If |Ct| is verified and user validate |Aout|,|Bout| and |v|, |lH| is updated and we
+process the next output.
 
 
 Transaction Commands
@@ -1262,14 +1311,13 @@ Open TX
 ~~~~~~~~
 
 
-**Monero**
-
 **Description**
 
 Open a new transaction. Once open the device impose a certain order in subsequent commands:
 
   - OpenTX
   - Stealth
+  - Get TX output keys
   - Blind \*
   - Initialize MLSAG-prehash
   - Update MLSAG-prehash \*
@@ -1279,16 +1327,16 @@ Open a new transaction. Once open the device impose a certain order in subsequen
   - MLSAG sign
   - CloseTX
 
-During this sequence low level API remains available, but no other transaction can be started until the current one
-is finished or aborted.
+During this sequence low level API remains available, but no other transaction can be started until the current one is finished or aborted.
 
+   | Initialize |lH|
 
 **Command**
 
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 70  | 01  | cnt | var  |                                           |
+| 02  | 70  | 01  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1313,9 +1361,6 @@ is finished or aborted.
 Set Signature Mode
 ~~~~~~~~~~~~~~~~~~
 
-
-**Monero**
-
 **Description**
 
 Set the signature to 'fake' or 'real'. In fake mode a random key is used to signed
@@ -1327,7 +1372,7 @@ the transaction and no user confirmation is requested.
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 72  | 01  | cnt | var  |                                           |
+| 02  | 72  | 01  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1350,17 +1395,105 @@ the transaction and no user confirmation is requested.
 +--------+-----------------------------------------------------------------+
 
 
+
+Get TX output keys
+~~~~~~~~~~~~~~~~~~
+
+
+**Description**
+
+.. |nak|      replace:: :math:`\mathit{nak}`
+.. |txsec|    replace:: :math:`\mathit{tx_{sec}}`
+
+Compute addtional key |P| if needed,  amount key blinding and ephemeral destination key.
+
+   | if |nak| :
+   |     if |sub| :
+   |         compute |P|' = |txsec|.|Bout|
+   |     else
+   |         compute |P|' = |txsec|.|G|
+   |
+   | if |chgaddr| :
+   |     compute |Drv| = |a|.R
+   | else
+   |     compute |Drv| = |txsec|.|Aout|
+   |
+   | compute |s|      = |H|(|Drv| \| varint(|idx|))
+   | compute |AKout|  = |s| % |order|
+   | compute |eAKout| = |enc|[|spk|](|AKout|)
+   |
+   | compute  |s| = |H|(|Drv| \| varint(|idx|))
+   | compute  |s| = |s| % |order|
+   | compute  |P| = |Bout|+|s|.|G|
+   |
+   | update |lH| : |Hupd|(|Aout|,|Bout|,|is_change|,|AKout|)
+   | if option 'last' is set:
+   |   finalize |lH|
+
+The application returns
+
+**Command**
+
++-----+-----+-----+-----+------+-------------------------------------------+
+| CLA | INS | P1  | P2  | LC   | data description                          |
++=====+=====+=====+=====+======+===========================================+
+| 02  | 7E  | 01  | cnt | var  |                                           |
++-----+-----+-----+-----+------+-------------------------------------------+
+
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| 04     | tx version                                                      |
++--------+-----------------------------------------------------------------+
+| 20     | tx key |txsec|                                                  |
++--------+-----------------------------------------------------------------+
+| 20     | destination public view key |Aout|                              |
++--------+-----------------------------------------------------------------+
+| 20     | destination public spend key |Bout|                             |
++--------+-----------------------------------------------------------------+
+| 04     | output index  |idx|                                             |
++--------+-----------------------------------------------------------------+
+| 01     | is change address                                               |
++--------+-----------------------------------------------------------------+
+| 01     | is subaddress                                                   |
++--------+-----------------------------------------------------------------+
+| 01     | need additional key |nak|                                       |
++--------+-----------------------------------------------------------------+
+
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 20     | Additional Key |P|' (optional)                                  |
++--------+-----------------------------------------------------------------+
+| 20     | encrypted amouny key blinding |eAKout|                          |
++--------+-----------------------------------------------------------------+
+| 20     | ephemeral destination key |P|                                   |
++--------+-----------------------------------------------------------------+
+
+
 Blind Amount and Mask
 ~~~~~~~~~~~~~~~~~~~~~~
 
 
-**Monero**
-
 **Description**
 
    | compute |AKout| = |dec|[|spk|](|eAKout|)
-   | compute |ek|    = |k| + |H|(|AKout|)
-   | compute |ev|    = |k| + |H|(|H|(|AKout|))
+   | if scheme v1
+   |   compute |ek|    = |k| + |H|(|AKout|)
+   |   compute |ev|    = |k| + |H|(|H|(|AKout|))
+   | else if scheme v2
+   |   compute |k|   = |H|("commitment_mask"||AKout|)) % |order|
+   |   compute |s|   = |H|("amount"||Drv)
+   |   compute |v|[0:7]   = |ev|[0:7] ^ |s|[0:7]
+
    | update |lH|     : |Hupd|(|v| \| |k| \| |AKout|)
    | if option 'last' is set:
    |   finalize |lH|
@@ -1372,7 +1505,7 @@ The application returns |ev|, |ek|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 7E  | 01  | cnt | var  |                                           |
+| 02  | 7E  | 01  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1390,6 +1523,17 @@ The application returns |ev|, |ek|
 | 20    | encrypted private derivation data |eAKout|                       |
 +--------+-----------------------------------------------------------------+
 
+*specific options*
+
++---------------+----------------------------------------------------------+
+| ``-------xx`` | Commitment scheme version                                |
+|               |                                                          |
+| ``-------10`` | BulletProofV2                                            |
+|               |                                                          |
+| ``-------00`` | Prior to BulletProofV2                                   |
++---------------+----------------------------------------------------------+
+
+Note: Whatever the mask scheme is, |k| and |v| are always transmited as 32 bytes.
 
 **Response data**
 
@@ -1425,7 +1569,7 @@ header:
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 82  | 01  | cnt  | var  |                                           |
+| 02  | 82  | 01  | cnt  | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1455,7 +1599,6 @@ if ``cnt>1`` :
 Update MLSAG-prehash
 ^^^^^^^^^^^^^^^^^^^^
 
-
 **Description**
 
 On the second step the application receives amount and destination and check
@@ -1463,16 +1606,26 @@ values. It also re-compute the |lH| value to ensure consistency with steps 3 and
 So for each command received, do:
 
    | compute |Drv| =  8.|rr|.|Aout|
-   | compute |k|   = |ek| - |H|(|Drv|)
-   | compute |v|   = |ek| - |H|(|H|(|Drv|))
+   | if scheme v1
+   |   compute |k|   = |ek| - |H|(|Drv|)
+   |   compute |v|   = |ev| - |H|(|H|(|Drv|))
+   | else if scheme v2
+   |   compute |k|   = |H|("commitment_mask"||Drv|)) % |order|
+   |   compute |s|   = |H|("amount"||Drv)
+   |   compute |v|[0:7]   = |ev|[0:7] ^ |s|[0:7]
+   |
    | check |Ctf|
-
+   |
    | ask user validation of |Aout|, |Bout|
    | ask user validation of |v|
-
+   |
    | update |ctH| : |Hupd|(|Ct|)
-   | update |lH|' : |Hupd|(|v| \| |k| \| |Drv|)
-
+   |
+   | update |lH|' : |Hupd|(|Aout|,|Bout|,|is_change|,|AKout|)
+   | if option 'last' is set:
+   |   finalize |lH|'
+   |   finalize |lH|' == |lH|
+   |
    | update |mlsagH| : |Hupd|(:math:`ecdhInfo`)
 
 **Command**
@@ -1480,7 +1633,7 @@ So for each command received, do:
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 82  | 02  | cnt | var  |                                           |
+| 02  | 82  | 02  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1493,9 +1646,13 @@ So for each command received, do:
 +--------+-----------------------------------------------------------------+
 | 01     | 1 if sub-address, 0 else                                        |
 +--------+-----------------------------------------------------------------+
-| 20     | Real destination view key |Aout|                                |
+| 01     | 1 if change-address, 0 else                                     |
 +--------+-----------------------------------------------------------------+
-| 20     | Real destination spend key |Bout|                               |
+| 20     | Real destination public view key |Aout|                         |
++--------+-----------------------------------------------------------------+
+| 20     | Real destination public spend key |Bout|                        |
++--------+-----------------------------------------------------------------+
+| 20     | encrypted amount key blinding |AKout|                           |
 +--------+-----------------------------------------------------------------+
 | 20     | |Ct| of |v|,|k|                                                 |
 +--------+-----------------------------------------------------------------+
@@ -1507,6 +1664,18 @@ So for each command received, do:
 |        | | }                                                             |
 |        |                                                                 |
 +--------+-----------------------------------------------------------------+
+
+*specific options*
+
++---------------+----------------------------------------------------------+
+| ``-------xx`` | Mask scheme version                                      |
+|               |                                                          |
+| ``-------10`` | V2: short amount (8 bytes)                               |
+|               |                                                          |
+| ``-------00`` | V1: long amount  (32 bytes)                              |
++---------------+----------------------------------------------------------+
+
+Note: Whatever the mask scheme is, |v| is always transmited as 32 bytes.
 
 
 Finalize MLSAG-prehash
@@ -1535,7 +1704,7 @@ Keep |mlsagH|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 82  | 03  | 00  | var  |                                           |
+| 02  | 82  | 03  | 00  | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1607,7 +1776,7 @@ return |eai| , |aGi| [ |aHi|, |IIi|]
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 84  | 01  | cnt | var  |                                           |
+| 02  | 84  | 01  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1678,7 +1847,7 @@ Compute the last matrix ring parameter:
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 84  | 02  | 00  | var  |                                           |
+| 02  | 84  | 02  | 00  | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1720,7 +1889,7 @@ return |ss|
 +-----+-----+-----+-----+------+-------------------------------------------+
 | CLA | INS | P1  | P2  | LC   | data description                          |
 +=====+=====+=====+=====+======+===========================================+
-| 00  | 84  | 03  | cnt | var  |                                           |
+| 02  | 84  | 03  | cnt | var  |                                           |
 +-----+-----+-----+-----+------+-------------------------------------------+
 
 
@@ -1756,6 +1925,9 @@ for a transaction with one output and 1,7 Kilobytes for a transaction with ten o
 The proposed NanoS interaction should be enhanced with a strong state machine to avoid multiple
 requests for the same data and limit any potential cryptanalysis.
 
+Annexes
+=======
+
 References
 ----------
 
@@ -1765,3 +1937,83 @@ References
    | [4] `<https://www.reddit.com/r/Monero/comments/6invis/ledger_hardware_wallet_monero_integration>`_
    | [5] `<https://github.com/moneroexamples>`_
 
+
+
+Helper functions
+----------------
+
+**DeriveDH**
+
+   | *input* : :math:`r , P`
+   | *output*:  :math:`\mathfrak{D}`
+   | *Monero*: generate_key_derivation
+   |
+   |      :math:`\mathfrak{D} = r.P`
+   |      :math:`\mathfrak{D} = 8.\mathfrak{D}`
+   |
+
+**DerivePub**
+
+   | *input*: :math:`\mathfrak{D},B`
+   | *output*: :math:`P`
+   | *Monero*: derive_public_key
+   |
+   |      :math:`P` = |Hps|:math:`(\mathfrak{D}).G+B`
+   |
+
+
+**DerivePriv**
+
+   | *input*: D,b
+   | *output*: x
+   | *Monero*: derive_private_key
+   |
+   |      :math:`x` = |Hps|:math:`(\mathfrak{D})+b`
+   |
+
+**DeriveImg**
+
+   | *input*: :math:`x,P`
+   | *output*: :math:`I`
+   | *Monero*:
+   |
+   |      :math:`I` = |xin|.|Hp|(|Pin|)
+   |
+
+**|Hs|**
+
+   | *input*: :math:`raw`
+   | *output*: :math:`s`
+   |
+   |
+   |      |s| = |H|(:math:`raw`)
+   |
+
+**|Hps|**
+
+   | *input*: :math:`D, idx`
+   | *output*: :math:`s`
+   |
+   |      :math:`data` = :math:`point2bytes(D) | varint(idx)`
+   |      |s| = |H|(:math:`data`)
+   |
+
+
+**|Hp|**
+ta
+   | *input*: :math:`P`
+   | *output*: :math:`Q`
+   |
+   |      :math:`data` = :math:`KindOfMagic(P)`
+
+
+**DeriveAES**
+
+This is just a quick proposal. Any other KDF based on said standard may take place here.
+
+   | *input*: :math:`R,a,b`
+   | *output*: :math:`spk`
+   |
+   | :math:`seed` = :math:`sha256(R|a|b|R)`
+   | :math:`data` = :math:`sha256(seed)`
+   | :math:`spk`  = :math:`lower16(data)`

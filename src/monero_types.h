@@ -95,7 +95,7 @@ enum device_mode {
 };
 
 struct monero_v_state_s {
-  unsigned char   state; 
+  unsigned char   state;
   unsigned char   protocol;
 
   /* ------------------------------------------ */
@@ -131,7 +131,7 @@ struct monero_v_state_s {
   unsigned char A[32];
   unsigned char b[32];
   unsigned char B[32];
-  
+
   /* SPK */
   cx_aes_key_t spk;
 
@@ -140,8 +140,7 @@ struct monero_v_state_s {
   unsigned char key_set:1;
    unsigned int tx_in_progress: 1;
    unsigned int tx_state: 4;
-   
-  }; 
+  };
 
   /* Tx key */
   unsigned char R[32];
@@ -231,6 +230,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_SET_SIGNATURE_MODE              0x72
 #define INS_GET_ADDITIONAL_KEY              0x74
 #define INS_STEALTH                         0x76
+#define INS_GEN_COMMITMENT_MASK             0x77
 #define INS_BLIND                           0x78
 #define INS_UNBLIND                         0x7A
 #define INS_GEN_TXOUT_KEYS                  0x7B

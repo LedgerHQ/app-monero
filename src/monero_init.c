@@ -40,8 +40,6 @@ void monero_init() {
 
   G_monero_vstate.protocol = 0xff;
 
-  //generate key protection
-  monero_aes_generate(&G_monero_vstate.spk);
   //load key
   monero_init_private_key();
   //ux conf
@@ -58,12 +56,16 @@ void monero_wipe_private_key() {
  os_memset(G_monero_vstate.b,  0, 32);
  os_memset(G_monero_vstate.A,  0, 32);
  os_memset(G_monero_vstate.B,  0, 32);
+ os_memset(&G_monero_vstate.spk, 0, sizeof(G_monero_vstate.spk));
  G_monero_vstate.key_set = 0;
 }
 
 void monero_init_private_key() {
   unsigned int  path[5];
   unsigned char seed[32];
+  unsigned char chain[32];
+
+  //generate account keys
 
   // m/44'/128'/0'/0/0
   path[0] = 0x8000002C;
@@ -71,10 +73,10 @@ void monero_init_private_key() {
   path[2] = 0x80000000;
   path[3] = 0x00000000;
   path[4] = 0x00000000;
+  os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, chain);
 
   switch(N_monero_pstate->key_mode) {
   case KEY_MODE_SEED:
-    os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, G_monero_vstate.a);
 
     monero_keccak_F(seed,32,G_monero_vstate.b);
     monero_reduce(G_monero_vstate.b,G_monero_vstate.b);
@@ -91,9 +93,14 @@ void monero_init_private_key() {
     THROW(SW_SECURITY_LOAD_KEY);
     return;
   }
-  
+
   monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a);
   monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b);
+
+  //generate key protection
+  monero_aes_derive(&G_monero_vstate.spk,chain,G_monero_vstate.a,G_monero_vstate.b);
+
+
   G_monero_vstate.key_set = 1;
 }
 

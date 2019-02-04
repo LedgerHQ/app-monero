@@ -53,6 +53,7 @@ int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth(void);
 int monero_apdu_blind(void);
 int monero_apdu_unblind(void);
+int monero_apdu_gen_commitment_mask(void);
 
 int monero_apdu_mlsag_prehash_init(void);
 int monero_apdu_mlsag_prehash_update(void);
@@ -83,7 +84,7 @@ int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len);
 int monero_amount2str(uint64_t xmr,  char *str, unsigned int str_len);
 
 int monero_abort_tx() ;
-int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout);
+int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout, unsigned int short_amount);
 void ui_menu_validation_display(unsigned int value) ;
 void ui_menu_fee_validation_display(unsigned int value) ;
 
@@ -91,7 +92,7 @@ void ui_menu_fee_validation_display(unsigned int value) ;
 /* ---                          KEYS & ADDRESS                        ---- */
 /* ----------------------------------------------------------------------- */
 void monero_sc_add(unsigned char *r, unsigned char *s1, unsigned char *s2);
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
+void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int len);
 void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub);
 void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv);
 /*
@@ -134,7 +135,7 @@ void monero_clear_words();
 extern const unsigned char C_ED25519_ORDER[];
 
 
-void monero_aes_derive(cx_aes_key_t *sk, unsigned char *R, unsigned char *a, unsigned char *b);
+void monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a, unsigned char *b);
 void monero_aes_generate(cx_aes_key_t *sk);
 
 /* Compute Monero-Hash of data*/
@@ -184,9 +185,6 @@ void monero_reverse32(unsigned char *rscal, unsigned char *scal);
  */
 void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data, unsigned int out_idx);
 
-/** */
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw);
-
 
 /*
  * W = k.P
@@ -212,6 +210,16 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32);
  */
 void monero_ecmul_H(unsigned char *W, unsigned char *scalar32);
 
+
+/**
+ *  keccak("amount"|sk)
+ */
+void monero_ecdhHash(unsigned char *x, unsigned char *k);
+
+/**
+ * keccak("commitment_mask"|sk) %order
+ */
+void monero_genCommitmentMask(unsigned char *c,  unsigned char *sk);
 
 /*
  * W = P+Q
