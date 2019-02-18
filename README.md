@@ -4,7 +4,13 @@
 Monero wallet application for Ledger Blue and Nano S
 
 
-# Revision 
+# Revision
+
+## v1.1.3
+
+- Remove rolling address display
+- Allow STEALTH instruction outside TX
+- Doc fix
 
 ## v1.1.2
 
@@ -60,7 +66,7 @@ Targeted Client: Monero 0.12.1
 ## v 0.12.1 / Beta 2
 
 Targeted Client: Monero 0.12.1
-    
+
 - Add second PIN support
 - Remove key storage  in NVRAM, always recompute secret key at boot
 - Export secret viewkey, with agreement of user, to speed up tx scan
