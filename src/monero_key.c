@@ -64,7 +64,7 @@ static const unsigned int crcTable[256] = {
 static unsigned long monero_crc32( unsigned long inCrc32, const void *buf,
                                        size_t bufLen )
 {
-    
+
     unsigned long crc32;
     unsigned char *byteBuf;
     size_t i;
@@ -103,7 +103,7 @@ static void  monero_set_word(unsigned int n, unsigned int idx, unsigned int w_st
     word_list += 1 + word_list[0];
     w_start++;
   }
-  
+
   if ((w_start != idx) || (word_list[0] > (len-1)) || (word_list[0] > 19)) {
     THROW(SW_WRONG_DATA+2);
     return;
@@ -118,7 +118,7 @@ static void  monero_set_word(unsigned int n, unsigned int idx, unsigned int w_st
 
 int monero_apdu_manage_seedwords() {
   unsigned int w_start, w_end;
-  unsigned short wc[4]; 
+  unsigned short wc[4];
   switch (G_monero_vstate.io_p1) {
     //SETUP
   case 1:
@@ -140,7 +140,7 @@ int monero_apdu_manage_seedwords() {
         }
       }
     }
-    
+
     monero_io_discard(1);
     if (G_monero_vstate.io_p2) {
       for (int i = 0; i<24; i++) {
@@ -151,13 +151,13 @@ int monero_apdu_manage_seedwords() {
       w_start = monero_crc32(0, G_monero_vstate.io_buffer, G_monero_vstate.io_p2*24)%24;
       monero_nvm_write(N_monero_pstate->words[24], N_monero_pstate->words[w_start], WORDS_MAX_LENGTH);
     }
-    
+
     break;
 
     //CLEAR
   case 2:
     monero_io_discard(0);
-    monero_clear_words();    
+    monero_clear_words();
     break;
   }
 
@@ -201,7 +201,7 @@ int monero_apdu_put_key() {
   }
   nvm_write(N_monero_pstate->b, sec, 32);
 
-  
+
   //change mode
   unsigned char key_mode = KEY_MODE_EXTERNAL;
   nvm_write(&N_monero_pstate->key_mode, &key_mode, 1);
@@ -241,7 +241,7 @@ int monero_apdu_get_key() {
   case 3:{
     unsigned int  path[5];
     unsigned char seed[32];
-    
+
     // m/44'/128'/0'/0/0
     path[0] = 0x8000002C;
     path[1] = 0x80000080;
@@ -621,10 +621,10 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
       //     additional_pub = tx_sec.Bout
       //    else
       //     additional_pub = tx_sec.G
-      // 
+      //
       //   if is_change
       //     generate_key_derivation(derivation <-  tx_sec/a, R)
-      //   else 
+      //   else
       //     generate_key_derivation(derivation <-  tx_sec, Aout)
       //
       //   if (tx_version > 1)
@@ -639,6 +639,7 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_sec, crypto::public_key Aout, crypto::public_key Bout, size_t output_index, bool is_change, bool is_subaddress, bool need_additional_key*/) {
   unsigned int  tx_version;
   unsigned char tx_sec[32];
+  unsigned char tx_pub[32];
   unsigned char Aout[32];
   unsigned char Bout[32];
   unsigned int  output_index;
@@ -650,21 +651,22 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
   tx_version = monero_io_fetch_u32();
   monero_io_fetch_decrypt_key(tx_sec);
+  monero_io_fetch(tx_pub,32);
   monero_io_fetch(Aout,32);
   monero_io_fetch(Bout,32);
   output_index = monero_io_fetch_u32();
   is_change = monero_io_fetch_u8();
   is_subaddress = monero_io_fetch_u8();
   need_additional_key = monero_io_fetch_u8();
-  
-  
-  
+
+
+
   //additional pub key
   monero_io_discard(1);
 
 
-  //update outkeys hash control  
-  if (G_monero_vstate.io_protocol_version == 2) {  
+  //update outkeys hash control
+  if (G_monero_vstate.io_protocol_version == 2) {
     monero_sha256_outkeys_update(Aout,32);
     monero_sha256_outkeys_update(Bout,32);
     monero_sha256_outkeys_update(&is_change,1);
@@ -672,27 +674,27 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
   if (need_additional_key) {
     if (is_subaddress) {
-      monero_ecmul_k(derivation, Bout, tx_sec);    
+      monero_ecmul_k(derivation, Bout, tx_sec);
     } else {
-      monero_ecmul_G(derivation, tx_sec);    
+      monero_ecmul_G(derivation, tx_sec);
     }
     monero_io_insert(derivation,32);
   }
 
   //derivation
   if (is_change) {
-    monero_generate_key_derivation(derivation, G_monero_vstate.R, tx_sec);
+    monero_generate_key_derivation(derivation, tx_pub, tx_sec);
   } else {
     monero_generate_key_derivation(derivation, Aout, tx_sec);
   }
 
   //compute AKout (amount key)
   monero_derivation_to_scalar(tx_sec, derivation, output_index);
-  if (G_monero_vstate.io_protocol_version == 2) {  
-    monero_sha256_outkeys_update(tx_sec,32); 
+  if (G_monero_vstate.io_protocol_version == 2) {
+    monero_sha256_outkeys_update(tx_sec,32);
   }
-  monero_io_insert_encrypt(tx_sec,32); 
- 
+  monero_io_insert_encrypt(tx_sec,32);
+
 
   //compute ephemeral output key
   monero_derive_public_key(tx_sec, derivation, output_index, Bout);
