@@ -111,6 +111,9 @@ int monero_dispatch() {
   if (G_monero_vstate.io_ins == INS_RESET) {
     monero_init();
     monero_io_discard(0);
+    monero_io_insert_u8(MONERO_VERSION_MAJOR);
+    monero_io_insert_u8(MONERO_VERSION_MINOR);
+    monero_io_insert_u8(MONERO_VERSION_MICRO);
     return 0x9000;
   }
 
