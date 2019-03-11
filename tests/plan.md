@@ -35,7 +35,7 @@ A restricted monero daemon runs on ledger server, you can use it with
 
 **Login:**
 
-    >: XMR_LOGIN=<user>:<password>
+    >: XMR_LOGIN="--daemon-login <user>:<password>"
 
 Request the LOGIN info to cedric@ledger.fr
 
