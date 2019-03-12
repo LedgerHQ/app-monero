@@ -141,6 +141,7 @@ struct monero_v_state_s {
    unsigned int tx_in_progress: 1;
    unsigned int tx_state: 4;
   };
+  unsigned int   tx_output_cnt;
 
   /* Tx key */
   unsigned char R[32];
@@ -281,6 +282,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_AMOUNT_CHAIN_CONTROL     0x6912
 #define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
 #define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6914
+#define SW_SECURITY_MAXOUTPUT_REACHED        0x6915
 
 #define SW_SECURITY_STATUS_NOT_SATISFIED     0x6982
 #define SW_FILE_INVALID                      0x6983

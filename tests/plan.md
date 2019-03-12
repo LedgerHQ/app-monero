@@ -35,7 +35,7 @@ A restricted monero daemon runs on ledger server, you can use it with
 
 **Login:**
 
-    >: XMR_LOGIN="--daemon-login <user>:<password>""
+    >: XMR_LOGIN="--daemon-login <user>:<password>"
 
 Request the LOGIN info to cedric@ledger.fr
 
@@ -57,11 +57,11 @@ Unzip the content in a directory of your choice.
 
 Open a Terminal and jump in this directory.
 
-You should have a directory named monero-v0.x.y.z, eg: `monero-v0.14.0.0`
+You should have a directory named monero-v0.x.y.z, eg: `monero-v0.14.0.2`
 
 you can set a variable to that version:
 
-    >: MONERO=./monero-v0.14.0.0/monero-wallet-cli
+    >: MONERO=./monero-v0.14.0.2/monero-wallet-cli
 
 
 Create two wallets

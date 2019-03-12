@@ -658,6 +658,12 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
   //additional pub key
   monero_io_discard(1);
 
+  if (G_monero_vstate.tx_output_cnt>=2) {
+    THROW(SW_SECURITY_MAXOUTPUT_REACHED);
+    return SW_SECURITY_MAXOUTPUT_REACHED;
+  }
+  G_monero_vstate.tx_output_cnt++;
+
   //update outkeys hash control
   if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
     if (G_monero_vstate.io_protocol_version == 2) {

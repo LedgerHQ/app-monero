@@ -30,6 +30,8 @@ void monero_reset_tx() {
     monero_sha256_commitment_init();
     monero_sha256_outkeys_init();
     G_monero_vstate.tx_in_progress = 0;
+    G_monero_vstate.tx_output_cnt = 0;
+
  }
 
 
@@ -47,7 +49,7 @@ int monero_apdu_open_tx() {
     account = monero_io_fetch_u32();
 
     monero_io_discard(1);
-    
+
     monero_reset_tx();
     monero_rng(G_monero_vstate.r,32);
     monero_reduce(G_monero_vstate.r, G_monero_vstate.r);
@@ -55,7 +57,7 @@ int monero_apdu_open_tx() {
 
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-#ifdef DEBUG_HWDEVICE    
+#ifdef DEBUG_HWDEVICE
     monero_io_insert(G_monero_vstate.r,32);
 #endif
     G_monero_vstate.tx_in_progress = 1;
