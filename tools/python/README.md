@@ -9,10 +9,10 @@ Convert the 24 Ledger words to 25 Electrum/Monero words.
 
 ### Requirements
 
-libusb-dev
+libusb-1.0-0-dev
 libudev-dev
 
-     sudo apt install libusb-dev libudev-dev
+     sudo apt install libusb-1.0-0-dev libudev-dev
 
 The following python package are required:
 
@@ -28,19 +28,19 @@ The following python package are required:
 
 In tools/python/ directory:
 
-     PYTHONPATH=`pwd`/src python3 -m ledger.monero.seedconv
+     PYTHONPATH="$(pwd)/src" python3 -m ledger.monero.seedconv
 
 Example:
 
-    $ PYTHONPATH=`pwd`/src python3 -m ledger.monero.seedconv offline
+    $ PYTHONPATH="$(pwd)/src" python3 -m ledger.monero.seedconv offline
 
     =============================================================
     Monero Seed Converter v0.8. Copyright (c) Ledger SAS 20018.
     Licensed under the Apache License, Version 2.0
     =============================================================
     WARNING: Be sure to use a TRUSTED and SAFE computer.
-     
-            
+
+
     * Select Language
        0 : 简体中文 (中国) (Chinese (simplified))
        1 : Nederlands (Dutch)
