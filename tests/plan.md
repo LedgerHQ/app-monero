@@ -35,7 +35,7 @@ A restricted monero daemon runs on ledger server, you can use it with
 
 **Login:**
 
-    >: XMR_LOGIN=<user>:<password>
+    >: XMR_LOGIN="--daemon-login <user>:<password>""
 
 Request the LOGIN info to cedric@ledger.fr
 
@@ -67,6 +67,10 @@ you can set a variable to that version:
 Create two wallets
 ------------------
 
+
+Launch the ledger Monero appocation the device. In `settings->Change Network`, select `stagenet` or `mainnet`
+depending the network you are on.
+
 Create a ledger wallet,  in a shell type:
 
     >:  mkdir -p wallets/device
@@ -93,6 +97,8 @@ Create a std-wallet, in a shell type:
         --log-file wallets/std/stdwallet.log  \
         --generate-new-wallet  wallets/std/stdwallet
 
+
+When asked, accept to Export the view key.
 
 Restoring wallet
 ----------------
@@ -126,9 +132,10 @@ You should get something like that:
 Entry zero is the main address. The two next are sub-addresses.
 
 
-Save All
---------
+Finalize Config and Save All
+----------------------------
 
+    [...]: set ask-password 0
     [...]: save
     [...]: exit
 
@@ -137,8 +144,8 @@ Open existing wallet
 ====================
 
     >: ${MONERO} \
-         ${DAEMON} \
-         ${LOGIN} \
+         ${XMR_DAEMON} \
+         ${XMR_LOGIN} \
          --log-level 4 \
          --log-file wallets/std/stdwallet.log  \
          --wallet-file  wallets/std/stdwallet
@@ -146,8 +153,8 @@ Open existing wallet
 or
 
     >: ${MONERO} \
-         ${DAEMON} \
-         ${LOGIN} \
+         ${XMR_DAEMON} \
+         ${XMR_LOGIN} \
          --log-level 4 \
          --log-file wallets/device/hwwallet.log  \
          --wallet-file  wallets/device/hwwallet
