@@ -200,7 +200,9 @@ Transfers are performed with command:
 
 Once transfer done you get it status and the change value with:
 
-    [...]: transfer show <tx_id>
+    [...]: show_transfer <txid>
+    or
+    [...]: show_transfers
 
 
 Test 2: sweep to mainaddress
