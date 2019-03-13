@@ -611,58 +611,43 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-// on device:
-      //   if need_additional
-      //    if is_subaddress:
-      //     additional_pub = tx_sec.Bout
-      //    else
-      //     additional_pub = tx_sec.G
-      //
-      //   if is_change
-      //     generate_key_derivation(derivation <-  tx_sec/a, R)
-      //   else
-      //     generate_key_derivation(derivation <-  tx_sec, Aout)
-      //
-      //   if (tx_version > 1)
-      //     derivation_to_scalar(AKout <-  derivation, output_index)
-      //
-      //   derive_public_key(out_eph_public_key <- derivation, output_index, Bout)
-      //
-      //   hash_update(Aout, Bout, AKout, out_eph_public_key)
-      //
-      //   return additional_pub, Akout, out_eph_public_key
 
 int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_sec, crypto::public_key Aout, crypto::public_key Bout, size_t output_index, bool is_change, bool is_subaddress, bool need_additional_key*/) {
+  //IN
   unsigned int  tx_version;
-  unsigned char tx_sec[32];
-  unsigned char tx_pub[32];
-  unsigned char Aout[32];
-  unsigned char Bout[32];
+  unsigned char tx_key[32];
+  unsigned char *txkey_pub;
+  unsigned char *Aout;
+  unsigned char *Bout;
   unsigned int  output_index;
   unsigned char is_change;
   unsigned char is_subaddress;
-  unsigned char need_additional_key;
+  unsigned char need_additional_txkeys;
+  unsigned char additional_txkey_sec[32];
+  //OUT
+  unsigned char additional_txkey_pub[32];
+  #define amount_key tx_key
+  #define out_eph_public_key additional_txkey_sec
+  //TMP
   unsigned char derivation[32];
 
 
   tx_version = monero_io_fetch_u32();
-  monero_io_fetch_decrypt_key(tx_sec);
-  monero_io_fetch(tx_pub,32);
-  monero_io_fetch(Aout,32);
-  monero_io_fetch(Bout,32);
+  monero_io_fetch_decrypt_key(tx_key);
+  txkey_pub = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL,32);
+  Aout = G_monero_vstate.io_buffer+G_monero_vstate.io_offset;   monero_io_fetch(NULL,32);
+  Bout = G_monero_vstate.io_buffer+G_monero_vstate.io_offset;   monero_io_fetch(NULL,32);
   output_index = monero_io_fetch_u32();
   is_change = monero_io_fetch_u8();
   is_subaddress = monero_io_fetch_u8();
-  need_additional_key = monero_io_fetch_u8();
-
-  //additional pub key
-  monero_io_discard(1);
-
-  if (G_monero_vstate.tx_output_cnt>=2) {
-    THROW(SW_SECURITY_MAXOUTPUT_REACHED);
-    return SW_SECURITY_MAXOUTPUT_REACHED;
+  need_additional_txkeys = monero_io_fetch_u8();
+  if (need_additional_txkeys) {
+    monero_io_fetch_decrypt_key(additional_txkey_sec);
+  } else {
+    monero_io_fetch(NULL,32);
   }
-  G_monero_vstate.tx_output_cnt++;
+
+
 
   //update outkeys hash control
   if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
@@ -673,34 +658,42 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
   }
 
-  if (need_additional_key) {
+  // make additional tx pubkey if necessary
+  if (need_additional_txkeys) {
     if (is_subaddress) {
-      monero_ecmul_k(derivation, Bout, tx_sec);
+      monero_ecmul_k(additional_txkey_pub, Bout, additional_txkey_sec);
     } else {
-      monero_ecmul_G(derivation, tx_sec);
+      monero_ecmul_G(additional_txkey_pub, additional_txkey_sec);
     }
-    monero_io_insert(derivation,32);
+  } else {
+      os_memset(additional_txkey_pub, 0, 32);
   }
 
   //derivation
   if (is_change) {
-    monero_generate_key_derivation(derivation, tx_pub, tx_sec);
+    monero_generate_key_derivation(derivation, txkey_pub, G_monero_vstate.a);
   } else {
-    monero_generate_key_derivation(derivation, Aout, tx_sec);
+    monero_generate_key_derivation(derivation, Aout, (is_subaddress && need_additional_txkeys) ? additional_txkey_sec : tx_key);
   }
 
-  //compute AKout (amount key)
-  monero_derivation_to_scalar(tx_sec, derivation, output_index);
+  //compute amount key AKout (scalar1), version is always greater than 1
+  monero_derivation_to_scalar(amount_key, derivation, output_index);
   if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
       if (G_monero_vstate.io_protocol_version == 2) {
-        monero_sha256_outkeys_update(tx_sec,32);
+        monero_sha256_outkeys_update(amount_key,32);
       }
   }
-  monero_io_insert_encrypt(tx_sec,32);
 
   //compute ephemeral output key
-  monero_derive_public_key(tx_sec, derivation, output_index, Bout);
-  monero_io_insert(tx_sec,32);
+  monero_derive_public_key(out_eph_public_key, derivation, output_index, Bout);
+
+  //send all
+  monero_io_discard(0);
+  monero_io_insert_encrypt(amount_key,32);
+  monero_io_insert(out_eph_public_key, 32);
+  if (need_additional_txkeys) {
+    monero_io_insert(additional_txkey_pub, 32);
+  }
   return SW_OK;
 }
 
