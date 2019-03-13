@@ -46,6 +46,8 @@ int monero_apdu_get_subaddress(void);
 int monero_apdu_get_subaddress_spend_public_key(void);
 int monero_apdu_get_subaddress_secret_key(void);
 
+int monero_apdu_get_tx_proof(void);
+
 int monero_apdu_open_tx(void);
 void monero_reset_tx(void);
 int monero_apdu_open_subtx(void) ;
@@ -146,6 +148,12 @@ void monero_hash_update(cx_hash_t * hasher, unsigned char* buf, unsigned int len
 int  monero_hash_final(cx_hash_t * hasher, unsigned char* out);
 int  monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsigned int len, unsigned char* out);
 
+#define monero_keccak_init_F() \
+    monero_hash_init_keccak((cx_hash_t *)&G_monero_vstate.keccakF)
+#define monero_keccak_update_F(buf,len)  \
+    monero_hash_update((cx_hash_t *)&G_monero_vstate.keccakF,(buf), (len))
+#define monero_keccak_final_F(out) \
+    monero_hash_final((cx_hash_t *)&G_monero_vstate.keccakF, (out))
 #define monero_keccak_F(buf,len,out) \
     monero_hash(CX_KECCAK, (cx_hash_t *)&G_monero_vstate.keccakF, (buf),(len), (out))
 

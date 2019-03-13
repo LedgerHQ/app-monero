@@ -362,7 +362,7 @@ int monero_apdu_scal_mul_key(/*const rct::key &pub, const rct::key &sec, rct::ke
   unsigned char r[32];
   //fetch
   monero_io_fetch(pub,32);
-  monero_io_fetch_decrypt(sec,32);
+  monero_io_fetch_decrypt_key(sec);
   monero_io_discard(0);
 
   monero_ecmul_k(r,pub,sec);

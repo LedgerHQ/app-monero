@@ -20,7 +20,8 @@
 
 #if CX_APILEVEL == 8
 #define PIN_VERIFIED (!0)
-#elif CX_APILEVEL == 9
+#elif CX_APILEVEL == 9 ||  CX_APILEVEL == 10
+
 #define PIN_VERIFIED BOLOS_UX_OK
 #else
 #error CX_APILEVEL not  supported
@@ -175,6 +176,9 @@ struct monero_v_state_s {
     struct {
       char words[340];
     };
+    struct {
+      unsigned char tmp[340];
+    };
   };
 };
 typedef struct  monero_v_state_s monero_v_state_t;
@@ -238,6 +242,10 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_VALIDATE                        0x7C
 #define INS_MLSAG                           0x7E
 #define INS_CLOSE_TX                        0x80
+
+#define INS_GET_TX_PROOF                    0xA0
+#define INS_GEN_SIGNATURE                   0xA2
+#define INS_GEN_RING_SIGNATURE              0xA4
 
 
 

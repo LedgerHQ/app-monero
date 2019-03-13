@@ -14,6 +14,21 @@ Note this is only for testing. For production usage, use the application provide
 
 # Revision
 
+## V1.3.1
+
+Add Tx proof support Monero post 0.14.0.2
+
+## V1.3.0
+
+Targeted Client: Monero post 0.14.0.2
+
+## V1.2.2
+
+Targeted Client: Monero 0.14.0.2
+
+Partial bug Fixes in change destination address computation: Only one destination
+is allowed in transfer command
+
 ## v1.2.0
 
 Targeted Client: Monero 0.14.0.0+

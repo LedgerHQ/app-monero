@@ -114,7 +114,7 @@ void monero_io_insert_encrypt(unsigned char* buffer, int len) {
     }
 #elif defined(IONOCRYPT)
   os_memmove(G_monero_vstate.io_buffer+G_monero_vstate.io_offset, buffer, len);
-#else 
+#else
   cx_aes(&G_monero_vstate.spk, CX_ENCRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE,
          buffer, len,
          G_monero_vstate.io_buffer+G_monero_vstate.io_offset, len);
@@ -334,14 +334,14 @@ int monero_io_fetch_nv(unsigned char* buffer, int len) {
 
 int monero_io_do(unsigned int io_flags) {
 
-  
+
   // if IO_ASYNCH_REPLY has been  set,
   //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
   if (io_flags & IO_ASYNCH_REPLY) {
     monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
-  } 
+  }
   //else send data now
-  else {  
+  else {
     G_monero_vstate.io_offset = 0;
     if(G_monero_vstate.io_length > MAX_OUT) {
       THROW(SW_FILE_FULL);
