@@ -94,9 +94,6 @@ int monero_apdu_mlsag_prehash_update() {
     }
 
     if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-        if ((os_memcmp(Aout, G_monero_vstate.A, 32) == 0) && (os_memcmp(Bout, G_monero_vstate.B, 32) == 0)) {
-            is_change = 1;
-        }
         if (is_change == 0) {
             //encode dest adress
             monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress);
@@ -141,9 +138,13 @@ int monero_apdu_mlsag_prehash_update() {
         //ask user
         uint64_t amount;
         amount = monero_bamount2uint64(v);
-        if (!is_change && amount) {
+        if (amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
-            ui_menu_validation_display(0);
+            if (!is_change) {
+                ui_menu_validation_display(0);
+            } else  {
+                ui_menu_change_validation_display(0);
+            }
             return 0;
         }
     }

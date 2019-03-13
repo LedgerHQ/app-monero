@@ -87,6 +87,7 @@ int monero_abort_tx() ;
 int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout, unsigned int short_amount);
 void ui_menu_validation_display(unsigned int value) ;
 void ui_menu_fee_validation_display(unsigned int value) ;
+void ui_menu_change_validation_display(unsigned int value) ;
 
 /* ----------------------------------------------------------------------- */
 /* ---                          KEYS & ADDRESS                        ---- */

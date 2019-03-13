@@ -59,19 +59,25 @@ void ui_info(const char* msg1, const char* msg2, const void *menu_display, unsig
 #define ACCEPT  0xACCE
 #define REJECT  ~ACCEPT
 
-void ui_menu_fee_validation_action(unsigned int value);
+void ui_menu_amount_validation_action(unsigned int value);
 
 const ux_menu_entry_t ui_menu_fee_validation[] = {
-  {NULL,  NULL,                           1,      NULL, " Fee",     "?xmr?",  0, 0},
-  {NULL,  ui_menu_fee_validation_action,  REJECT, NULL,  "Reject",  "Fee",     0, 0},
-  {NULL,  ui_menu_fee_validation_action,  ACCEPT, NULL,  "Accept",  "Fee",     0, 0},
+  {NULL,  NULL,                              1,      NULL, " Fee",     "?xmr?", 0, 0},
+  {NULL,  ui_menu_amount_validation_action,  REJECT, NULL,  "Reject",  "Fee",   0, 0},
+  {NULL,  ui_menu_amount_validation_action,  ACCEPT, NULL,  "Accept",  "Fee",   0, 0},
+  UX_MENU_END
+};
+const ux_menu_entry_t ui_menu_change_validation[] = {
+  {NULL,  NULL,                              1,      NULL, " Change",  "?xmr?",  0, 0},
+  {NULL,  ui_menu_amount_validation_action,  REJECT, NULL,  "Reject",  "Change", 0, 0},
+  {NULL,  ui_menu_amount_validation_action,  ACCEPT, NULL,  "Accept",  "Change", 0, 0},
   UX_MENU_END
 };
 
-const bagl_element_t* ui_menu_fee_validation_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
+const bagl_element_t* ui_menu_amount_validation_preprocessor(const ux_menu_entry_t* entry, bagl_element_t* element) {
 
   /* --- Amount --- */
-  if (entry == &ui_menu_fee_validation[0]) {
+  if ((entry == &ui_menu_fee_validation[0]) || (entry == &ui_menu_change_validation[0])) {
     if(element->component.userid==0x22) {
       element->text = G_monero_vstate.ux_amount;
     }
@@ -79,7 +85,8 @@ const bagl_element_t* ui_menu_fee_validation_preprocessor(const ux_menu_entry_t*
   return element;
 }
 
-void ui_menu_fee_validation_action(unsigned int value) {
+
+void ui_menu_amount_validation_action(unsigned int value) {
   unsigned short sw;
   if (value == ACCEPT) {
     sw = 0x9000;
@@ -93,7 +100,10 @@ void ui_menu_fee_validation_action(unsigned int value) {
 }
 
 void ui_menu_fee_validation_display(unsigned int value) {
-  UX_MENU_DISPLAY(0, ui_menu_fee_validation, ui_menu_fee_validation_preprocessor);
+  UX_MENU_DISPLAY(0, ui_menu_fee_validation, ui_menu_amount_validation_preprocessor);
+}
+void ui_menu_change_validation_display(unsigned int value) {
+  UX_MENU_DISPLAY(0, ui_menu_change_validation, ui_menu_amount_validation_preprocessor);
 }
 
 
