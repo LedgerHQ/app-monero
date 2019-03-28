@@ -15,6 +15,8 @@
 #  limitations under the License.
 #*******************************************************************************
 
+TARGET_NAME := TARGET_NANOX
+
 -include Makefile.env
 ifeq ($(BOLOS_SDK),)
 $(error Environment variable BOLOS_SDK is not set)
@@ -27,6 +29,8 @@ APPNAME = "Monero"
 
 ifeq ($(TARGET_NAME),TARGET_BLUE)
 ICONNAME = images/icon_monero_blue.gif
+else ifeq ($(TARGET_NAME),TARGET_NANOX)
+ICONNAME = images/icon_monero_nanox.gif
 else
 ICONNAME = images/icon_monero.gif
 endif
@@ -44,6 +48,20 @@ DEFINES   += MONERO_VERSION=$(APPVERSION)
 DEFINES   += MONERO_NAME=$(APPNAME)
 DEFINES   += SPEC_VERSION=$(SPECVERSION)
 
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+DEFINES   += UI_NANO_X
+else ifeq ($(TARGET_NAME),TARGET_BLUE)
+DEFINES   += UI_BLUE
+else
+DEFINES   += UI_NANO_S
+endif
+
+
+#DEFINES += IOCRYPT
+## Debug options
+#DEFINES   += DEBUG_HWDEVICE
+#DEFINES   += IODUMMYCRYPT
+#DEFINES   += IONOCRYPT
 
 ################
 # Default rule #
@@ -64,20 +82,24 @@ DEFINES   += HAVE_BAGL HAVE_SPRINTF
 #DEFINES   += HAVE_PRINTF PRINTF=screen_printf
 DEFINES   += PRINTF\(...\)=
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-#DEFINES  += HAVE_BLE
 DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 DEFINES   += CUSTOM_IO_APDU_BUFFER_SIZE=\(255+5+64\)
 
-#DEFINES   += HAVE_USB_CLASS_CCID
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+# DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+# DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 
+DEFINES       += HAVE_GLO096 HAVE_UX_LEGACY
+DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
 
-#DEFINES += IOCRYPT
-## Debug options
-#DEFINES   += DEBUG_HWDEVICE
-#DEFINES   += IODUMMYCRYPT
-#DEFINES   += IONOCRYPT
-#DEFINES   += TESTKEY
+# DEFINES       += HAVE_ICON_PIRATE
+# DEFINES 		+= HAVE_ICON_OLD
+endif
 
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
@@ -98,7 +120,7 @@ CFLAGS   += -O3 -Os
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
-SCRIPT_LD:=script.ld
+#SCRIPT_LD:=script.ld
 
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
@@ -110,7 +132,9 @@ include $(BOLOS_SDK)/Makefile.glyphs
 ### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
-
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+SDK_SOURCE_PATH  += lib_ux
+endif
 
 load: all
 	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)

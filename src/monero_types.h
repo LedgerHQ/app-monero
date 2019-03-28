@@ -164,6 +164,12 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */
   /* ------------------------------------------ */
+
+  #ifdef UI_NANO_X
+  char            ux_wallet_public_address[96];
+  char            ux_wallet_public_short_address[5+2+5+1];
+  #endif
+
   union {
     struct {
       /* menu 0: 95-chars + "<monero: >"  + null */
@@ -176,6 +182,11 @@ struct monero_v_state_s {
     struct {
       unsigned char tmp[340];
     };
+    #ifdef UI_NANO_X
+    struct {
+      char ux_words[520];
+    };
+    #endif
   };
 };
 typedef struct  monero_v_state_s monero_v_state_t;

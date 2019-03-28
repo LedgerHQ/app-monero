@@ -144,6 +144,13 @@ void monero_init_private_key() {
 /* ---  Set up ui/ux                                                   --- */
 /* ----------------------------------------------------------------------- */
 void monero_init_ux() {
+  #ifdef UI_NANO_X
+  monero_base58_public_key(G_monero_vstate.ux_wallet_public_address, G_monero_vstate.A,G_monero_vstate.B, 0);
+  os_memset(G_monero_vstate.ux_wallet_public_short_address, '.', sizeof(G_monero_vstate.ux_wallet_public_short_address));
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_wallet_public_address,5);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address+7, G_monero_vstate.ux_wallet_public_address+95-5,5);
+  G_monero_vstate.ux_wallet_public_short_address[12] = 0;
+  #endif
 }
 
 /* ----------------------------------------------------------------------- */
