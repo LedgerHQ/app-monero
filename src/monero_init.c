@@ -48,6 +48,7 @@ void monero_init() {
   G_monero_vstate.state = STATE_IDLE;
 }
 
+
 /* ----------------------------------------------------------------------- */
 /* --- init private keys                                               --- */
 /* ----------------------------------------------------------------------- */
@@ -67,7 +68,8 @@ void monero_init_private_key() {
 
   //generate account keys
 
-  // m/44'/128'/0'/0/0
+  // m / purpose' / coin_type' / account' / change / address_index
+  // m / 44'      / 128'       / 0'       / 0      / 0
   path[0] = 0x8000002C;
   path[1] = 0x80000080;
   path[2] = 0x80000000;
@@ -128,4 +130,42 @@ void monero_install(unsigned char netId) {
 
   //write magic
   monero_nvm_write(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC));
+}
+
+/* ----------------------------------------------------------------------- */
+/* --- Reset                                                           --- */
+/* ----------------------------------------------------------------------- */
+#define MONERO_SUPPORTED_CLIENT_SIZE 1
+const char * const monero_supported_client[MONERO_SUPPORTED_CLIENT_SIZE] = {
+  "0.14.1.0",
+};
+
+int monero_apdu_reset() {
+
+  unsigned int client_version_len;
+  char client_version[10];
+  client_version_len = G_monero_vstate.io_length - G_monero_vstate.io_offset;
+  if (client_version_len > 10) {
+    THROW(SW_CLIENT_NOT_SUPPORTED+1);
+  }
+  monero_io_fetch((unsigned char*)&client_version[0], client_version_len);
+
+  unsigned int i = 0;
+  while(i < MONERO_SUPPORTED_CLIENT_SIZE) {
+    if ((strlen((char*)PIC(monero_supported_client[i])) == client_version_len) &&
+        (os_memcmp((char*)PIC(monero_supported_client[i]), client_version, client_version_len)==0) ) {
+      break;
+    }
+    i++;
+  }
+  if (i == MONERO_SUPPORTED_CLIENT_SIZE) {
+    THROW(SW_CLIENT_NOT_SUPPORTED);
+  }
+
+  monero_io_discard(0);
+  monero_init();
+  monero_io_insert_u8(MONERO_VERSION_MAJOR);
+  monero_io_insert_u8(MONERO_VERSION_MINOR);
+  monero_io_insert_u8(MONERO_VERSION_MICRO);
+  return 0x9000;
 }
