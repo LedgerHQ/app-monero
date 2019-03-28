@@ -110,12 +110,8 @@ int monero_dispatch() {
   G_monero_vstate.options = monero_io_fetch_u8();
 
   if (G_monero_vstate.io_ins == INS_RESET) {
-    monero_init();
-    monero_io_discard(0);
-    monero_io_insert_u8(MONERO_VERSION_MAJOR);
-    monero_io_insert_u8(MONERO_VERSION_MINOR);
-    monero_io_insert_u8(MONERO_VERSION_MICRO);
-    return 0x9000;
+    sw = monero_apdu_reset();
+    return sw;
   }
 
   sw = 0x6F01;

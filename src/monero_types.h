@@ -174,9 +174,6 @@ struct monero_v_state_s {
       char            ux_amount[23];
     };
     struct {
-      char words[340];
-    };
-    struct {
       unsigned char tmp[340];
     };
   };
@@ -291,6 +288,8 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
 #define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6914
 #define SW_SECURITY_MAXOUTPUT_REACHED        0x6915
+
+#define SW_CLIENT_NOT_SUPPORTED              0x6930
 
 #define SW_SECURITY_STATUS_NOT_SATISFIED     0x6982
 #define SW_FILE_INVALID                      0x6983
