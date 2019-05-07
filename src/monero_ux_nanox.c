@@ -320,7 +320,7 @@ UX_FLOW_DEF_NOCB(
 
 UX_FLOW_DEF_VALID(
   ux_menu_network_2_step,
-  pb,
+  nnbnn,
   ui_menu_network_action(MAINNET),
   {
     "", "",
@@ -340,7 +340,7 @@ UX_FLOW_DEF_VALID(
 
 UX_FLOW_DEF_VALID(
   ux_menu_network_4_step,
-  pb,
+  nnbnn,
   ui_menu_network_action(STAGENET),
   {
     "", "",
@@ -566,7 +566,7 @@ UX_FLOW_DEF_VALID(
   pb,
   ui_menu_settings_display(0),
   {
-    &C_icon_settings,
+    &C_icon_coggle,
     "Settings"
   });
 
@@ -575,7 +575,7 @@ UX_FLOW_DEF_VALID(
   pb,
   ui_menu_info_display(0),
   {
-    &C_icon_info,
+    &C_icon_certificate,
     "About"
   });
 
@@ -584,7 +584,7 @@ UX_FLOW_DEF_VALID(
   pb,
   os_sched_exit(0),
   {
-    &C_icon_dashboard,
+    &C_icon_dashboard_x,
     "Quit app"
   });
 
