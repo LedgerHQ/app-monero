@@ -24,7 +24,7 @@ endif
 include $(BOLOS_SDK)/Makefile.defines
 
 #Monero /44'/128'
-APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS) --appFlags 0x40
+APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS) --appFlags 0x240
 APPNAME = "Monero"
 
 ifeq ($(TARGET_NAME),TARGET_BLUE)
@@ -77,39 +77,65 @@ ifneq ($(NO_CONSENT),)
 DEFINES   += NO_CONSENT
 endif
 
-DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
+DEFINES   += OS_IO_SEPROXYHAL
 DEFINES   += HAVE_BAGL HAVE_SPRINTF
-#DEFINES   += HAVE_PRINTF PRINTF=screen_printf
-DEFINES   += PRINTF\(...\)=
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-DEFINES   += UNUSED\(x\)=\(void\)x
-DEFINES   += APPVERSION=\"$(APPVERSION)\"
 DEFINES   += CUSTOM_IO_APDU_BUFFER_SIZE=\(255+5+64\)
-
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-# DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
-# DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
-
-DEFINES       += HAVE_GLO096 HAVE_UX_LEGACY
-DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
-DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-
-# DEFINES       += HAVE_ICON_PIRATE
-# DEFINES 		+= HAVE_ICON_OLD
-endif
 
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
 
+DEFINES   += UNUSED\(x\)=\(void\)x
+DEFINES   += APPVERSION=\"$(APPVERSION)\"
+
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+# DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+# DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
+
+DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES       += HAVE_GLO096
+DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+DEFINES		  += HAVE_UX_FLOW
+else
+DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+endif
+
+
+# Enabling debug PRINTF
+DEBUG = 0
+ifneq ($(DEBUG),0)
+
+        ifeq ($(TARGET_NAME),TARGET_NANOX)
+                DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
+        else
+                DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+        endif
+else
+        DEFINES   += PRINTF\(...\)=
+endif
+
+
 ##############
 # Compiler #
 ##############
-#GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-#CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
+ifneq ($(BOLOS_ENV),)
+$(info BOLOS_ENV=$(BOLOS_ENV))
+CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
+GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
+else
+$(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
+endif
+ifeq ($(CLANGPATH),)
+$(info CLANGPATH is not set: clang will be used from PATH)
+endif
+ifeq ($(GCCPATH),)
+$(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
+endif
 CC       := $(CLANGPATH)clang
 
 #CFLAGS   += -O0 -gdwarf-2  -gstrict-dwarf
@@ -132,6 +158,7 @@ include $(BOLOS_SDK)/Makefile.glyphs
 ### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
+
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 SDK_SOURCE_PATH  += lib_ux
 endif
@@ -149,3 +176,5 @@ include $(BOLOS_SDK)/Makefile.rules
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
+
+#obj/usbd_impl.o: CFLAGS+=-DTARGET_NANOS
