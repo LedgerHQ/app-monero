@@ -45,7 +45,7 @@ void ui_menu_words_clear(unsigned int value);
 void ui_menu_words_back(unsigned int value);
 
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_words_1_step,
   bnnn_paging,
   {
@@ -54,7 +54,7 @@ UX_FLOW_DEF_NOCB(
   });
 
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_words_2_step,
   bn,
   ui_menu_words_clear(0),
@@ -63,7 +63,7 @@ UX_FLOW_DEF_VALID(
     "(Do not wipe the wallet)"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_words_3_step,
   pb,
   ui_menu_words_back(0),
@@ -72,7 +72,7 @@ UX_FLOW_DEF_VALID(
     "back"
   });
 
-UX_DEF(
+UX_FLOW(
   ux_flow_words,
   &ux_menu_words_1_step,
   &ux_menu_words_2_step,
@@ -112,11 +112,15 @@ void ui_menu_words_display(unsigned int value) {
   ux_flow_init(0, ux_flow_words, NULL);
 }
 
+void settings_show_25_words(void) {
+  ui_menu_words_display(0);
+}
+
 /* ----------------------------- FEE VALIDATION ----------------------------- */
 
 void ui_menu_amount_validation_action(unsigned int value);
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_validation_fee_1_step,
   bn,
   {
@@ -124,7 +128,7 @@ UX_FLOW_DEF_NOCB(
     G_monero_vstate.ux_amount,
   });
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_validation_change_1_step,
   bn,
   {
@@ -132,7 +136,7 @@ UX_FLOW_DEF_NOCB(
     G_monero_vstate.ux_amount,
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_validation_cf_2_step,
   pb,
   ui_menu_amount_validation_action(ACCEPT),
@@ -141,7 +145,7 @@ UX_FLOW_DEF_VALID(
     "Accept",
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_validation_cf_3_step,
   pb,
   ui_menu_amount_validation_action(REJECT),
@@ -150,13 +154,13 @@ UX_FLOW_DEF_VALID(
     "Reject",
   });
 
-UX_DEF(ux_flow_fee,
+UX_FLOW(ux_flow_fee,
   &ux_menu_validation_fee_1_step,
   &ux_menu_validation_cf_2_step,
   &ux_menu_validation_cf_3_step
   );
 
-UX_DEF(ux_flow_change,
+UX_FLOW(ux_flow_change,
   &ux_menu_validation_change_1_step,
   &ux_menu_validation_cf_2_step,
   &ux_menu_validation_cf_3_step
@@ -187,7 +191,7 @@ void ui_menu_change_validation_display(unsigned int value) {
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
 void ui_menu_validation_action(unsigned int value);
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_validation_1_step,
   bn,
   {
@@ -195,7 +199,7 @@ UX_FLOW_DEF_NOCB(
     G_monero_vstate.ux_amount
   });
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_validation_2_step,
   bnnn_paging,
   {
@@ -203,7 +207,7 @@ UX_FLOW_DEF_NOCB(
     G_monero_vstate.ux_address
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_validation_3_step,
   pb,
   ui_menu_validation_action(ACCEPT),
@@ -212,7 +216,7 @@ UX_FLOW_DEF_VALID(
     "Accept"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_validation_4_step,
   pb,
   ui_menu_validation_action(REJECT),
@@ -221,7 +225,7 @@ UX_FLOW_DEF_VALID(
     "Reject"
   });
 
-UX_DEF(ux_flow_validation,
+UX_FLOW(ux_flow_validation,
   &ux_menu_validation_1_step,
   &ux_menu_validation_2_step,
   &ux_menu_validation_3_step,
@@ -248,7 +252,7 @@ void ui_menu_validation_action(unsigned int value) {
 /* -------------------------------- EXPORT VIEW KEY UX --------------------------------- */
 unsigned int ui_menu_export_viewkey_action(unsigned int value);
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_export_viewkey_1_step,
   nn,
   {
@@ -256,7 +260,7 @@ UX_FLOW_DEF_NOCB(
     "View Key"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_export_viewkey_2_step,
   pb,
   ui_menu_export_viewkey_action(ACCEPT),
@@ -265,7 +269,7 @@ UX_FLOW_DEF_VALID(
     "Accept"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_export_viewkey_3_step,
   pb,
   ui_menu_export_viewkey_action(REJECT),
@@ -274,7 +278,7 @@ UX_FLOW_DEF_VALID(
     "Reject"
   });
 
-UX_DEF(ux_flow_export_viewkey,
+UX_FLOW(ux_flow_export_viewkey,
   &ux_menu_export_viewkey_1_step,
   &ux_menu_export_viewkey_2_step,
   &ux_menu_export_viewkey_3_step
@@ -283,7 +287,6 @@ UX_DEF(ux_flow_export_viewkey,
 void ui_export_viewkey_display(unsigned int value) {
   ux_flow_init(0, ux_flow_export_viewkey,NULL);
 }
-
 
 unsigned int ui_menu_export_viewkey_action(unsigned int value) {
   unsigned int sw;
@@ -306,83 +309,85 @@ unsigned int ui_menu_export_viewkey_action(unsigned int value) {
 
 /* -------------------------------- NETWORK UX --------------------------------- */
 
-void ui_menu_network_action(unsigned int value);
-
-UX_FLOW_DEF_NOCB(
-  ux_menu_network_1_step,
-  nnn,
-  {
-    "Changing network",
-    "will reset the",
-    "application"
-  });
-
-
-UX_FLOW_DEF_VALID(
-  ux_menu_network_2_step,
-  nnbnn,
-  ui_menu_network_action(MAINNET),
-  {
-    "", "",
-    "Main Network",
-    "", ""
-  });
-
-UX_FLOW_DEF_VALID(
-  ux_menu_network_3_step,
-  nnbnn,
-  ui_menu_network_action(TESTNET),
-  {
-    "", "",
-    "Test Network"
-    "", ""
-  });
-
-UX_FLOW_DEF_VALID(
-  ux_menu_network_4_step,
-  nnbnn,
-  ui_menu_network_action(STAGENET),
-  {
-    "", "",
-    "Stage Network"
-    "", ""
-  });
+const char* const network_submenu_getter_values[] = {
+  "Main Network",
+  "Stage Network",
+  "Test Network",
+  "Abort"
+};
+const char* const network_submenu_getter_values_selected[] = {
+  "Main Network +",
+  "Stage Network +",
+  "Test Network +",
+  "Abort"
+};
 
 
-UX_FLOW_DEF_VALID(
-  ux_menu_network_5_step,
-  pb,
-  ui_menu_network_action(0),
-  {
-    &C_icon_back,
-    "Abort"
-  });
+const char* network_submenu_getter(unsigned int idx) {
+  if (idx >= ARRAYLEN(network_submenu_getter_values)) {
+    return NULL;
+  }
+  int net;
+  switch(idx) {
+  case 0:
+    net = MAINNET;
+    break;
+  case 1:
+    net = STAGENET;
+    break;
+  case 2:
+    net = TESTNET;
+    break;
+  default:
+    net = -1;
+    break;
+  }
+  if (N_monero_pstate->network_id == net) {
+    return network_submenu_getter_values_selected[idx];
+  } else {
+    return network_submenu_getter_values[idx];
+  }
+}
 
-UX_DEF(ux_flow_network,
-  &ux_menu_network_1_step,
-  &ux_menu_network_2_step,
-  &ux_menu_network_3_step,
-  &ux_menu_network_4_step,
-  &ux_menu_network_5_step
-  );
+void network_back(void) {
+  ui_menu_main_display(0);
+}
 
-void ui_menu_network_action(unsigned int value) {
-  if (value) {
-    monero_install(value);
-    monero_init();
+static void network_set_net(unsigned int network) {
+  monero_install(network);
+  monero_init();
+}
+
+void network_submenu_selector(unsigned int idx) {
+  switch(idx) {
+    case 0:
+       network_set_net(MAINNET);
+       break;
+    case 1:
+       network_set_net(STAGENET);
+       break;
+    case 2:
+       network_set_net(TESTNET);
+       break;
+    default:
+      break;
   }
   ui_menu_main_display(0);
 }
 
+
 void ui_menu_network_display(unsigned int value) {
-   ux_flow_init(0, ux_flow_network, 0);
+   ux_menulist_init(G_ux.stack_count-1, network_submenu_getter, network_submenu_selector);
 }
 
+void settings_change_network(void) {
+  ui_menu_network_display(0);
+}
 /* -------------------------------- RESET UX --------------------------------- */
 void ui_menu_reset_display(unsigned int value);
 void ui_menu_reset_action(unsigned int value);
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_reset_1_step,
   nnn,
   {
@@ -391,7 +396,7 @@ UX_FLOW_DEF_NOCB(
     ""
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_reset_2_step,
   pb,
   ui_menu_reset_action(REJECT),
@@ -401,7 +406,7 @@ UX_FLOW_DEF_VALID(
   });
 
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_reset_3_step,
   pb,
   ui_menu_reset_action(ACCEPT),
@@ -410,7 +415,7 @@ UX_FLOW_DEF_VALID(
     "Yes",
   });
 
-UX_DEF(ux_flow_reset,
+UX_FLOW(ux_flow_reset,
   &ux_menu_reset_1_step,
   &ux_menu_reset_2_step,
   &ux_menu_reset_3_step
@@ -418,6 +423,10 @@ UX_DEF(ux_flow_reset,
 
 void ui_menu_reset_display(unsigned int value) {
    ux_flow_init(0, ux_flow_reset, 0);
+}
+
+void settings_reset(void) {
+  ui_menu_reset_display(0);
 }
 
 void ui_menu_reset_action(unsigned int value) {
@@ -431,62 +440,47 @@ void ui_menu_reset_action(unsigned int value) {
 }
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
-UX_FLOW_DEF_VALID(
-  ux_menu_settings_1_step,
-  nnbnn,
-  ui_menu_network_display(0),
-  {
-    "", ""
-    "Change Network",
-    "", ""
-  });
+const char* const settings_submenu_getter_values[] = {
+  "Change Network",
+  "Show 25 words",
+  "Reset",
+  "Back",
+};
 
-UX_FLOW_DEF_VALID(
-  ux_menu_settings_2_step,
-  nnbnn,
-  ui_menu_words_display(0),
-  {
-    "", ""
-    "Show 25 words",
-    "", ""
-  });
-
-UX_FLOW_DEF_VALID(
-  ux_menu_settings_3_step,
-  nnbnn,
-  ui_menu_reset_display(0),
-  {
-    "", ""
-    "Reset",
-    "", ""
-  });
-
-UX_FLOW_DEF_VALID(
-  ux_menu_settings_4_step,
-  pb,
-  ui_menu_main_display(0),
-  {
-    &C_icon_back,
-    "Back",
-  });
-
-
-UX_DEF(ux_flow_settings,
-  &ux_menu_settings_1_step,
-  &ux_menu_settings_2_step,
-  &ux_menu_settings_3_step,
-  &ux_menu_settings_4_step
-  );
-
-void ui_menu_settings_display(unsigned int value) {
-  ux_flow_init(0, ux_flow_settings, NULL);
+const char* settings_submenu_getter(unsigned int idx) {
+  if (idx < ARRAYLEN(settings_submenu_getter_values)) {
+    return settings_submenu_getter_values[idx];
+  }
+  return NULL;
 }
+
+void settings_back(void) {
+  ui_menu_main_display(0);
+}
+
+void settings_submenu_selector(unsigned int idx) {
+  switch(idx) {
+    case 0:
+      settings_change_network();
+      break;
+    case 1:
+      settings_show_25_words();
+      break;
+    case 2:
+      settings_reset();
+      break;
+    default:
+      settings_back();
+  }
+}
+
+
 
 /* --------------------------------- INFO UX --------------------------------- */
 #define STR(x)  #x
 #define XSTR(x) STR(x)
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_info_1_step,
   bnnn,
   {
@@ -496,7 +490,7 @@ UX_FLOW_DEF_NOCB(
     "App  " XSTR(MONERO_VERSION),
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_info_2_step,
   pb,
   ui_menu_main_display(0),
@@ -507,7 +501,7 @@ UX_FLOW_DEF_VALID(
 
 
 
-UX_DEF(ux_flow_info,
+UX_FLOW(ux_flow_info,
   &ux_menu_info_1_step,
   &ux_menu_info_2_step
   );
@@ -522,7 +516,7 @@ void ui_menu_info_display(unsigned int value) {
 
 /* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
   ux_menu_pubaddr_1_step,
   bnnn_paging,
   {
@@ -530,7 +524,7 @@ UX_FLOW_DEF_NOCB(
     .text = G_monero_vstate.ux_wallet_public_address
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_pubaddr_2_step,
   pb,
   ui_menu_main_display(0),
@@ -539,7 +533,7 @@ UX_FLOW_DEF_VALID(
     "Back"
   });
 
-UX_DEF(ux_flow_pubaddr,
+UX_FLOW(ux_flow_pubaddr,
   &ux_menu_pubaddr_1_step,
   &ux_menu_pubaddr_2_step
   );
@@ -551,7 +545,7 @@ void ui_menu_pubaddr_display(unsigned int value) {
 
 /* --------------------------------- MAIN UX --------------------------------- */
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_main_1_step,
   pbb,
   ui_menu_pubaddr_display(0),
@@ -561,16 +555,16 @@ UX_FLOW_DEF_VALID(
     G_monero_vstate.ux_wallet_public_short_address
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_main_2_step,
   pb,
-  ui_menu_settings_display(0),
+  ux_menulist_init(G_ux.stack_count-1, settings_submenu_getter, settings_submenu_selector),
   {
     &C_icon_coggle,
     "Settings"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_main_3_step,
   pb,
   ui_menu_info_display(0),
@@ -579,7 +573,7 @@ UX_FLOW_DEF_VALID(
     "About"
   });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
   ux_menu_main_4_step,
   pb,
   os_sched_exit(0),
@@ -589,7 +583,7 @@ UX_FLOW_DEF_VALID(
   });
 
 
-UX_DEF(ux_flow_main,
+UX_FLOW(ux_flow_main,
   &ux_menu_main_1_step,
   &ux_menu_main_2_step,
   &ux_menu_main_3_step,

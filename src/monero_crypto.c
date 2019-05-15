@@ -374,7 +374,7 @@ static void monero_ge_fromfe_frombytes(unsigned char *ge , unsigned char *bytes)
  setsign:
    if (fe_isnegative(rX) != sign) {
      //fe_neg(r->X, r->X);
-    cx_math_subm(rX, (unsigned char *)C_ED25519_FIELD, rX, MOD);
+    cx_math_sub(rX, (unsigned char *)C_ED25519_FIELD, rX, 32);
    }
    cx_math_addm(rZ, z, w, MOD);
    cx_math_subm(rY, z, w, MOD);
@@ -670,7 +670,7 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
     os_memmove(&Qxy[1], Q, 32);
     cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
-    cx_math_subm(Qxy+1, (unsigned char *)C_ED25519_FIELD,  Qxy+1, (unsigned char *)C_ED25519_FIELD, 32);
+    cx_math_sub(Qxy+1, (unsigned char *)C_ED25519_FIELD,  Qxy+1, 32);
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
 
     cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
