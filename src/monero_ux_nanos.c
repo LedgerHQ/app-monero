@@ -14,6 +14,7 @@
  */
 
 
+#ifdef UI_NANO_S
 
 #include "os.h"
 #include "cx.h"
@@ -541,3 +542,5 @@ void ui_init(void) {
 void io_seproxyhal_display(const bagl_element_t *element) {
   io_seproxyhal_display_default((bagl_element_t *)element);
 }
+
+#endif

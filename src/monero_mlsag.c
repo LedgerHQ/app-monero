@@ -31,12 +31,12 @@ int monero_apdu_mlsag_prepare() {
     unsigned char mul[32];
 
 
-    if (G_monero_vstate.io_length>1) {        
+    if (G_monero_vstate.io_length>1) {
         monero_io_fetch(Hi,32);
         if(G_monero_vstate.options &0x40) {
             monero_io_fetch(xin,32);
-        } else { 
-           monero_io_fetch_decrypt(xin,32); 
+        } else {
+           monero_io_fetch_decrypt(xin,32);
         }
         options = 1;
     }  else {
@@ -44,7 +44,7 @@ int monero_apdu_mlsag_prepare() {
     }
 
     monero_io_discard(1);
-    
+
     //ai
     monero_rng(alpha, 32);
     monero_reduce(alpha, alpha);
@@ -53,7 +53,7 @@ int monero_apdu_mlsag_prepare() {
     //ai.G
     monero_ecmul_G(mul, alpha);
     monero_io_insert(mul,32);
-       
+
     if (options) {
         //ai.Hi
         monero_ecmul_k(mul, Hi, alpha);
@@ -86,7 +86,7 @@ int monero_apdu_mlsag_hash() {
         monero_reduce(c,c);
         monero_io_insert(c,32);
         os_memmove(G_monero_vstate.c, c, 32);
-    }  
+    }
     return SW_OK;
 }
 
@@ -98,19 +98,24 @@ int monero_apdu_mlsag_sign() {
     unsigned char alpha[32];
     unsigned char ss[32];
     unsigned char ss2[32];
-    
+
     if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin,32);
         monero_io_fetch(alpha,32);
     } else if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-        monero_io_fetch_decrypt(xin,32); 
+        monero_io_fetch_decrypt(xin,32);
         monero_io_fetch_decrypt(alpha,32);
     } else {
         THROW(SW_WRONG_DATA);
     }
     monero_io_discard(1);
 
-    monero_multm(ss, G_monero_vstate.c, xin);
+
+    monero_reduce(ss, G_monero_vstate.c);
+    monero_reduce(xin,xin);
+    monero_multm(ss, ss, xin);
+
+    monero_reduce(alpha, alpha);
     monero_subm(ss2, alpha, ss);
 
     monero_io_insert(ss2,32);

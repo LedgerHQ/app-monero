@@ -19,4 +19,8 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
+#ifdef TARGET_NANOX
+const monero_nv_state_t N_state_pic;
+#else
 monero_nv_state_t N_state_pic;
+#endif
