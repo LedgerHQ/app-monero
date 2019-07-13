@@ -15,7 +15,6 @@
 
 import sys
 import unicodedata
-import readline
 import binascii
 from struct import pack
 import hashlib
