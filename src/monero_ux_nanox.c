@@ -310,13 +310,21 @@ unsigned int ui_menu_export_viewkey_action(unsigned int value) {
 /* -------------------------------- NETWORK UX --------------------------------- */
 
 const char* const network_submenu_getter_values[] = {
+  #ifdef MONERO_ALPHA
+  "Unvailable",
+  #else
   "Main Network",
+  #endif
   "Stage Network",
   "Test Network",
   "Abort"
 };
 const char* const network_submenu_getter_values_selected[] = {
+  #ifdef MONERO_ALPHA
+  "Unvailable",git
+  #else
   "Main Network +",
+  #endif
   "Stage Network +",
   "Test Network +",
   "Abort"
@@ -330,7 +338,11 @@ const char* network_submenu_getter(unsigned int idx) {
   int net;
   switch(idx) {
   case 0:
+    #ifdef MONERO_ALPHA
+    net = -1;
+    #else
     net = MAINNET;
+    #endif
     break;
   case 1:
     net = STAGENET;
@@ -361,7 +373,9 @@ static void network_set_net(unsigned int network) {
 void network_submenu_selector(unsigned int idx) {
   switch(idx) {
     case 0:
+       #ifndef MONERO_ALPHA
        network_set_net(MAINNET);
+       #endif
        break;
     case 1:
        network_set_net(STAGENET);

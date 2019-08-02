@@ -28,20 +28,32 @@
 #include "string.h"
 #include "glyphs.h"
 
+#ifdef TARGET_NANOX
+ #include "ux.h"
+ #include "balenos_ble.h"
+#endif
 
 /* ----------------------------------------------------------------------- */
 /* ---                            Application Entry                    --- */
 /* ----------------------------------------------------------------------- */
 
 void monero_main(void) {
-  unsigned int io_flags;
+  unsigned int io_flags, cont;
   io_flags = 0;
-  for (;;) {
+  cont = 1;
+  while(cont) {
+
     volatile unsigned short sw = 0;
     BEGIN_TRY {
       TRY {
         monero_io_do(io_flags);
         sw = monero_dispatch();
+      }
+      CATCH(EXCEPTION_IO_RESET){
+        sw = 0;
+        cont = 0;
+        monero_io_discard(1);
+        //THROW(EXCEPTION_IO_RESET);
       }
       CATCH_OTHER(e) {
         monero_io_discard(1);
@@ -65,7 +77,6 @@ void monero_main(void) {
     }
     END_TRY;
   }
-
 }
 
 
@@ -74,7 +85,7 @@ unsigned char io_event(unsigned char channel) {
   int s_after  ;
 
   s_before =  os_global_pin_is_validated();
-  
+
   // nothing done with the event, throw an error on the transport layer if
   // needed
   // can't have more than one tag in the reply, not supported yet.
@@ -97,11 +108,11 @@ unsigned char io_event(unsigned char channel) {
     UX_DISPLAYED_EVENT({});
     break;
   case SEPROXYHAL_TAG_TICKER_EVENT:
-    UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, 
+    UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer,
     {
        // only allow display when not locked of overlayed by an OS UX.
       if (UX_ALLOWED ) {
-        UX_REDISPLAY(); 
+        UX_REDISPLAY();
       }
     });
     break;
@@ -113,16 +124,16 @@ unsigned char io_event(unsigned char channel) {
   }
 
   s_after =  os_global_pin_is_validated();
-  
+
   if (s_before!=s_after) {
     if (s_after == PIN_VERIFIED) {
       monero_init_private_key();
     } else {
-      ;//do nothing, allowing TX parsing in lock mode 
+      ;//do nothing, allowing TX parsing in lock mode
       //monero_wipe_private_key();
     }
   }
-  
+
   // command has been processed, DO NOT reset the current APDU transport
   return 1;
 }
@@ -170,32 +181,36 @@ void app_exit(void) {
 __attribute__((section(".boot"))) int main(void) {
   // exit critical section
   __asm volatile("cpsie i");
-
+  unsigned int cont = 1;
 
   // ensure exception will work as planned
   os_boot();
-  for(;;) {
+  while(cont) {
     UX_INIT();
 
     BEGIN_TRY {
       TRY {
-      
+
         //start communication with MCU
         io_seproxyhal_init();
 
+        USB_power(0);
         USB_power(1);
+
         #ifdef HAVE_USB_CLASS_CCID
         io_usb_ccid_set_card_inserted(1);
         #endif
-  
 
-        //set up
+        #ifdef TARGET_NANOX
+        G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
+        BLE_power(0, NULL);
+        BLE_power(1, "Nano X - Monero");
+        #endif
+
         monero_init();
-  
+
         //set up initial screen
         ui_init();
-
-
 
         //start the application
         //the first exchange will:
@@ -205,11 +220,11 @@ __attribute__((section(".boot"))) int main(void) {
         monero_main();
       }
       CATCH(EXCEPTION_IO_RESET) {
-                // reset IO and UX
-        continue;
+        // reset IO and UX
+        ;
       }
-      CATCH_ALL {
-        break;
+      CATCH_OTHER(e) {
+        cont = 0;
       }
       FINALLY {
       }

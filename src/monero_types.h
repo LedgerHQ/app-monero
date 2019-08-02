@@ -54,10 +54,12 @@
 #define TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX          63
 
 enum network_type {
-    MAINNET = 0,
-    TESTNET,
-    STAGENET,
-    FAKECHAIN
+  #ifndef MONERO_ALPHA
+  MAINNET = 0,
+  #endif
+  TESTNET = 1,
+  STAGENET = 2,
+  FAKECHAIN = 3
 };
 
 struct monero_nv_state_s {

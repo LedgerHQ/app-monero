@@ -35,6 +35,8 @@ else
 ICONNAME = images/icon_monero.gif
 endif
 
+DEFINES += MONERO_ALPHA
+
 APPVERSION_M=1
 APPVERSION_N=4
 APPVERSION_P=0
@@ -101,6 +103,8 @@ DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
 DEFINES		  += HAVE_UX_FLOW
+DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 else
 DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
@@ -110,13 +114,18 @@ endif
 DEBUG = 0
 ifneq ($(DEBUG),0)
 
-        ifeq ($(TARGET_NAME),TARGET_NANOX)
-                DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-        else
-                DEFINES   += HAVE_PRINTF PRINTF=screen_printf
-        endif
+	ifeq ($(TARGET_NAME),TARGET_NANOX)
+		DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
+	else
+		DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+	endif
+	DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
+
 else
-        DEFINES   += PRINTF\(...\)=
+
+	DEFINES   += PRINTF\(...\)=
+	DEFINES   += PLINE\(...\)=
+
 endif
 
 
@@ -161,6 +170,7 @@ SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 SDK_SOURCE_PATH  += lib_ux
+SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
 endif
 
 load: all

@@ -262,7 +262,6 @@ int monero_dispatch() {
 
   default:
     THROW(SW_INS_NOT_SUPPORTED);
-    return SW_INS_NOT_SUPPORTED;
     break;
   }
   return sw;
