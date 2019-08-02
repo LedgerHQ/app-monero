@@ -321,7 +321,7 @@ const char* const network_submenu_getter_values[] = {
 };
 const char* const network_submenu_getter_values_selected[] = {
   #ifdef MONERO_ALPHA
-  "Unvailable",git
+  "Unvailable",
   #else
   "Main Network +",
   #endif
