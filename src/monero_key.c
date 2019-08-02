@@ -282,10 +282,10 @@ int monero_apdu_verify_key() {
     monero_secret_key_to_public_key(computed_pub, priv);
     break;
   case 1:
-    os_memmove(pub, G_monero_vstate.A, 32);
+    os_memmove(computed_pub, G_monero_vstate.A, 32);
     break;
   case 2:
-    os_memmove(pub, G_monero_vstate.B, 32);
+    os_memmove(computed_pub, G_monero_vstate.B, 32);
     break;
   default:
     THROW(SW_WRONG_P1P2);
