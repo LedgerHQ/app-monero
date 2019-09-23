@@ -145,7 +145,7 @@ Author: Cédric Mesnil <cslashm@gmail.com>
 License:
 
 
-  | Copyright 2017 Cédric Mesnil <cslashm@gmail.com>, Ledger SAS
+  | Copyright 2017-2019 Cédric Mesnil <cslashm@gmail.com>, Ledger SAS
   |
   | Licensed under the Apache License, Version 2.0 (the "License");
   | you may not use this file except in compliance with the License.
@@ -2316,11 +2316,11 @@ Helper functions
 
 
 **|Hp|**
-ta
-   | *input*: :math:`P`
+
+   | *input*: :math:`s`
    | *output*: :math:`Q`
    |
-   |      :math:`data` = :math:`KindOfMagic(P)`
+   |      :math:`Q` = :math:`KindOfMagic(s)`
 
 
 **DeriveAES**

@@ -137,6 +137,7 @@ struct monero_v_state_s {
 
   /* SPK */
   cx_aes_key_t spk;
+  unsigned char hmac_key[32];
 
   /* Tx state machine */
   struct {
@@ -301,6 +302,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
 #define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6914
 #define SW_SECURITY_MAXOUTPUT_REACHED        0x6915
+#define SW_SECURITY_TRUSTED_INPUT            0x6916
 
 #define SW_CLIENT_NOT_SUPPORTED              0x6930
 
