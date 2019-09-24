@@ -255,7 +255,7 @@ void monero_multm_8(unsigned char *r, unsigned char *a);
 void monero_reduce(unsigned char *r, unsigned char *a);
 
 
-void monero_rng(unsigned char *r,  int len) ;
+void monero_rng_mod_order(unsigned char *r);
 /* ----------------------------------------------------------------------- */
 /* ---                                IO                              ---- */
 /* ----------------------------------------------------------------------- */

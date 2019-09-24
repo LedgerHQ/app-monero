@@ -51,8 +51,7 @@ int monero_apdu_open_tx() {
     monero_io_discard(1);
 
     monero_reset_tx();
-    monero_rng(G_monero_vstate.r,32);
-    monero_reduce(G_monero_vstate.r, G_monero_vstate.r);
+    monero_rng_mod_order(G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
 
     monero_io_insert(G_monero_vstate.R,32);

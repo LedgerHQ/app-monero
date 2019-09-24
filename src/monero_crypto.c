@@ -71,7 +71,7 @@ void monero_aes_derive(cx_aes_key_t *sk, unsigned char* seed32, unsigned char *a
 
 void monero_aes_generate(cx_aes_key_t *sk) {
     unsigned char  h1[16];
-    monero_rng(h1,16);
+    cx_rng(h1,16);
     cx_aes_init_key(h1,16,sk);
 }
 
@@ -429,8 +429,7 @@ void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv) {
-    monero_rng(ec_priv,32);
-    monero_reduce(ec_priv, ec_priv);
+    monero_rng_mod_order(ec_priv);
     monero_ecmul_G(ec_pub, ec_priv);
 }
 
@@ -784,9 +783,11 @@ void monero_reduce(unsigned char *r, unsigned char *a) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-
-void monero_rng(unsigned char *r,  int len) {
-    cx_rng(r,len);
+void monero_rng_mod_order(unsigned char *r) {
+    unsigned char rnd[32+8];
+    cx_rng(rnd,32+8);
+    cx_math_modm(rnd, 32+8, (unsigned char *)C_ED25519_ORDER, 32);
+    monero_reverse32(r,rnd+8);
 }
 
 /* ----------------------------------------------------------------------- */
