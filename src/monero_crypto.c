@@ -786,7 +786,7 @@ void monero_reduce(unsigned char *r, unsigned char *a) {
 void monero_rng_mod_order(unsigned char *r) {
     unsigned char rnd[32+8];
     cx_rng(rnd,32+8);
-    cx_math_modm(rnd, 32, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_modm(rnd, 32+8, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r,rnd+8);
 }
 
