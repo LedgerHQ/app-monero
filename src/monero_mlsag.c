@@ -46,7 +46,7 @@ int monero_apdu_mlsag_prepare() {
     monero_io_discard(1);
 
     //ai
-    monero_rng(alpha, 32);
+    monero_rng_mod_order(alpha);
     monero_reduce(alpha, alpha);
     monero_io_insert_encrypt(alpha, 32);
 

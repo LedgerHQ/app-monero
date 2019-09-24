@@ -53,8 +53,7 @@ int monero_apdu_get_tx_proof() {
 
     monero_io_discard(0);
 
-    monero_rng(k,32);
-    monero_reduce(k,k);
+    monero_rng_mod_order(k);
     os_memmove(G_monero_vstate.tmp+32*0, msg, 32);
     os_memmove(G_monero_vstate.tmp+32*1, D, 32);
 
