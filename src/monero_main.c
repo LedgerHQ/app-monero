@@ -56,14 +56,18 @@ void monero_main(void) {
         //THROW(EXCEPTION_IO_RESET);
       }
       CATCH_OTHER(e) {
-        monero_io_discard(1);
         monero_reset_tx();
-        if ( (e & 0xFFFF0000) ||
-             ( ((e&0xF000)!=0x6000) && ((e&0xF000)!=0x9000) ) ) {
-          monero_io_insert_u32(e);
-          sw = 0x6f42;
-        } else {
+        if ((e&0xF000)==0x9000) {
           sw = e;
+        } else {
+          monero_io_discard(1);
+          if ( (e & 0xFFFF0000) ||
+               ((e&0xF000)!=0x6000)   ) {
+            monero_io_insert_u32(e);
+            sw = 0x6f42;
+          } else {
+            sw = e;
+          }
         }
       }
       FINALLY {

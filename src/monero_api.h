@@ -94,6 +94,12 @@ void ui_menu_change_validation_display(unsigned int value) ;
 /* ----------------------------------------------------------------------- */
 /* ---                          KEYS & ADDRESS                        ---- */
 /* ----------------------------------------------------------------------- */
+extern const unsigned char C_FAKE_SEC_VIEW_KEY[32];
+extern const unsigned char C_FAKE_SEC_SPEND_KEY[32];
+
+int is_fake_view_key(unsigned char *s);
+int is_fake_spend_key(unsigned char *s);
+
 void monero_sc_add(unsigned char *r, unsigned char *s1, unsigned char *s2);
 void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int len);
 void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub);
@@ -269,6 +275,7 @@ void monero_io_hole(unsigned int sz) ;
 void monero_io_inserted(unsigned int len);
 void monero_io_insert(unsigned char const * buffer, unsigned int len) ;
 void monero_io_insert_encrypt(unsigned char* buffer, int len);
+void monero_io_insert_hmac_for(unsigned char* buffer, int len);
 
 void monero_io_insert_u32(unsigned  int v32) ;
 void monero_io_insert_u24(unsigned  int v24) ;

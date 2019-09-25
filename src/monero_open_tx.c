@@ -26,6 +26,8 @@
 void monero_reset_tx() {
     os_memset(G_monero_vstate.r, 0, 32);
     os_memset(G_monero_vstate.R, 0, 32);
+    cx_rng(G_monero_vstate.hmac_key, 32);
+
     monero_keccak_init_H();
     monero_sha256_commitment_init();
     monero_sha256_outkeys_init();
@@ -41,7 +43,6 @@ void monero_reset_tx() {
 /*
  * HD wallet not yet supported : account is assumed to be zero
  */
-#define OPTION_KEEP_r 1
 int monero_apdu_open_tx() {
 
     unsigned int account;
@@ -51,18 +52,25 @@ int monero_apdu_open_tx() {
     monero_io_discard(1);
 
     monero_reset_tx();
+    G_monero_vstate.tx_in_progress = 1;
+
+    #ifdef DEBUG_HWDEVICE
+    os_memset(G_monero_vstate.hmac_key, 0xab, 32);
+    #else
+    cx_rng(G_monero_vstate.hmac_key, 32);
+    #endif
+
     monero_rng_mod_order(G_monero_vstate.r);
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
 
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
-#ifdef DEBUG_HWDEVICE
-    monero_io_insert(G_monero_vstate.r,32);
-#endif
-    G_monero_vstate.tx_in_progress = 1;
+    monero_io_insert(C_FAKE_SEC_VIEW_KEY,32);
+    monero_io_insert_hmac_for(C_FAKE_SEC_VIEW_KEY,32);
+    monero_io_insert(C_FAKE_SEC_SPEND_KEY,32);
+    monero_io_insert_hmac_for(C_FAKE_SEC_SPEND_KEY,32);
     return SW_OK;
 }
-#undef OPTION_KEEP_r
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
