@@ -83,7 +83,7 @@ static unsigned long monero_crc32( unsigned long inCrc32, const void *buf,
 
 void monero_clear_words() {
   for (int i = 0; i<25; i++) {
-    monero_nvm_write(N_monero_pstate->words[i], NULL,WORDS_MAX_LENGTH);
+    monero_nvm_write((void*)N_monero_pstate->words[i], NULL,WORDS_MAX_LENGTH);
   }
 }
 /**
@@ -112,7 +112,7 @@ static void  monero_set_word(unsigned int n, unsigned int idx, unsigned int w_st
   }
   len = word_list[0];
   word_list++;
-  monero_nvm_write(N_monero_pstate->words[n], word_list, len);
+  monero_nvm_write((void*)N_monero_pstate->words[n], word_list, len);
 }
 
 #define word_list_length 1626
@@ -151,7 +151,7 @@ int monero_apdu_manage_seedwords() {
         }
       }
       w_start = monero_crc32(0, G_monero_vstate.io_buffer, G_monero_vstate.io_p2*24)%24;
-      monero_nvm_write(N_monero_pstate->words[24], N_monero_pstate->words[w_start], WORDS_MAX_LENGTH);
+      monero_nvm_write((void*)N_monero_pstate->words[24], (void*)N_monero_pstate->words[w_start], WORDS_MAX_LENGTH);
     }
 
     break;
@@ -168,6 +168,69 @@ int monero_apdu_manage_seedwords() {
 #undef seed
 #undef word_list_length
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+static void monero_payment_id_to_str(const unsigned char *payment_id, char* str) {
+  for (int i = 0; i<8; i++) {
+    if (payment_id[i] <= 0xF) {
+      snprintf(str+i*2,3, "0%x",payment_id[i]);
+    } else {
+      snprintf(str+i*2,3, "%x",payment_id[i]);
+    }
+  }
+}
+
+int  monero_apdu_display_address() {
+  unsigned int  major;
+  unsigned int  minor;
+  unsigned char index[8];
+  unsigned char payment_id[8];
+  unsigned char C[32];
+  unsigned char D[32];
+
+  //fetch
+  monero_io_fetch(index, 8);
+  monero_io_fetch(payment_id, 8);
+  monero_io_discard(0);
+
+  major = (index[0]<<0)|(index[1]<<8)|(index[2]<<16)|(index[3]<<24);
+  minor = (index[4]<<0)|(index[5]<<8)|(index[6]<<16)|(index[7]<<24);
+  if ((minor|major) && (G_monero_vstate.io_p1 == 1)) {
+    THROW(SW_WRONG_DATA);
+  }
+
+  //retrieve pub keys
+  if (minor|major) {
+    monero_get_subaddress(C, D, index);
+  } else {
+    os_memmove(C, G_monero_vstate.A, 32);
+    os_memmove(D, G_monero_vstate.B, 32);
+  }
+
+  //prepare UI
+  if (minor|major) {
+    G_monero_vstate.disp_addr_M = major;
+    G_monero_vstate.disp_addr_m = minor;
+    G_monero_vstate.disp_addr_mode = DISP_SUB;
+  } else {
+    if (G_monero_vstate.io_p1 == 1) {
+      monero_payment_id_to_str(payment_id, G_monero_vstate.payment_id);
+      G_monero_vstate.disp_addr_mode = DISP_INTEGRATED;
+    } else {
+      G_monero_vstate.disp_addr_mode = DISP_MAIN;
+    }
+  }
+  monero_base58_public_key(G_monero_vstate.ux_address,
+                           C, D,
+                           (minor|major)?1:0,
+                           (G_monero_vstate.io_p1 == 1)? payment_id : NULL);
+
+
+
+  ui_menu_any_pubaddr_display(0);
+  return 0;
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -203,7 +266,7 @@ int monero_apdu_put_key() {
     THROW(SW_WRONG_DATA);
     return SW_WRONG_DATA;
   }
-  nvm_write(N_monero_pstate->a, sec, 32);
+  nvm_write((void*)N_monero_pstate->a, sec, 32);
 
   //spend key
   monero_io_fetch(sec, 32);
@@ -213,12 +276,12 @@ int monero_apdu_put_key() {
     THROW(SW_WRONG_DATA);
     return SW_WRONG_DATA;
   }
-  nvm_write(N_monero_pstate->b, sec, 32);
+  nvm_write((void*)N_monero_pstate->b, sec, 32);
 
 
   //change mode
   unsigned char key_mode = KEY_MODE_EXTERNAL;
-  nvm_write(&N_monero_pstate->key_mode, &key_mode, 1);
+  nvm_write((void*)&N_monero_pstate->key_mode, &key_mode, 1);
 
   monero_io_discard(1);
 
@@ -240,15 +303,20 @@ int monero_apdu_get_key() {
     //spend key
     monero_io_insert(G_monero_vstate.B, 32);
     //public base address
-    monero_base58_public_key((char*)G_monero_vstate.io_buffer+G_monero_vstate.io_offset, G_monero_vstate.A, G_monero_vstate.B, 0);
+    monero_base58_public_key((char*)G_monero_vstate.io_buffer+G_monero_vstate.io_offset, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
     monero_io_inserted(95);
     break;
 
   //get private
   case 2:
     //view key
-    ui_export_viewkey_display();
-    return 0;
+    if (G_monero_vstate.export_view_key == EXPORT_VIEW_KEY) {
+      monero_io_insert(G_monero_vstate.a, 32);
+    } else {
+      ui_export_viewkey_display(0);
+      return 0;
+    }
+    break;
 
   #if DEBUG_HWDEVICE
   //get info
@@ -271,6 +339,12 @@ int monero_apdu_get_key() {
 
     break;
     }
+
+      //get info
+  case 4 :
+    monero_io_insert(G_monero_vstate.a, 32);
+    monero_io_insert(G_monero_vstate.b, 32);
+    break;
     #endif
 
   default:

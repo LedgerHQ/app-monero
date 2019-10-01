@@ -95,22 +95,40 @@ static void encode_block(const unsigned char* block, unsigned int  size,  char* 
     }
 }
 
-int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress) {
-    unsigned char data[72];
+int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress, unsigned char *paymanetID) {
+    unsigned char data[72+8];
     unsigned int offset;
     unsigned int prefix;
 
     //data[0] = N_monero_pstate->network_id;
     switch(N_monero_pstate->network_id) {
         case TESTNET:
-            prefix = is_subbadress ? TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            if (paymanetID) {
+                prefix = TESTNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
+            } else if (is_subbadress) {
+                prefix = TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
+            } else {
+                prefix = TESTNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            }
             break;
         case STAGENET:
-            prefix = is_subbadress ? STAGENET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : STAGENET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            if (paymanetID) {
+                prefix = STAGENET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
+            } else if (is_subbadress) {
+                prefix = STAGENET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
+            } else {
+                prefix = STAGENET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            }
             break;
         #ifndef MONERO_ALPHA
         case MAINNET:
-            prefix = is_subbadress ? MAINNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            if (paymanetID) {
+                prefix = MAINNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
+            } else if (is_subbadress) {
+                prefix = MAINNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
+            } else {
+                prefix = MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+            }
             break;
         #endif
     }
@@ -118,11 +136,17 @@ int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *
 
     os_memmove(data+offset,spend,32);
     os_memmove(data+offset+32,view,32);
-    monero_keccak_F(data, offset+64, G_monero_vstate.H);
-    os_memmove(data+offset+32+32, G_monero_vstate.H, 4);
+    offset += 64;
+    if (paymanetID) {
+        os_memmove(data+offset, paymanetID, 8);
+        offset += 8;
+    }
+    monero_keccak_F(data, offset, G_monero_vstate.H);
+    os_memmove(data+offset, G_monero_vstate.H, 4);
+    offset += 4;
 
-    unsigned int full_block_count = (offset+32+32+4) / FULL_BLOCK_SIZE;
-    unsigned int last_block_size  = (offset+32+32+4) % FULL_BLOCK_SIZE;
+    unsigned int full_block_count = (offset) / FULL_BLOCK_SIZE;
+    unsigned int last_block_size  = (offset) % FULL_BLOCK_SIZE;
     for (size_t i = 0; i < full_block_count; ++i) {
         encode_block(data + i * FULL_BLOCK_SIZE, FULL_BLOCK_SIZE, &str_b58[i * FULL_ENCODED_BLOCK_SIZE]);
     }

@@ -96,7 +96,7 @@ int monero_apdu_mlsag_prehash_update() {
     if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
         if (is_change == 0) {
             //encode dest adress
-            monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress);
+            monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress, NULL);
         }
         //update destination hash control
         if (G_monero_vstate.io_protocol_version == 2) {

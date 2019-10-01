@@ -298,8 +298,10 @@ unsigned int ui_menu_export_viewkey_action(unsigned int value) {
 
   if (value == ACCEPT) {
     monero_io_insert(G_monero_vstate.a, 32);
+    G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
   } else {
     monero_io_insert(x, 32);
+    G_monero_vstate.export_view_key = 0;
   }
   monero_io_insert_u16(sw);
   monero_io_do(IO_RETURN_AFTER_TX);
@@ -528,34 +530,123 @@ void ui_menu_info_display(unsigned int value) {
 #undef STR
 #undef XSTR
 
+
+
+
+
 /* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
+void ui_menu_pubaddr_action(unsigned int value);
+
+#define ADDR_TYPE  G_monero_vstate.ux_wallet_public_address+108
+#define ADDR_MAJOR G_monero_vstate.ux_wallet_public_address+124
+#define ADDR_MINOR G_monero_vstate.ux_wallet_public_address+140
+#define ADDR_IDSTR G_monero_vstate.ux_wallet_public_address+124
+#define ADDR_ID    G_monero_vstate.ux_wallet_public_address+140
+
+UX_STEP_NOCB(
+  ux_menu_pubaddr_01_step,
+  nn,
+  {
+    ADDR_TYPE,
+    "Address",
+  });
+
+
+UX_STEP_NOCB(
+  ux_menu_pubaddr_02_step,
+  nn,
+  {
+    ADDR_MAJOR,
+    ADDR_MINOR,
+  });
 
 UX_STEP_NOCB(
   ux_menu_pubaddr_1_step,
   bnnn_paging,
   {
-    .title = "XMR",
+    .title = "Address",
     .text = G_monero_vstate.ux_wallet_public_address
   });
 
 UX_STEP_CB(
   ux_menu_pubaddr_2_step,
   pb,
-  ui_menu_main_display(0),
+  ui_menu_pubaddr_action(0),
   {
     &C_icon_back,
-    "Back"
+    "Ok"
   });
 
 UX_FLOW(ux_flow_pubaddr,
+  &ux_menu_pubaddr_01_step,
+  &ux_menu_pubaddr_02_step,
   &ux_menu_pubaddr_1_step,
   &ux_menu_pubaddr_2_step
   );
 
-void ui_menu_pubaddr_display(unsigned int value) {
+void ui_menu_pubaddr_action(unsigned int value) {
+  
+  if (G_monero_vstate.disp_addr_mode) {
+     monero_io_insert_u16(0x9000);
+     monero_io_do(IO_RETURN_AFTER_TX);
+  }  
+  G_monero_vstate.disp_addr_mode = 0;
+  ui_menu_main_display(0);
+}
+
+/**
+ *
+ */
+void ui_menu_any_pubaddr_display(unsigned int value) {
+  int l = 0;
+  memset(G_monero_vstate.ux_wallet_public_address,0,sizeof(G_monero_vstate.ux_wallet_public_address));
+
+  switch (G_monero_vstate.disp_addr_mode) {
+  case 0:
+  case DISP_MAIN:
+    os_memmove(ADDR_TYPE, "Main", 4);
+    os_memmove(ADDR_MAJOR, "Major: 0", 8);
+    os_memmove(ADDR_MINOR, "minor: 0", 8);
+    l = 95;
+    break;
+
+  case DISP_SUB:
+    os_memmove(ADDR_TYPE, "Sub", 3);
+    snprintf(ADDR_MAJOR, 16, "Major: %d", G_monero_vstate.disp_addr_M);
+    snprintf(ADDR_MINOR, 16, "minor: %d", G_monero_vstate.disp_addr_m);
+    l = 95;
+    break;
+
+  case DISP_INTEGRATED:
+     os_memmove(ADDR_TYPE, "Integrated", 10);
+     os_memmove(ADDR_IDSTR, "Payment ID", 10);
+     os_memmove(ADDR_ID, G_monero_vstate.payment_id, 16);
+     l = 106;
+     break;
+  }
+
+  os_memmove(G_monero_vstate.ux_wallet_public_address+strlen(G_monero_vstate.ux_wallet_public_address),
+             G_monero_vstate.ux_address,
+             l);
+
+  ux_layout_bnnn_paging_reset();
   ux_flow_init(0, ux_flow_pubaddr, NULL);
 }
 
+void ui_menu_pubaddr_display(unsigned int value) {
+  memset(G_monero_vstate.ux_address,0,sizeof(G_monero_vstate.ux_address));
+  monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,G_monero_vstate.B, 0, NULL);
+  G_monero_vstate.disp_addr_mode = 0;
+  G_monero_vstate.disp_addr_M = 0;
+  G_monero_vstate.disp_addr_M = 0;
+  ui_menu_any_pubaddr_display(value);
+}
+
+#undef ADDR_TYPE
+#undef ADDR_MAJOR
+#undef ADDR_MINOR
+#undef ADDR_IDSTR
+#undef ADDR_ID
 
 /* --------------------------------- MAIN UX --------------------------------- */
 

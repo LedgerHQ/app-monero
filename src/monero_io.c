@@ -108,7 +108,7 @@ void monero_io_insert_hmac_for(unsigned char* buffer, int len) {
 void monero_io_insert_encrypt(unsigned char* buffer, int len) {
   //for now, only 32bytes block are allowed
   if (len != 32) {
-    THROW(SW_SECURE_MESSAGING_NOT_SUPPORTED);
+    THROW(SW_WRONG_DATA);
     return ;
   }
 
@@ -264,6 +264,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer) {
   if (os_memcmp(k, C_FAKE_SEC_VIEW_KEY, 32)==0) {
     G_monero_vstate.io_offset += 32;
     if (G_monero_vstate.tx_in_progress) {
+      monero_io_assert_available(32);
       monero_io_verify_hmac_for(C_FAKE_SEC_VIEW_KEY, 32, G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
       G_monero_vstate.io_offset += 32;
     }
@@ -274,6 +275,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer) {
   else if (os_memcmp(k, C_FAKE_SEC_SPEND_KEY, 32)==0) {
     G_monero_vstate.io_offset += 32;
     if (G_monero_vstate.tx_in_progress) {
+      monero_io_assert_available(32);
       monero_io_verify_hmac_for(C_FAKE_SEC_SPEND_KEY, 32, G_monero_vstate.io_buffer+G_monero_vstate.io_offset);
     }
     os_memmove(buffer, G_monero_vstate.b,32);

@@ -75,11 +75,11 @@ struct monero_nv_state_s {
   unsigned char key_mode;
 
 
+  /* spend key */
+  unsigned char b[32];
   /* view key */
   unsigned char a[32];
 
-  /* spend key */
-  unsigned char b[32];
 
   /*words*/
   #define WORDS_MAX_LENGTH 20
@@ -96,6 +96,12 @@ enum device_mode {
   TRANSACTION_CREATE_FAKE,
   TRANSACTION_PARSE
 };
+
+#define EXPORT_VIEW_KEY  0xC001BEEF
+
+#define DISP_MAIN        0x51
+#define DISP_SUB         0x52
+#define DISP_INTEGRATED  0x53
 
 struct monero_v_state_s {
   unsigned char   state;
@@ -126,13 +132,14 @@ struct monero_v_state_s {
 
 
   unsigned int   sig_mode;
+  unsigned int   export_view_key;
 
   /* ------------------------------------------ */
   /* ---               Crypo                --- */
   /* ------------------------------------------ */
+  unsigned char b[32];
   unsigned char a[32];
   unsigned char A[32];
-  unsigned char b[32];
   unsigned char B[32];
 
   /* SPK */
@@ -169,18 +176,25 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
 
   #ifdef UI_NANO_X
-  char            ux_wallet_public_address[96];
+  char            ux_wallet_public_address[160];
   char            ux_wallet_public_short_address[5+2+5+1];
   #endif
 
   union {
     struct {
       /* menu 0: 95-chars + "<monero: >"  + null */
-      char            ux_menu[112];
-      // address to display: 95-chars + null
-      char            ux_address[96];
+      char            ux_menu[132];
+      // address to display: 95/106-chars + null
+      char            ux_address[132];
       // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
       char            ux_amount[23];
+      // addr mode
+      unsigned char disp_addr_mode;
+      //M.m address
+      unsigned int disp_addr_M;
+      unsigned int disp_addr_m;
+      //payment id
+      char payment_id[16];
     };
     struct {
       unsigned char tmp[340];
@@ -220,6 +234,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_RESET                           0x02
 
 #define INS_GET_KEY                         0x20
+#define INS_DISPLAY_ADDRESS                 0x21
 #define INS_PUT_KEY                         0x22
 #define INS_GET_CHACHA8_PREKEY              0x24
 #define INS_VERIFY_KEY                      0x26

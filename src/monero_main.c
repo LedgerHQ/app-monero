@@ -57,7 +57,7 @@ void monero_main(void) {
       }
       CATCH_OTHER(e) {
         monero_reset_tx();
-        if ((e&0xF000)==0x9000) {
+        if (((e&0xF000)==0x9000)||((e&0xFF00)==0x6400)) {
           sw = e;
         } else {
           monero_io_discard(1);
@@ -83,10 +83,9 @@ void monero_main(void) {
   }
 }
 
-
 unsigned char io_event(unsigned char channel) {
-  int s_before ;
-  int s_after  ;
+  unsigned int s_before ;
+  unsigned int s_after  ;
 
   s_before =  os_global_pin_is_validated();
 

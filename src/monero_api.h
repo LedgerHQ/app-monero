@@ -16,6 +16,7 @@
 #ifndef MONERO_API_H
 #define  MONERO_API_H
 
+int monero_apdu_reset();
 
 void monero_install(unsigned char netId);
 void monero_init(void);
@@ -27,6 +28,7 @@ int monero_dispatch(void);
 
 int monero_apdu_put_key(void);
 int monero_apdu_get_key(void);
+int monero_apdu_display_address(void);
 int monero_apdu_manage_seedwords() ;
 int monero_apdu_verify_key(void);
 int monero_apdu_get_chacha8_prekey(void);
@@ -67,12 +69,20 @@ int monero_apdu_mlsag_hash(void);
 int monero_apdu_mlsag_sign(void);
 int monero_apdu_close_tx(void);
 
+void ui_init(void);
+void ui_main_display(unsigned int value);
+void monero_ux_user_validation();
+void ui_export_viewkey_display(unsigned int value);
+void ui_menu_any_pubaddr_display(unsigned int value);
+void ui_menu_pubaddr_display(unsigned int value);
+
+
 /* ----------------------------------------------------------------------- */
 /* ---                               MISC                             ---- */
 /* ----------------------------------------------------------------------- */
 #define OFFSETOF(type, field)    ((unsigned int)&(((type*)NULL)->field))
 
-int monero_base58_public_key( char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress);
+int monero_base58_public_key( char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress, unsigned char *paymanetID);
 
 /** unsigned varint amount to uint64 */
 uint64_t monero_vamount2uint64(unsigned char *binary);

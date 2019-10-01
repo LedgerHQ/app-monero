@@ -43,7 +43,7 @@ void monero_init() {
   os_memset(&G_monero_vstate, 0, sizeof(monero_v_state_t));
 
   //first init ?
-  if (os_memcmp(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
+  if (os_memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
     #ifdef MONERO_ALPHA
     monero_install(STAGENET);
     #else
@@ -100,8 +100,8 @@ void monero_init_private_key() {
     break;
 
   case KEY_MODE_EXTERNAL:
-    os_memmove(G_monero_vstate.a,  N_monero_pstate->a, 32);
-    os_memmove(G_monero_vstate.b,  N_monero_pstate->b, 32);
+    os_memmove(G_monero_vstate.a,  (void*)N_monero_pstate->a, 32);
+    os_memmove(G_monero_vstate.b,  (void*)N_monero_pstate->b, 32);
     break;
 
   default :
@@ -124,7 +124,7 @@ void monero_init_private_key() {
 /* ----------------------------------------------------------------------- */
 void monero_init_ux() {
   #ifdef UI_NANO_X
-  monero_base58_public_key(G_monero_vstate.ux_wallet_public_address, G_monero_vstate.A,G_monero_vstate.B, 0);
+  monero_base58_public_key(G_monero_vstate.ux_wallet_public_address, G_monero_vstate.A,G_monero_vstate.B, 0, NULL);
   os_memset(G_monero_vstate.ux_wallet_public_short_address, '.', sizeof(G_monero_vstate.ux_wallet_public_short_address));
   os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_wallet_public_address,5);
   os_memmove(G_monero_vstate.ux_wallet_public_short_address+7, G_monero_vstate.ux_wallet_public_address+95-5,5);
@@ -139,17 +139,17 @@ void monero_install(unsigned char netId) {
   unsigned char c;
 
   //full reset data
-  monero_nvm_write(N_monero_pstate, NULL, sizeof(monero_nv_state_t));
+  monero_nvm_write((void*)N_monero_pstate, NULL, sizeof(monero_nv_state_t));
 
   //set mode key
   c = KEY_MODE_SEED;
-  nvm_write(&N_monero_pstate->key_mode, &c, 1);
+  nvm_write((void*)&N_monero_pstate->key_mode, &c, 1);
 
   //set net id
-  monero_nvm_write(&N_monero_pstate->network_id, &netId, 1);
+  monero_nvm_write((void*)&N_monero_pstate->network_id, &netId, 1);
 
   //write magic
-  monero_nvm_write(N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC));
+  monero_nvm_write((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC));
 }
 
 /* ----------------------------------------------------------------------- */

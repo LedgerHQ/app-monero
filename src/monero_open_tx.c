@@ -66,9 +66,9 @@ int monero_apdu_open_tx() {
     monero_io_insert(G_monero_vstate.R,32);
     monero_io_insert_encrypt(G_monero_vstate.r,32);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY,32);
-    monero_io_insert_hmac_for(C_FAKE_SEC_VIEW_KEY,32);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY,32);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY,32);
-    monero_io_insert_hmac_for(C_FAKE_SEC_SPEND_KEY,32);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY,32);
     return SW_OK;
 }
 
