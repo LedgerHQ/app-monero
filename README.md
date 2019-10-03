@@ -14,6 +14,16 @@ Note this is only for testing. For production usage, use the application provide
 
 # Revision
 
+## V1.4.0
+
+Add address display
+Enhence protocol security
+Remmove double ask for view key
+
+## V1.3.2
+
+--
+
 ## V1.3.1
 
 Add Tx proof support Monero post 0.14.0.2
