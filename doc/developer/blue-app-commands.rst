@@ -49,10 +49,10 @@
 
 .. |x|      replace:: :math:`\mathit{x}`
 .. |ex|     replace:: :math:`\widetilde{\mathit{x}}`
-.. |x1|     replace:: :math:`\mathit{x}`
-.. |ex1|    replace:: :math:`\widetilde{\mathit{x}}`
-.. |x2|     replace:: :math:`\mathit{x}`
-.. |ex2|    replace:: :math:`\widetilde{\mathit{x}}`
+.. |x1|     replace:: :math:`\mathit{x_1}`
+.. |ex1|    replace:: :math:`\widetilde{\mathit{x_1}}`
+.. |x2|     replace:: :math:`\mathit{x_2}`
+.. |ex2|    replace:: :math:`\widetilde{\mathit{x_2}}`
 .. |P|      replace:: :math:`\mathit{P}`
 .. |xP|     replace:: :math:`\mathit{xP}`
 .. |G|      replace:: :math:`\mathit{G}`
@@ -1247,7 +1247,7 @@ sc_add
 **Description**
 
     | compute |x1| = |dec|[|spk|](|ex1|)
-    | compute |x1| = |dec|[|spk|](|ex1|)
+    | compute |x2| = |dec|[|spk|](|ex2|)
     | compute |x|  = |x1| + |x2|
     | compute |ex| = |enc|[|spk|](|x|)
 
@@ -1842,11 +1842,11 @@ Generate TX output keys
 
 **Description**
 
-.. |nak|      replace:: :math:`\mathit{need_additional_key}`
-.. |ak|       replace:: :math:`\mathit{additional_key}`
+.. |nak|      replace:: :math:`\mathit{need\_additional\_key}`
+.. |ak|       replace:: :math:`\mathit{additional\_key}`
 .. |txsec|    replace:: :math:`\mathit{tx_{sec}}`
-.. |sub|      replace:: :math:`\mathit{is_subaddress}`
-.. |chgaddr|  replace:: :math:`\mathit{is_change_address}`
+.. |sub|      replace:: :math:`\mathit{is\_subaddress}`
+.. |chgaddr|  replace:: :math:`\mathit{is\_change\_address}`
 
 Compute addtional key |P| if needed,  amount key blinding and ephemeral destination key.
 
@@ -2168,14 +2168,14 @@ Generate the matrix ring parameters:
    |     check the order of |Hi|
    |     compute |aHi|
    |     compute |eai| = |enc|[|spk|](|ai|)
-   |     if not option clear xin:
+   |     if not option\_clear\_xin:
    |         compute |xin| =  |dec|[|spk|](|exin|)
    |     compute |IIi| = |xin|.|Hi|
    |
    |
    |
 
-return |eai| , |aGi| [ |aHi|, |IIi|]
+return |eai| , |aGi| [|aHi|, |IIi|]
 
 
 **Command**
@@ -2416,7 +2416,7 @@ Helper functions
    |
    |      :math:`data` = :math:`point2bytes(P)`
    |      |s| = |H|(:math:`data`) % order
-   |      :math:`Q` = :math:`ge_from_fe(s)`
+   |      :math:`Q` = :math:`ge\_from\_fe(s)`
 
 
 **DeriveAES**
