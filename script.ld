@@ -71,10 +71,9 @@ SECTIONS
     *(.bss.N_* .rodata.N_*)
 
     . = ALIGN(PAGE_SIZE);
+    _envram_data = .;
     _install_parameters = .;
-    PROVIDE(N_install_parameters = .);
     _envram = .;
-    _nvram_data_size = _envram - _nvram_data;
     
   } > FLASH = 0x00
 
