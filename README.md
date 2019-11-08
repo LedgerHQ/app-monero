@@ -14,6 +14,12 @@ Note this is only for testing. For production usage, use the application provide
 
 # Revision
 
+## V1.3.3
+
+Fix for 1.6.0 firmware, there was change in OS API
+
+Add Tx proof support Monero post 0.14.0.2
+
 ## V1.3.1
 
 Add Tx proof support Monero post 0.14.0.2

@@ -110,7 +110,11 @@ int monero_apdu_mlsag_sign() {
     }
     monero_io_discard(1);
 
-    monero_multm(ss, G_monero_vstate.c, xin);
+    monero_reduce(ss, G_monero_vstate.c);
+    monero_reduce(xin,xin);
+    monero_multm(ss, ss, xin);
+
+    monero_reduce(alpha, alpha);
     monero_subm(ss2, alpha, ss);
 
     monero_io_insert(ss2,32);

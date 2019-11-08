@@ -150,6 +150,7 @@ int monero_apdu_reset() {
   }
   monero_io_fetch((unsigned char*)&client_version[0], client_version_len);
 
+  client_version[client_version_len] = 0;
   unsigned int i = 0;
   while(i < MONERO_SUPPORTED_CLIENT_SIZE) {
     if ((strlen((char*)PIC(monero_supported_client[i])) == client_version_len) &&
