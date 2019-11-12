@@ -1509,8 +1509,7 @@ If blind V1:
     | compute |ev| = |v|-|s|
 
 If blind V2:
-    | compute |k| =
-    | compute |s| = |Hs|("commitment_mask" \| |Akout|) % order
+    | compute |k| = |Hs|("commitment_mask" \| |Akout|) % order
     | compute |s| = |Hs|("amount" \|  |Akout|)
     | compute |v|[0:7] = |ev|[0:7]^|s|[0:7]
 
@@ -1730,7 +1729,7 @@ Generate Commitment Mask
 
 **Description**
 
-| compute |s| = |Hs|("amount" \| |AKout|)
+| compute |s| = |Hs|("commitment_mask" \| |AKout|)
 
 Return |s|
 
