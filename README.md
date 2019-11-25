@@ -16,9 +16,16 @@ Note this is only for testing. For production usage, use the application provide
 
 ## V1.4.1
 
+ Compatibilty check with client version now discards the fourth sub-version number.
+
+ Release for client 0.15.0+
+ firmware LNS 1.6.0 et LNX 1.2.4
+
+## V1.4.1
+
  Release for client 0.15
  firmware LNS 1.6.0 et LNX 1.2.4
- 
+
 ## V1.4.0
 
 Add address display
