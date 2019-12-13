@@ -267,33 +267,23 @@ const bagl_element_t ui_export_viewkey[] = {
   // type             userid    x    y    w    h    str   rad  fill              fg        bg     font_id                   icon_id
   { {BAGL_RECTANGLE,  0x00,     0,   0, 128,  32,    0,    0,  BAGL_FILL,  0x000000, 0xFFFFFF,    0,                         0},
     NULL,
-    0,
-    0, 0,
-    NULL, NULL, NULL},
+  },
 
   { {BAGL_ICON,       0x00,    3,   12,   7,   7,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CROSS  },
     NULL,
-    0,
-    0, 0,
-    NULL, NULL, NULL },
+  },
 
   { {BAGL_ICON,       0x00,  117,   13,   8,   6,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CHECK  },
      NULL,
-     0,
-     0, 0,
-     NULL, NULL, NULL },
+  },
 
   { {BAGL_LABELINE,   0x01,    0,   12, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
     G_monero_vstate.ux_menu,
-    0,
-    0, 0,
-    NULL, NULL, NULL },
+  },
 
   { {BAGL_LABELINE,   0x02,    0,   26, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
     G_monero_vstate.ux_menu,
-    0,
-    0, 0,
-    NULL, NULL, NULL },
+  },
 
 };
 
@@ -341,6 +331,80 @@ unsigned int ui_export_viewkey_button(unsigned int button_mask, unsigned int but
   ui_menu_main_display(0);
   return 0;
 }
+
+
+/* -------------------------------- EXPORT TX KEY UX --------------------------------- */
+unsigned int ui_export_txkey_prepro(const  bagl_element_t* element);
+unsigned int ui_export_txkey_button(unsigned int button_mask, unsigned int button_mask_counter);
+
+
+const bagl_element_t ui_export_txkey[] = {
+  // type             userid    x    y    w    h    str   rad  fill              fg        bg     font_id                   icon_id
+  { {BAGL_RECTANGLE,  0x00,     0,   0, 128,  32,    0,    0,  BAGL_FILL,  0x000000, 0xFFFFFF,    0,                         0},
+    NULL,
+  },
+
+  { {BAGL_ICON,       0x00,    3,   12,   7,   7,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CROSS  },
+    NULL,
+  },
+
+  { {BAGL_ICON,       0x00,  117,   13,   8,   6,    0,    0,         0,   0xFFFFFF, 0x000000,    0,                          BAGL_GLYPH_ICON_CHECK  },
+     NULL,
+   },
+
+  { {BAGL_LABELINE,   0x01,    0,   12, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
+    G_monero_vstate.ux_menu,
+  },
+
+  { {BAGL_LABELINE,   0x02,    0,   26, 128,  32,    0,    0,         0,   0xFFFFFF, 0x000000,    BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER, 0  },
+    G_monero_vstate.ux_menu,
+  },
+
+};
+
+void ui_export_txkey_display(unsigned int value) {
+ UX_DISPLAY(ui_export_txkey, (void*)ui_export_txkey_prepro);
+}
+
+unsigned int ui_export_txkey_prepro(const  bagl_element_t* element) {
+  if (element->component.userid == 1) {
+    snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "Decrypt");
+    return 1;
+  }
+  if (element->component.userid == 2) {
+    snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "TX Key?");
+    return 1;
+  }
+  snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), "Please Cancel");
+  return 1;
+}
+
+unsigned int ui_export_txkey_button(unsigned int button_mask, unsigned int button_mask_counter) {
+  unsigned int sw = 0;
+
+  monero_io_discard(0);
+
+  switch(button_mask) {
+  case BUTTON_EVT_RELEASED|BUTTON_LEFT: // CANCEL
+    sw = SW_SECURITY_STATUS_NOT_SATISFIED;
+    break;
+
+  case BUTTON_EVT_RELEASED|BUTTON_RIGHT:  // OK
+    monero_io_insert(G_monero_vstate.hmac_key, 32);    
+    sw = 0x9000;
+    break;
+
+  default:
+    break;
+  } 
+  if (sw) {
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    ui_menu_main_display(0);
+  }
+  return 0;
+}
+
 
 /* -------------------------------- NETWORK UX --------------------------------- */
 void ui_menu_network_action(unsigned int value);

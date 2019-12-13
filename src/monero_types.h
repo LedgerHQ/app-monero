@@ -257,6 +257,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY 0x4A
 #define INS_GET_SUBADDRESS_SECRET_KEY       0x4C
 
+
 #define INS_OPEN_TX                         0x70
 #define INS_SET_SIGNATURE_MODE              0x72
 #define INS_GET_ADDITIONAL_KEY              0x74
@@ -270,8 +271,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_CLOSE_TX                        0x80
 
 #define INS_GET_TX_PROOF                    0xA0
-#define INS_GEN_SIGNATURE                   0xA2
-#define INS_GEN_RING_SIGNATURE              0xA4
+#define INS_DECRYPT_TX_KEY                  0xA2
 
 
 

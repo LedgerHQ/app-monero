@@ -77,3 +77,23 @@ int monero_apdu_get_tx_proof() {
 
     return SW_OK;
 }
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_decrypt_tx_key() {    
+    unsigned char r[32];
+
+    monero_io_fetch(r,32);
+    #if defined(IODUMMYCRYPT)
+    for (int i = 0; i<len; i++) {
+        G_monero_vstate.hmac_key[i] = r[i] ^ 0x55;
+    }
+    #elif defined(IONOCRYPT)
+    os_memmove(G_monero_vstate.hmac_key, r, len);
+    #else //IOCRYPT
+    cx_aes(&G_monero_vstate.spk, CX_DECRYPT|CX_CHAIN_CBC|CX_LAST|CX_PAD_NONE, r, 32, G_monero_vstate.r, 32);
+    #endif
+    ui_export_txkey_display(1);
+    return 0;
+}

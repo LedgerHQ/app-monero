@@ -49,6 +49,7 @@ int monero_apdu_get_subaddress_spend_public_key(void);
 int monero_apdu_get_subaddress_secret_key(void);
 
 int monero_apdu_get_tx_proof(void);
+int monero_apdu_decrypt_tx_key(void);
 
 int monero_apdu_open_tx(void);
 void monero_reset_tx(void);
@@ -75,6 +76,7 @@ void monero_ux_user_validation();
 void ui_export_viewkey_display(unsigned int value);
 void ui_menu_any_pubaddr_display(unsigned int value);
 void ui_menu_pubaddr_display(unsigned int value);
+void ui_export_txkey_display(unsigned int value);
 
 
 /* ----------------------------------------------------------------------- */

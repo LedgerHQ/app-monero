@@ -83,7 +83,14 @@ void check_ins_access() {
       break;
     }
     return;
-
+  
+  case INS_DECRYPT_TX_KEY:
+    if ((os_global_pin_is_validated() != PIN_VERIFIED) ||
+        (G_monero_vstate.tx_in_progress == 1)) {
+      break;
+    }
+    return;
+    
   case INS_GEN_TXOUT_KEYS:
   case INS_BLIND:
   case INS_VALIDATE:
@@ -212,6 +219,10 @@ int monero_dispatch() {
     break;
 
     /* --- PROOF --- */
+
+  case INS_DECRYPT_TX_KEY:
+    sw = monero_apdu_decrypt_tx_key();
+    break;
 
   case INS_GET_TX_PROOF:
     sw = monero_apdu_get_tx_proof();
