@@ -81,7 +81,7 @@ int monero_apdu_get_tx_proof() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_decrypt_tx_key() {    
+int monero_apdu_decrypt_tx_key() {
     unsigned char r[32];
 
     monero_io_fetch(r,32);

@@ -390,13 +390,13 @@ unsigned int ui_export_txkey_button(unsigned int button_mask, unsigned int butto
     break;
 
   case BUTTON_EVT_RELEASED|BUTTON_RIGHT:  // OK
-    monero_io_insert(G_monero_vstate.hmac_key, 32);    
+    monero_io_insert(G_monero_vstate.r, 32);
     sw = 0x9000;
     break;
 
   default:
     break;
-  } 
+  }
   if (sw) {
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
@@ -552,7 +552,7 @@ const bagl_element_t* ui_menu_pubaddr_preprocessor(const ux_menu_entry_t* entry,
       case 0:
       case DISP_MAIN:
       case DISP_SUB:
-        snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), 
+        snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu),
                  "Major: %d",
                  G_monero_vstate.disp_addr_M);
         break;
@@ -567,7 +567,7 @@ const bagl_element_t* ui_menu_pubaddr_preprocessor(const ux_menu_entry_t* entry,
       case 0:
       case DISP_MAIN:
       case DISP_SUB:
-        snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu), 
+        snprintf(G_monero_vstate.ux_menu, sizeof(G_monero_vstate.ux_menu),
                  "minor: %d",
                  G_monero_vstate.disp_addr_m);
         break;
@@ -644,11 +644,11 @@ const bagl_element_t* ui_menu_pubaddr_preprocessor(const ux_menu_entry_t* entry,
 }
 
 void ui_menu_pubaddr_action(unsigned int value) {
-  
+
   if (G_monero_vstate.disp_addr_mode) {
      monero_io_insert_u16(0x9000);
      monero_io_do(IO_RETURN_AFTER_TX);
-  }  
+  }
   G_monero_vstate.disp_addr_mode = 0;
   G_monero_vstate.disp_addr_M = 0;
   G_monero_vstate.disp_addr_m = 0;
