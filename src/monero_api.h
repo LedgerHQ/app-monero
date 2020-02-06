@@ -16,7 +16,9 @@
 #ifndef MONERO_API_H
 #define  MONERO_API_H
 
-int monero_apdu_reset();
+int monero_apdu_reset(void);
+int monero_apdu_lock(void);
+void monero_lock_and_throw(int sw);
 
 void monero_install(unsigned char netId);
 void monero_init(void);
@@ -33,7 +35,6 @@ int monero_apdu_manage_seedwords() ;
 int monero_apdu_verify_key(void);
 int monero_apdu_get_chacha8_prekey(void);
 int monero_apdu_sc_add(void);
-int monero_apdu_sc_sub(void);
 int monero_apdu_scal_mul_key(void);
 int monero_apdu_scal_mul_base(void);
 int monero_apdu_generate_keypair(void);
@@ -51,7 +52,8 @@ int monero_apdu_get_subaddress_secret_key(void);
 int monero_apdu_get_tx_proof(void);
 
 int monero_apdu_open_tx(void);
-void monero_reset_tx(void);
+int monero_apdu_open_tx_cont(void);
+void monero_reset_tx(int reset_tx_cnt);
 int monero_apdu_open_subtx(void) ;
 int monero_apdu_set_signature_mode(void) ;
 int monero_apdu_stealth(void);
@@ -70,10 +72,12 @@ int monero_apdu_mlsag_sign(void);
 int monero_apdu_close_tx(void);
 
 void ui_init(void);
-void ui_main_display(unsigned int value);
-void monero_ux_user_validation();
+void ui_menu_lock_display(void);
+void ui_menu_main_display(unsigned int value);
+void ui_menu_info_display(unsigned int value);
+void ui_menu_info_display2(unsigned int value, char* line1, char* line2);
 void ui_export_viewkey_display(unsigned int value);
-void ui_menu_any_pubaddr_display(unsigned int value);
+void ui_menu_any_pubaddr_display(unsigned int value, unsigned char* pub_view, unsigned char *pub_spend, unsigned char is_subbadress, unsigned char *paymanetID);
 void ui_menu_pubaddr_display(unsigned int value);
 
 
@@ -100,7 +104,7 @@ int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout, uns
 void ui_menu_validation_display(unsigned int value) ;
 void ui_menu_fee_validation_display(unsigned int value) ;
 void ui_menu_change_validation_display(unsigned int value) ;
-
+void ui_menu_opentx_display(unsigned int value);
 /* ----------------------------------------------------------------------- */
 /* ---                          KEYS & ADDRESS                        ---- */
 /* ----------------------------------------------------------------------- */
@@ -196,6 +200,15 @@ int  monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsi
 #define monero_sha256_outkeys_final(out) \
     monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_keys, (out)?(out):G_monero_vstate.OUTK)
 
+ /*
+  *  check 1<s<N, else throw
+  */
+void monero_check_scalar_range_1N(unsigned char *s);
+
+/*
+  *  check 1<s, else throw
+  */
+void monero_check_scalar_not_null(unsigned char *s);
 
 /**
  * LE-7-bits encoding. High bit set says one more byte to decode.
@@ -284,8 +297,8 @@ void monero_io_rewind(void) ;
 void monero_io_hole(unsigned int sz) ;
 void monero_io_inserted(unsigned int len);
 void monero_io_insert(unsigned char const * buffer, unsigned int len) ;
-void monero_io_insert_encrypt(unsigned char* buffer, int len);
-void monero_io_insert_hmac_for(unsigned char* buffer, int len);
+void monero_io_insert_encrypt(unsigned char* buffer, int len, int type);
+void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type);
 
 void monero_io_insert_u32(unsigned  int v32) ;
 void monero_io_insert_u24(unsigned  int v24) ;
@@ -305,7 +318,7 @@ int monero_io_fetch_l(unsigned int *L) ;
 int monero_io_fetch_tl(unsigned int *T, unsigned int *L) ;
 int monero_io_fetch_nv(unsigned char* buffer, int len) ;
 int monero_io_fetch(unsigned char* buffer, int len) ;
-int monero_io_fetch_decrypt(unsigned char* buffer, int len);
+int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type);
 int monero_io_fetch_decrypt_key(unsigned char* buffer);
 
 int monero_io_do(unsigned int io_flags) ;

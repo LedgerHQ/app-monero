@@ -1,3 +1,4 @@
+|_pb|
 
 ..
    Copyright 2017-2019 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
@@ -259,10 +260,7 @@ Others:
 |_pb|
 
 
-State Machine
-=============
 
-**TBD**
 
 Commands overview
 =================
@@ -1288,57 +1286,6 @@ return |ex|.
 +--------+-----------------------------------------------------------------+
 
 
-Secret Sub
-~~~~~~~~~~
-
-**Monero**
-
-sc_sub
-
-**Description**
-
-    | compute |x1| = |dec|[|spk|](|ex1|)
-    | compute |x1| = |dec|[|spk|](|ex1|)
-    | compute |x|  = |x1| - |x2|
-    | compute |ex| = |enc|[|spk|](|x|)
-
-return |ex|.
-
-**Command**
-
-+-----+-----+-----+-----+----------+
-| CLA | INS | P1  | P2  | LC       |
-+=====+=====+=====+=====+==========+
-| 02  | 3E  | 00  | 00  | 41 or 61 |
-+-----+-----+-----+-----+----------+
-
-**Command data**
-
-+--------+-----------------------------------------------------------------+
-| Length |    Value                                                        |
-+========+=================================================================+
-| 01     | 00                                                              |
-+--------+-----------------------------------------------------------------+
-| 20     | secret key |ex1|                                                |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-| 20     | secret key |ex2|                                                |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-
-**Response data**
-
-+--------+-----------------------------------------------------------------+
-| Length |    Value                                                        |
-+========+=================================================================+
-| 20     | secret key |ex|                                                 |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-
-
 Secret Scalar Mult Key
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1619,10 +1566,34 @@ to pass the original destination with the |k|, |v|, |AKout|.
 Unblind |k| and |v| and then verify the commitment |Ctf|.
 If |Ct| is verified and user validate |Aout|,|Bout| and |v|, continue.
 
+|_pb|
+
+Transaction State Machine
+-------------------------
+
+During a transaction the following state machine is enforced::
+
+    OPEN_TX{1} --> STEALTH{1} --> GEN_TXOUT_KEYS{*} --> GEN_COMMITMENT_MASK{*} --
+                                        |                                       |
+                                        --(Fake TX only)--------------> BLIND <--
+                                                                           |
+                                                                           |
+    --------- VALIDATE{*} <-------- VALIDATE{*} <------- INS_VALIDATE{1} <--
+    |   mlsag_prehash_finalize   mlsag_prehash_update    mlsag_prehash_init
+    |
+    |
+    -----> MLSAG{1} ------> MLSAG{*} ------> MLSAG{1} -----> CLOSE_TX
+      --> mlsag_prepare    mlsag_hash       mlsag_sign
+      |                                           |
+      ---------------------------------------------
+
+
+Note this state machine assume the multi-signature is not supported.
+For multi-signature the INS_MLSAG/mlsag_prepare and INS_MLSAG/mlsag_sign may be received several time.
+
 
 Transaction Commands
 --------------------
-
 
 Open TX
 ~~~~~~~~
@@ -2367,7 +2338,7 @@ Annexes
 References
 ----------
 
-   | [1] `<https://github.com/monero-project/monero/tree/v0.10.3.1>`_
+   | [1] `<https://github.com/monero-project/monero/tree/v0.15.0.1>`_
    | [2] `<https://github.com/monero-project/monero/pull/2056>`_
    | [3] `<https://github.com/kenshi84/monero/tree/subaddress-v2>`_
    | [4] `<https://www.reddit.com/r/Monero/comments/6invis/ledger_hardware_wallet_monero_integration>`_

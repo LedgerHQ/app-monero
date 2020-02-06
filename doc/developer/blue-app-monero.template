@@ -206,7 +206,7 @@ $endfor$
   \centering
 %  \includegraphics[width=0.15\textwidth]{example-image-1x1}\par\vspace{1cm}
   {\scshape\LARGE Ledger Device for Monero \par}
-  {\scshape v0.8 \par\vspace{2cm}}
+  {\scshape v1.5+ \par\vspace{2cm}}
 
   \includegraphics{../../images/ledger-monero.png}\par\vspace{2cm}
 

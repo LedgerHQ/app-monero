@@ -52,6 +52,7 @@ void monero_init() {
   }
 
   G_monero_vstate.protocol = 0xff;
+  G_monero_vstate.protocol_barrier = PROTOCOL_UNLOCKED;
 
   //load key
   monero_init_private_key();
@@ -85,7 +86,7 @@ void monero_init_private_key() {
   // m / 44'      / 128'       / 0'       / 0      / 0
   path[0] = 0x8000002C;
   path[1] = 0x80000080;
-  path[2] = 0x80000000;
+  path[2] = 0x80000000|N_monero_pstate->account_id;
   path[3] = 0x00000000;
   path[4] = 0x00000000;
   os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5 , seed, chain);
@@ -108,7 +109,6 @@ void monero_init_private_key() {
     THROW(SW_SECURITY_LOAD_KEY);
     return;
   }
-
   monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a);
   monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b);
 
@@ -122,13 +122,31 @@ void monero_init_private_key() {
 /* ----------------------------------------------------------------------- */
 /* ---  Set up ui/ux                                                   --- */
 /* ----------------------------------------------------------------------- */
-void monero_init_ux() {
-  #ifdef UI_NANO_X
-  monero_base58_public_key(G_monero_vstate.ux_wallet_public_address, G_monero_vstate.A,G_monero_vstate.B, 0, NULL);
+void monero_init_ux() { 
+  monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,G_monero_vstate.B, 0, NULL);
   os_memset(G_monero_vstate.ux_wallet_public_short_address, '.', sizeof(G_monero_vstate.ux_wallet_public_short_address));
-  os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_wallet_public_address,5);
-  os_memmove(G_monero_vstate.ux_wallet_public_short_address+7, G_monero_vstate.ux_wallet_public_address+95-5,5);
+
+  #ifdef HAVE_UX_FLOW
+
+  #ifdef UI_NANO_X
+  snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name), "XMR / %d", N_monero_pstate->account_id);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address,5);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address+7, G_monero_vstate.ux_address+95-5,5);
   G_monero_vstate.ux_wallet_public_short_address[12] = 0;
+  #else 
+  snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name), "     XMR / %d", N_monero_pstate->account_id);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address,4);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address+6, G_monero_vstate.ux_address+95-4,4);  
+  G_monero_vstate.ux_wallet_public_short_address[10] = 0;
+  #endif
+
+  #else
+
+  snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name), "XMR / %d", N_monero_pstate->account_id);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address,5);
+  os_memmove(G_monero_vstate.ux_wallet_public_short_address+7, G_monero_vstate.ux_address+95-5,5);
+  G_monero_vstate.ux_wallet_public_short_address[12] = 0;
+
   #endif
 }
 
@@ -190,5 +208,23 @@ int monero_apdu_reset() {
   monero_io_insert_u8(MONERO_VERSION_MAJOR);
   monero_io_insert_u8(MONERO_VERSION_MINOR);
   monero_io_insert_u8(MONERO_VERSION_MICRO);
-  return 0x9000;
+  return SW_OK;
+}
+
+
+/* ----------------------------------------------------------------------- */
+/* --- LOCK                                                           --- */
+/* ----------------------------------------------------------------------- */
+int monero_apdu_lock() {
+  monero_io_discard(0);
+  monero_lock_and_throw(SW_SECURITY_LOCKED);
+  return SW_SECURITY_LOCKED;
+}
+
+void monero_lock_and_throw(int sw) {  
+  G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED;
+  snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Security Err");
+  snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2),  "%x", sw);
+  ui_menu_info_display(0);
+  THROW(sw);
 }
