@@ -57,7 +57,7 @@ int monero_apdu_open_tx() {
     G_monero_vstate.tx_cnt++;
     ui_menu_opentx_display(0);
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        return 0;
+        //return 0;
     }
     return monero_apdu_open_tx_cont();
 }

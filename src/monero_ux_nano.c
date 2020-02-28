@@ -218,6 +218,7 @@ unsigned int ui_menu_opentx_action(unsigned int value) {
   return 0;
 }
 
+#if 0
 void ui_menu_opentx_display(unsigned int value) {
   if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
     ux_flow_init(0, ux_flow_opentx,NULL);
@@ -227,7 +228,21 @@ void ui_menu_opentx_display(unsigned int value) {
     ui_menu_info_display(0);
   }
 }
-
+#else 
+void ui_menu_opentx_display(unsigned int value) {
+  uint32_t i;
+  if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Processing TX");    
+   } else {    
+    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Preparing TX");
+  }
+  for (i = 0; (i<G_monero_vstate.tx_cnt) && (i<12); i++) {
+    G_monero_vstate.ux_info2[i] = '.';
+  }
+  G_monero_vstate.ux_info2[i] = 0;
+  ui_menu_info_display(0);
+}
+#endif
 
 /* ----------------------------- FEE VALIDATION ----------------------------- */
 
