@@ -44,7 +44,7 @@ void monero_init() {
 
   //first init ?
   if (os_memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
-    #ifdef MONERO_ALPHA
+    #if defined(MONERO_ALPHA) || defined(MONERO_BETA)
     monero_install(STAGENET);
     #else
     monero_install(MAINNET);

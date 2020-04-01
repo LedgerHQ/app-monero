@@ -726,7 +726,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
   //update outkeys hash control
   if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-    if (G_monero_vstate.io_protocol_version == 2) {
+    if (G_monero_vstate.io_protocol_version >= 2) {
       monero_sha256_outkeys_update(Aout,32);
       monero_sha256_outkeys_update(Bout,32);
       monero_sha256_outkeys_update(&is_change,1);
@@ -754,7 +754,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
   //compute amount key AKout (scalar1), version is always greater than 1
   monero_derivation_to_scalar(amount_key, derivation, output_index);
   if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-      if (G_monero_vstate.io_protocol_version == 2) {
+      if (G_monero_vstate.io_protocol_version >= 2) {
         monero_sha256_outkeys_update(amount_key,32);
       }
   }

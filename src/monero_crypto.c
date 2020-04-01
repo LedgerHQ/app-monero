@@ -69,6 +69,9 @@ void monero_aes_derive(cx_aes_key_t *sk, unsigned char* seed32, unsigned char *a
     cx_aes_init_key(h1,16,sk);
 }
 
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 void monero_aes_generate(cx_aes_key_t *sk) {
     unsigned char  h1[16];
     cx_rng(h1,16);
@@ -76,20 +79,45 @@ void monero_aes_generate(cx_aes_key_t *sk) {
 }
 
 /* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
+/* --- assert: max_len>0                                               --- */
 /* ----------------------------------------------------------------------- */
-unsigned int monero_encode_varint(unsigned char varint[8], unsigned int out_idx) {
+unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, uint64_t value) {
     unsigned int len;
     len = 0;
-    while(out_idx >= 0x80) {
-        varint[len] = (out_idx & 0x7F) | 0x80;
-        out_idx = out_idx>>7;
+    while(value >= 0x80) {
+        if (len == (max_len-1)) {
+            THROW(SW_WRONG_DATA_RANGE);
+        }
+        varint[len] = (value & 0x7F) | 0x80;
+        value = value>>7;
         len++;
     }
-    varint[len] = out_idx;
-    len++;
-    return len;
+    varint[len] = value;
+    return len+1;
 }
+
+
+/* ----------------------------------------------------------------------- */
+/* --- assert: max_len>0                                               --- */
+/* ----------------------------------------------------------------------- */
+unsigned int monero_decode_varint(unsigned char *varint, unsigned int max_len, uint64_t *value) {
+    uint64_t v;
+    int len;
+    v = 0;
+    len =0;
+    while((varint[len])&0x80) {
+        if (len == (max_len-1)) {
+            THROW(SW_WRONG_DATA_RANGE);
+        }
+        v = v + (((varint[len])&0x7f) << (len*7));
+        len++;
+    }
+    
+    v = v + (((varint[len])&0x7f) << (len*7));
+    *value = v;
+    return len+1;
+}
+
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -448,7 +476,7 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
     unsigned int len_varint;
 
     os_memmove(varint, drv_data, 32);
-    len_varint = monero_encode_varint(varint+32, out_idx);
+    len_varint = monero_encode_varint(varint+32, 8, out_idx);
     len_varint += 32;
     monero_keccak_F(varint,len_varint,varint);
     monero_reduce(scalar, varint);
@@ -810,6 +838,31 @@ void monero_rng_mod_order(unsigned char *r) {
     monero_reverse32(r,rnd+8);
 }
 
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/* return 0 if ok, 1 if missing decimal */
+void monero_uint642str(uint64_t val,  char *str, unsigned int str_len) {
+    char stramount[22];
+    unsigned int offset,len;
+
+    os_memset(str,0,str_len);
+
+    offset = 22;
+    while (val) {
+        offset--;
+        stramount[offset] = '0' + val % 10;
+        val = val / 10;
+    }
+    len = sizeof(stramount)-offset;
+    if (len > str_len) {
+        THROW(SW_WRONG_DATA_RANGE);
+    }
+    os_memmove(str, stramount+offset, len);    
+}
+
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -889,28 +942,10 @@ int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len) 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-uint64_t monero_vamount2uint64(unsigned char *binary) {
-    uint64_t xmr,x;
-   int shift = 0;
-   xmr = 0;
-   while((*binary)&0x80) {
-       if ( (unsigned int)shift > (8*sizeof(unsigned long long int)-7)) {
-        return 0;
-       }
-       x = *(binary)&0x7f;
-       xmr = xmr + (x<<shift);
-       binary++;
-       shift += 7;
-   }
-   x = *(binary)&0x7f;
-   xmr = xmr + (x<<shift);
-   return xmr;
-}
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
 int monero_vamount2str(unsigned char *binary,  char *str, unsigned int str_len) {
-   return monero_amount2str(monero_vamount2uint64(binary), str,str_len);
+    //return monero_amount2str(monero_vamount2uint64(binary), str,str_len);
+    uint64_t amount;
+    monero_decode_varint(binary, 8, &amount);
+    return monero_amount2str(amount, str,str_len);
 }
 

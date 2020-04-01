@@ -36,10 +36,11 @@ ICONNAME = images/icon_monero.gif
 endif
 
 #DEFINES += MONERO_ALPHA
+#DEFINES += MONERO_BETA
 
 APPVERSION_M=1
-APPVERSION_N=5
-APPVERSION_P=1
+APPVERSION_N=6
+APPVERSION_P=0
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 SPECVERSION="1.0"
@@ -160,7 +161,7 @@ CFLAGS   += -O3 -Os
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
-#SCRIPT_LD:=script.ld
+SCRIPT_LD:=script.ld
 
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
