@@ -14,6 +14,14 @@ Note this is only for testing. For production usage, use the application provide
 
 # Revision
 
+## v1.6.0
+
+ Add Timelock verification on device
+
+## v1.5.x
+
+ Security Enhancement
+
 ## V1.4.1
 
  Compatibilty check with client version now discards the fourth sub-version number.
