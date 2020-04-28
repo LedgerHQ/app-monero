@@ -208,6 +208,9 @@ void monero_io_insert_tlv(unsigned int T, unsigned int L, unsigned char const *V
 /* ----------------------------------------------------------------------- */
 /* FECTH data from received buffer                                         */
 /* ----------------------------------------------------------------------- */
+int monero_io_fetch_available() {
+  return G_monero_vstate.io_length-G_monero_vstate.io_offset;
+}
 void monero_io_assert_available(int sz) {
   if ((G_monero_vstate.io_length-G_monero_vstate.io_offset) < sz) {
     THROW(SW_WRONG_LENGTH + (sz&0xFF));
@@ -341,6 +344,15 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer) {
   else {
     return monero_io_fetch_decrypt(buffer, 32, TYPE_SCALAR);
   }
+}
+
+uint64_t monero_io_fetch_varint() {
+  uint64_t  v64;
+  G_monero_vstate.io_offset += 
+    monero_decode_varint(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
+                         MIN(8, G_monero_vstate.io_length-G_monero_vstate.io_offset),
+                         &v64);
+  return v64;
 }
 
 unsigned int monero_io_fetch_u32() {

@@ -48,6 +48,7 @@ int check_potocol()  {
   switch(G_monero_vstate.io_protocol_version) {
    case 0x00: /* the first one: PCSC epoch */
    case 0x02: /* protocol V2 */
+   case 0x03: /* protocol V3 */
     if (G_monero_vstate.protocol == 0xff) {
       G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
     }
@@ -106,6 +107,7 @@ int check_ins_access() {
     return SW_OK;
 
   case INS_GEN_TXOUT_KEYS:
+  case INS_PREFIX_HASH:
   case INS_BLIND:
   case INS_VALIDATE:
   case INS_MLSAG:
@@ -284,6 +286,13 @@ int monero_dispatch() {
         (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
       THROW(SW_COMMAND_NOT_ALLOWED);
     }
+    if (G_monero_vstate.protocol == 3) {
+      if ((G_monero_vstate.tx_state_ins != INS_OPEN_TX) &&
+          (G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
+          (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
+        THROW(SW_COMMAND_NOT_ALLOWED);
+      }
+    }
     if ((G_monero_vstate.io_p1 != 0) ||
         (G_monero_vstate.io_p2 != 0)) {
       THROW(SW_WRONG_P1P2);
@@ -293,13 +302,68 @@ int monero_dispatch() {
     update_protocol();
     break;
 
+  /* --- PREFIX HASH  --- */
+  case INS_PREFIX_HASH:
+    //1. state machine check
+    if (G_monero_vstate.protocol < 3) {
+      THROW(SW_COMMAND_NOT_ALLOWED);
+    }
+    if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
+      (G_monero_vstate.tx_state_ins != INS_PREFIX_HASH)) {
+        THROW(SW_COMMAND_NOT_ALLOWED);
+    }
+    //init prefixhash state machine
+    if (G_monero_vstate.tx_state_ins == INS_GEN_TXOUT_KEYS) {
+      G_monero_vstate.tx_state_ins = INS_PREFIX_HASH;
+      G_monero_vstate.tx_state_p1 = 0;
+      G_monero_vstate.tx_state_p2 = 0;
+    }
+    //check new state is allowed
+    if (G_monero_vstate.tx_state_p1 == 0) {
+      if (1 != G_monero_vstate.io_p1) {
+        THROW(SW_SUBCOMMAND_NOT_ALLOWED);
+      }
+    } else if (G_monero_vstate.tx_state_p1 == 1) {
+      if ((G_monero_vstate.io_p1 != 2) ||
+          (G_monero_vstate.io_p2 != 1)) {
+        THROW(SW_SUBCOMMAND_NOT_ALLOWED);
+      }
+    } else if  (G_monero_vstate.tx_state_p1 == 2) {
+      if ((G_monero_vstate.io_p1 != 2)||
+          (G_monero_vstate.io_p1-1 != G_monero_vstate.tx_state_p2)) {
+          THROW(SW_SUBCOMMAND_NOT_ALLOWED);
+      }
+    } else {
+        THROW(SW_COMMAND_NOT_ALLOWED);
+    }     
+    //2. command process    
+    if (G_monero_vstate.io_p1 == 1) {
+      sw = monero_apdu_prefix_hash_init();
+    }
+    else if (G_monero_vstate.io_p1 == 2) {
+      sw = monero_apdu_prefix_hash_update();
+    } else {
+      THROW(SW_WRONG_P1P2);
+    }
+    update_protocol();
+    break;
+
     /*--- COMMITMENT MASK --- */
   case INS_GEN_COMMITMENT_MASK:
     //1. state machine check
-    if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) && 
-        (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
-      THROW(SW_COMMAND_NOT_ALLOWED);
+    if (G_monero_vstate.protocol == 2) {
+      if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) && 
+          (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
+        THROW(SW_COMMAND_NOT_ALLOWED);
+      }
     }
+    if (G_monero_vstate.protocol == 3) {
+      if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) && 
+          (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
+        THROW(SW_COMMAND_NOT_ALLOWED);
+      }
+    }
+
     if ((G_monero_vstate.io_p1 != 0) ||
         (G_monero_vstate.io_p2 != 0)) {
       THROW(SW_WRONG_P1P2);
@@ -313,11 +377,19 @@ int monero_dispatch() {
   case INS_BLIND:
     //1. state machine check
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
-      if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
-        (G_monero_vstate.tx_state_ins != INS_BLIND)) {
-        THROW(SW_COMMAND_NOT_ALLOWED);
+      if (G_monero_vstate.protocol == 2) {
+        if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
+            (G_monero_vstate.tx_state_ins != INS_BLIND)) {
+          THROW(SW_COMMAND_NOT_ALLOWED);
+        }
       }
-    } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+      if (G_monero_vstate.protocol == 3) {
+       if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
+            (G_monero_vstate.tx_state_ins != INS_BLIND)) {
+          THROW(SW_COMMAND_NOT_ALLOWED);
+        }
+      }
+   } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
       if ((G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK) &&
         (G_monero_vstate.tx_state_ins != INS_BLIND)) {
         THROW(SW_COMMAND_NOT_ALLOWED);
@@ -357,7 +429,7 @@ int monero_dispatch() {
         THROW(SW_SUBCOMMAND_NOT_ALLOWED);
       }      
     } else {
-       THROW(SW_COMMAND_NOT_ALLOWED);
+      THROW(SW_COMMAND_NOT_ALLOWED);
     }
     //2. command process    
     if (G_monero_vstate.io_p1 == 1) {
@@ -406,7 +478,7 @@ int monero_dispatch() {
       }
     }
 
-    //2. command process    
+    //2. command process
     if (G_monero_vstate.io_p1 == 1) {
       sw = monero_apdu_mlsag_prepare();
     }  

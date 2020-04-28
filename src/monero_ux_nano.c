@@ -244,7 +244,9 @@ void ui_menu_opentx_display(unsigned int value) {
 }
 #endif
 
-/* ----------------------------- FEE VALIDATION ----------------------------- */
+
+
+/* ----------------- FEE/CHANGE/TIMELOCK VALIDATION ----------------- */
 
 void ui_menu_amount_validation_action(unsigned int value);
 
@@ -261,6 +263,14 @@ UX_STEP_NOCB(
   bn,
   {
     "Change",
+    G_monero_vstate.ux_amount,
+  });
+
+UX_STEP_NOCB(
+  ux_menu_validation_timelock_1_step,
+  bn,
+  {
+    "Timelock",
     G_monero_vstate.ux_amount,
   });
 
@@ -294,6 +304,11 @@ UX_FLOW(ux_flow_change,
   &ux_menu_validation_cf_3_step
   );
 
+UX_FLOW(ux_flow_timelock,
+  &ux_menu_validation_timelock_1_step,
+  &ux_menu_validation_cf_2_step,
+  &ux_menu_validation_cf_3_step
+  );
 
 void ui_menu_amount_validation_action(unsigned int value) {
   unsigned short sw;
@@ -316,6 +331,9 @@ void ui_menu_change_validation_display(unsigned int value) {
   ux_flow_init(0, ux_flow_change, NULL);
 }
 
+void ui_menu_timelock_validation_display(unsigned int value) {
+  ux_flow_init(0, ux_flow_timelock, NULL);
+}
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
 void ui_menu_validation_action(unsigned int value);
 
