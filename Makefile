@@ -161,7 +161,7 @@ CFLAGS   += -O3 -Os
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
-SCRIPT_LD:=script.ld
+#SCRIPT_LD:=script.ld
 
 #LDFLAGS  += -O0 -gdwarf-2  -gstrict-dwarf
 LDFLAGS  += -O3 -Os
