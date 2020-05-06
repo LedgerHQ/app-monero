@@ -487,7 +487,7 @@ Get Private View Keys
 
 **Description**
 
-Retrieves the private view key in order to accelarate the blockchain scan.
+Retrieves the private view key in order to accelerate the blockchain scan.
 
 The device should ask the user to accept or reject this export. If rejected
 the client will use the device for scanning the blockchain.
@@ -526,7 +526,7 @@ Display Address
 
 **Description**
 
-Display requested main address ,sub address or integrated adrdess.
+Display requested main address, sub address or integrated address.
 
 
     | compute |x| =  |dec|[|spk|](|ex|)
@@ -544,7 +544,7 @@ if payment ID is provided:
 | 03  | 21  | xx  | 00  | 11   |
 +-----+-----+-----+-----+------+
 
-if P1 is '00' display non-integradted address.
+if P1 is '00' display non-integrated address.
 
 if P1 is '01' display integrated address.
 
@@ -614,10 +614,10 @@ Verify that the provided private key and public key match.
 
 if P1 is '00' the provided public key will be used.
 
-if P1 is '01' the public view is key will be used and the provided public key will
+if P1 is '01' the public view is key will be used and the provided private key will
 be 'ignored'
 
-if P is '02' the public spend is key will be used and the provided public key will
+if P1 is '02' the public spend is key will be used and the provided private key will
 be 'ignored'
 
 Any other value will be rejected.
@@ -690,7 +690,7 @@ crypto::generate_key_derivation.
 
 **Description**
 
-Compute the secret key derivation and returned it encrypted.
+Compute the secret key derivation and return it encrypted.
 
  | compute  |x|    = |dec|[|spk|](|ex|)
  | compute  |Drv|  = |keyDrv|(|x|,|P|)
@@ -972,7 +972,7 @@ return |D|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 4a  | 00  | 00  | 09   |
+| 03  | 4A  | 00  | 00  | 09   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1015,7 +1015,7 @@ return |ed|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 03  | 4c  | 00  | 00  | 39 or 59 |
+| 03  | 4C  | 00  | 00  | 39 or 59 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1116,7 +1116,7 @@ return |Img|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 03  | 3a  | 00  | 00  | 41 or 61 |
+| 03  | 3A  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1256,7 +1256,7 @@ return |ex|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 03  | 3c  | 00  | 00  | 41 or 61 |
+| 03  | 3C  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1406,7 +1406,7 @@ return |PayID|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 03  | 44  | 00  | 00  | 61 or 81 |
+| 03  | 76  | 00  | 00  | 61 or 81 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1456,7 +1456,7 @@ If blind V1:
     | compute |ev| = |v|-|s|
 
 If blind V2:
-    | compute |k| = |Hs|("commitment_mask" \| |Akout|) % order
+    | compute |k| = |Hs|("commitment_mask" \| |Akout|) % |order|
     | compute |s| = |Hs|("amount" \|  |Akout|)
     | compute |v|[0:7] = |ev|[0:7]^|s|[0:7]
 
@@ -1467,9 +1467,8 @@ return |ek|,|ev|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 03  | 44  | 00  | 00  | 61 or 81 |
+| 03  | 7A  | 00  | 00  | 61 or 81 |
 +-----+-----+-----+-----+----------+
-
 
 *specific options*
 
@@ -1671,7 +1670,7 @@ return |r.R|
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-| 20     | public transcation key |R|                                      |
+| 20     | public transaction key |R|                                      |
 +--------+-----------------------------------------------------------------+
 | 20     | encrypted private transaction key |er|                          |
 +--------+-----------------------------------------------------------------+
@@ -1697,7 +1696,7 @@ the transaction and no user confirmation is requested.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 72  | 00  | 00  | 02   |
+| 03  | 72  | 01  | 00  | 02   |
 +-----+-----+-----+-----+------+
 
 
@@ -1708,7 +1707,7 @@ the transaction and no user confirmation is requested.
 +========+=================================================================+
 | 01     | options                                                         |
 +--------+-----------------------------------------------------------------+
-| 01     | '1' aka 'fake' or '2' aka real'                                 |
+| 01     | '1' aka 'real' or '2' aka 'fake'                                 |
 +--------+-----------------------------------------------------------------+
 
 
@@ -1729,15 +1728,14 @@ Hash prefix init
 
 **Description**
 
-Înit prefix hash and ask user to validate time lock
-
+Init prefix hash and ask user to validate time lock
 
 **Command**
 
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 71  | 01  | cnt | 05   |
+| 03  | 7D  | 01  | cnt | 05   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1757,6 +1755,7 @@ Hash prefix init
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
+|        |                                                                 |
 +--------+-----------------------------------------------------------------+
 
 Hash prefix update
@@ -1771,7 +1770,7 @@ Update prefix hash with raw data. Options fields tells if there is more data to 
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 71  | 02  | cnt | 05   |
+| 03  | 7D  | 02  | cnt | 05   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1789,6 +1788,7 @@ Update prefix hash with raw data. Options fields tells if there is more data to 
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
+|        |                                                                 |
 +--------+-----------------------------------------------------------------+
 
 
@@ -1916,7 +1916,7 @@ Generate TX output keys
 .. |sub|      replace:: :math:`\mathit{is\_subaddress}`
 .. |chgaddr|  replace:: :math:`\mathit{is\_change\_address}`
 
-Compute addtional key |P| if needed,  amount key blinding and ephemeral destination key.
+Compute additional key |P| if needed,  amount key blinding and ephemeral destination key.
 
    | if |nak| :
    |     if |sub| :
@@ -2052,6 +2052,8 @@ if ``cnt>1`` :
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
 | 20     | pseudoOut                                                       |
 +--------+-----------------------------------------------------------------+
 
@@ -2142,7 +2144,7 @@ So for each command received, do:
 | ``-------00`` | Blind V1                                                 |
 +---------------+----------------------------------------------------------+
 
-Note: Whatever the mask scheme is, |v| is always transmited as 32 bytes.
+Note: Whatever the mask scheme is, |v| is always transmitted as 32 bytes.
 
 
 Finalize MLSAG-prehash
@@ -2159,14 +2161,12 @@ Finally the application receives the last part of data:
    | if last command:
    |   finalize |ctH|'
    |   check |ctH| == |ctH|'
-   |   update |mlsagH|:
    |   |s| = finalize |mlsagH|
    |   compute |mlsagH| = |Hs| (:math:`message` \| |s|  \| :math:`proof`)
    |
    | else
    |   update |ctH|': |Hupd|(|Ct|)
    |   update |mlsagH|: |Hupd|(|Ct|)
-
 
 Keep |mlsagH|
 
@@ -2187,7 +2187,6 @@ not last:
 | Length | Value                                                           |
 +========+=================================================================+
 | 01     | options                                                         |
-
 +--------+-----------------------------------------------------------------+
 | 20     | one serialized commitment :                                     |
 |        |                                                                 |
@@ -2251,7 +2250,7 @@ return |eai| , |aGi| [|aHi|, |IIi|]
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 84  | 01  | cnt | 61   |
+| 03  | 7E  | 01  | cnt | 61   |
 +-----+-----+-----+-----+------+
 
 *specific options*
@@ -2336,14 +2335,14 @@ Compute the last matrix ring parameter:
    | update |mlsagH|: |Hs|(inputs)
    |
    | if last command:
-   |  c = finalize |mlsagH| % order
+   |  c = finalize |mlsagH| % |order|
 
 **Command**
 
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 84  | 02  | cnt | 21   |
+| 03  | 7E  | 02  | cnt | 21   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -2394,9 +2393,8 @@ return |ss|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 03  | 84  | 03  | cnt | 81   |
+| 03  | 7E  | 03  | cnt | 81   |
 +-----+-----+-----+-----+------+
-
 
 **Command data**
 
@@ -2447,7 +2445,7 @@ References
 Helper functions
 ----------------
 
-**|keyDrv|**
+**|keyDrv|** (|keyDrv|)
 
    | *input* : :math:`r , P`
    | *output*:  :math:`\mathfrak{D}`
@@ -2458,7 +2456,7 @@ Helper functions
    |
 
 
-**|Hs|**
+**|Hs|** (|Hs|)
 
    | *input*: :math:`raw`
    | *output*: :math:`s`
@@ -2467,23 +2465,23 @@ Helper functions
    |      |s| = |H|(:math:`raw`)
    |
 
-**|Hps|**
+**|Hps|** (|Hps|)
 
    | *input*: :math:`D, idx`
    | *output*: :math:`s`
    |
    |      :math:`data` = :math:`point2bytes(D) | varint(idx)` 
-   |      |s| = |H|(:math:`data`) % order
+   |      |s| = |H|(:math:`data`) % |order|
    |
 
 
-**|Hp|**
+**|Hp|** (|Hp|)
 
    | *input*: :math:`P`
    | *output*: :math:`Q`
    |
    |      :math:`data` = :math:`point2bytes(P)`
-   |      |s| = |H|(:math:`data`) % order
+   |      |s| = |H|(:math:`data`) % |order|
    |      :math:`Q` = :math:`ge\_from\_fe(s)`
 
 
