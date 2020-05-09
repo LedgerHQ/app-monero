@@ -422,6 +422,11 @@ int monero_apdu_sc_add(/*unsigned char *r, unsigned char *s1, unsigned char *s2*
   monero_io_fetch_decrypt(s2,32, TYPE_SCALAR);
   monero_io_discard(0);
   if (G_monero_vstate.tx_in_progress) {
+    // During a transaction, only "last_derive_secret_key+last_get_subaddress_secret_key"
+    // is allowed, in order to match the call at
+    // https://github.com/monero-project/monero/blob/v0.15.0.5/src/cryptonote_basic/cryptonote_format_utils.cpp#L331
+    //
+    //      hwdev.sc_secret_add(scalar_step2, scalar_step1,subaddr_sk);
     if ((os_memcmp(s1, G_monero_vstate.last_derive_secret_key, 32)!=0) ||
         (os_memcmp(s2, G_monero_vstate.last_get_subaddress_secret_key, 32)!=0)) {
       monero_lock_and_throw(SW_WRONG_DATA);
