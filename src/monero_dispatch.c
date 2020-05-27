@@ -330,7 +330,7 @@ int monero_dispatch() {
       }
     } else if  (G_monero_vstate.tx_state_p1 == 2) {
       if ((G_monero_vstate.io_p1 != 2)||
-          (G_monero_vstate.io_p1-1 != G_monero_vstate.tx_state_p2)) {
+          (G_monero_vstate.io_p2-1 != G_monero_vstate.tx_state_p2)) {
           THROW(SW_SUBCOMMAND_NOT_ALLOWED);
       }
     } else {
