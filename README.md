@@ -21,9 +21,9 @@ Note this is only for testing. For production usage, use the application provide
 
  Security Enhancement
 
-## V1.4.1
+## V1.4.2
 
- Compatibilty check with client version now discards the fourth sub-version number.
+ Compatibility check with client version now discards the fourth sub-version number.
 
  Release for client 0.15.0+
  firmware LNS 1.6.0 et LNX 1.2.4
