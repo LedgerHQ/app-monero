@@ -1,6 +1,5 @@
 # ledger-app-monero
 
-
 Monero wallet application for Ledger Blue and Nano S
 
 # Install from sources
@@ -36,9 +35,9 @@ Note this is only for testing. For production usage, use the application provide
 
 ## V1.4.0
 
-Add address display
-Enhence protocol security
-Remmove double ask for view key
+- Add address display
+- Enhance protocol security
+- Remove double ask for view key
 
 ## V1.3.2
 
