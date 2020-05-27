@@ -167,7 +167,7 @@ int monero_hash(unsigned int algo, cx_hash_t * hasher, unsigned char* buf, unsig
     } else {
         cx_keccak_init((cx_sha3_t *)hasher, 256);
     }
-    return cx_hash(hasher, CX_LAST|CX_NO_REINIT, buf, len, out, 32);
+    return cx_hash(hasher, CX_LAST, buf, len, out, 32);
 }
 
 /* ----------------------------------------------------------------------- */
