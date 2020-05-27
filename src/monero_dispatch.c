@@ -418,6 +418,10 @@ int monero_dispatch() {
       G_monero_vstate.tx_state_ins = INS_VALIDATE;
       G_monero_vstate.tx_state_p1 = 1;
       G_monero_vstate.tx_state_p2 = 0;
+      if ((G_monero_vstate.io_p1 != 1) ||
+          (G_monero_vstate.io_p2 != 1)) {
+        THROW(SW_SUBCOMMAND_NOT_ALLOWED);
+      }
     }
     //check new state is allowed
     if (G_monero_vstate.tx_state_p1 == G_monero_vstate.io_p1) {
