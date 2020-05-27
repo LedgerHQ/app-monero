@@ -1,3 +1,4 @@
+|_pb|
 
 ..
    Copyright 2017-2019 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
@@ -259,10 +260,7 @@ Others:
 |_pb|
 
 
-State Machine
-=============
 
-**TBD**
 
 Commands overview
 =================
@@ -373,7 +371,7 @@ Restart the application and check client/application versions compatibility.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 02  | 00  | 00  | ll   |
+| 03  | 02  | 00  | 00  | ll   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -419,7 +417,7 @@ The application shall:
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 22  | 00  | 00  | e0   |
+| 03  | 22  | 00  | 00  | e0   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -461,7 +459,7 @@ Retrieves public base58 encoded public key.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 20  | 01  | 00  | 01   |
+| 03  | 20  | 01  | 00  | 01   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -489,7 +487,7 @@ Get Private View Keys
 
 **Description**
 
-Retrieves the private view key in order to accelarate the blockchain scan.
+Retrieves the private view key in order to accelerate the blockchain scan.
 
 The device should ask the user to accept or reject this export. If rejected
 the client will use the device for scanning the blockchain.
@@ -499,7 +497,7 @@ the client will use the device for scanning the blockchain.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 20  | 02  | 00  | 01   |
+| 03  | 20  | 02  | 00  | 01   |
 +-----+-----+-----+-----+------+
 
 
@@ -528,7 +526,7 @@ Display Address
 
 **Description**
 
-Display requested main address ,sub address or integrated adrdess.
+Display requested main address, sub address or integrated address.
 
 
     | compute |x| =  |dec|[|spk|](|ex|)
@@ -543,10 +541,10 @@ if payment ID is provided:
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 21  | xx  | 00  | 11   |
+| 03  | 21  | xx  | 00  | 11   |
 +-----+-----+-----+-----+------+
 
-if P1 is '00' display non-integradted address.
+if P1 is '00' display non-integrated address.
 
 if P1 is '01' display integrated address.
 
@@ -611,15 +609,15 @@ Verify that the provided private key and public key match.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 26  | xx  | 00  | 41   |
+| 03  | 26  | xx  | 00  | 41   |
 +-----+-----+-----+-----+------+
 
 if P1 is '00' the provided public key will be used.
 
-if P1 is '01' the public view is key will be used and the provided public key will
+if P1 is '01' the public view is key will be used and the provided private key will
 be 'ignored'
 
-if P is '02' the public spend is key will be used and the provided public key will
+if P1 is '02' the public spend is key will be used and the provided private key will
 be 'ignored'
 
 Any other value will be rejected.
@@ -663,7 +661,7 @@ return the full internal state (200 bytes) of Keccak.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 24  | 00  | 00  | 00   |
+| 03  | 24  | 00  | 00  | 00   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -692,7 +690,7 @@ crypto::generate_key_derivation.
 
 **Description**
 
-Compute the secret key derivation and returned it encrypted.
+Compute the secret key derivation and return it encrypted.
 
  | compute  |x|    = |dec|[|spk|](|ex|)
  | compute  |Drv|  = |keyDrv|(|x|,|P|)
@@ -705,7 +703,7 @@ return |eDrv|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 32  | 00  | 00  | 41 or 61 |
+| 03  | 32  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -755,7 +753,7 @@ return |es|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 34  | 00  | 00  | 25 or 45 |
+| 03  | 34  | 00  | 00  | 25 or 45 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -811,7 +809,7 @@ return |P|'.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 36  | 00  | 00  | 25 or 45 |
+| 03  | 36  | 00  | 00  | 25 or 45 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -869,7 +867,7 @@ return |ex|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 38  | 00  | 00  | 65 or 85 |
+| 03  | 38  | 00  | 00  | 65 or 85 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -921,7 +919,7 @@ return |P|'
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 46  | 00  | 00  | 45 or 65 |
+| 03  | 46  | 00  | 00  | 45 or 65 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -974,7 +972,7 @@ return |D|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 4a  | 00  | 00  | 09   |
+| 03  | 4A  | 00  | 00  | 09   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1017,7 +1015,7 @@ return |ed|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 4c  | 00  | 00  | 39 or 59 |
+| 03  | 4C  | 00  | 00  | 39 or 59 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1071,7 +1069,7 @@ return |C|, |D|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 48  | 00  | 00  | 09   |
+| 03  | 48  | 00  | 00  | 09   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1118,7 +1116,7 @@ return |Img|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 3a  | 00  | 00  | 41 or 61 |
+| 03  | 3A  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1166,7 +1164,7 @@ return |P|, |ex|.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 40  | 00  | 00  | 01   |
+| 03  | 40  | 00  | 00  | 01   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1213,7 +1211,7 @@ return |P|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 30  | 00  | 00  | 21 or 41 |
+| 03  | 30  | 00  | 00  | 21 or 41 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1258,58 +1256,7 @@ return |ex|.
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 3c  | 00  | 00  | 41 or 61 |
-+-----+-----+-----+-----+----------+
-
-**Command data**
-
-+--------+-----------------------------------------------------------------+
-| Length |    Value                                                        |
-+========+=================================================================+
-| 01     | 00                                                              |
-+--------+-----------------------------------------------------------------+
-| 20     | secret key |ex1|                                                |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-| 20     | secret key |ex2|                                                |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-
-**Response data**
-
-+--------+-----------------------------------------------------------------+
-| Length |    Value                                                        |
-+========+=================================================================+
-| 20     | secret key |ex|                                                 |
-+--------+-----------------------------------------------------------------+
-| 20     | ephemeral hmac (optional, only during active transaction)       |
-+--------+-----------------------------------------------------------------+
-
-
-Secret Sub
-~~~~~~~~~~
-
-**Monero**
-
-sc_sub
-
-**Description**
-
-    | compute |x1| = |dec|[|spk|](|ex1|)
-    | compute |x1| = |dec|[|spk|](|ex1|)
-    | compute |x|  = |x1| - |x2|
-    | compute |ex| = |enc|[|spk|](|x|)
-
-return |ex|.
-
-**Command**
-
-+-----+-----+-----+-----+----------+
-| CLA | INS | P1  | P2  | LC       |
-+=====+=====+=====+=====+==========+
-| 02  | 3E  | 00  | 00  | 41 or 61 |
+| 03  | 3C  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1361,7 +1308,7 @@ return |xP|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 42  | 00  | 00  | 41 or 61 |
+| 03  | 42  | 00  | 00  | 41 or 61 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1409,7 +1356,7 @@ return |xG|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 44  | 00  | 00  | 21 or 41 |
+| 03  | 44  | 00  | 00  | 21 or 41 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1459,7 +1406,7 @@ return |PayID|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 44  | 00  | 00  | 61 or 81 |
+| 03  | 76  | 00  | 00  | 61 or 81 |
 +-----+-----+-----+-----+----------+
 
 **Command data**
@@ -1509,7 +1456,7 @@ If blind V1:
     | compute |ev| = |v|-|s|
 
 If blind V2:
-    | compute |k| = |Hs|("commitment_mask" \| |Akout|) % order
+    | compute |k| = |Hs|("commitment_mask" \| |Akout|) % |order|
     | compute |s| = |Hs|("amount" \|  |Akout|)
     | compute |v|[0:7] = |ev|[0:7]^|s|[0:7]
 
@@ -1520,9 +1467,8 @@ return |ek|,|ev|
 +-----+-----+-----+-----+----------+
 | CLA | INS | P1  | P2  | LC       |
 +=====+=====+=====+=====+==========+
-| 02  | 44  | 00  | 00  | 61 or 81 |
+| 03  | 7A  | 00  | 00  | 61 or 81 |
 +-----+-----+-----+-----+----------+
-
 
 *specific options*
 
@@ -1619,10 +1565,61 @@ to pass the original destination with the |k|, |v|, |AKout|.
 Unblind |k| and |v| and then verify the commitment |Ctf|.
 If |Ct| is verified and user validate |Aout|,|Bout| and |v|, continue.
 
+|_pb|
+
+Transaction State Machine
+-------------------------
+
+During a transaction the following state machine is enforced::
+
+
+    OPEN_TX{1} -----------------------------------------------------
+                                                                   |
+    ----------------------------------------------------------------
+    |
+    ----> STEALTH{1} -----------------------------------------------
+                                                                   |
+    ----------------------------------------------------------------
+    |
+     ----> GEN_TXOUT_KEYS{*} ---------------------------------------
+                                                                   |
+    ------------------------------------------------------------ ---
+    |
+    ----> PREFIX_HASH{1} ---> PREFIX_HASH{*} ---> PREFIX_HASH{1} ---
+            (ph_init)          (ph_update)        (ph_finalize)    |
+                                                                   |
+    ----------------------------------------------------------------
+    |
+    ----> GEN_COMMITMENT_MASK{*} -----------------------------------
+            only for real TX                                       |
+                                                                   |
+    ----------------------------------------------------------------
+    |
+    ----> BLIND ----------------------------------------------------
+                                                                   |
+    ----------------------------------------------------------------
+    |
+    ----> VALIDATE{1} ---> VALIDATE{*} --- VALIDATE{*} <------------
+      mlsag_ph_init     mlsag__update    mlsag__finalize           |
+                                                                   |
+    ---------------------------------------------------------------
+    |
+    ----> MLSAG{1} ------> MLSAG{*} ------> MLSAG{1} ---------------
+      --> mlsag_prepare    mlsag_hash       mlsag_sign --          |
+      |                                                 |          |
+      ---------------------------------------------------          |
+                                                                   |
+    ----------------------------------------------------------------
+    | 
+    ----> CLOSE_TX
+
+
+Note this state machine assume the multi-signature is not supported.
+For multi-signature the INS_MLSAG/mlsag_prepare and INS_MLSAG/mlsag_sign may be received several time.
+
 
 Transaction Commands
 --------------------
-
 
 Open TX
 ~~~~~~~~
@@ -1655,7 +1652,7 @@ return |r.R|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 70  | 01  | cnt | 05   |
+| 03  | 70  | 01  | cnt | 05   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1673,7 +1670,7 @@ return |r.R|
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
-| 20     | public transcation key |R|                                      |
+| 20     | public transaction key |R|                                      |
 +--------+-----------------------------------------------------------------+
 | 20     | encrypted private transaction key |er|                          |
 +--------+-----------------------------------------------------------------+
@@ -1699,7 +1696,7 @@ the transaction and no user confirmation is requested.
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 72  | 00  | 00  | 02   |
+| 03  | 72  | 01  | 00  | 02   |
 +-----+-----+-----+-----+------+
 
 
@@ -1710,9 +1707,81 @@ the transaction and no user confirmation is requested.
 +========+=================================================================+
 | 01     | options                                                         |
 +--------+-----------------------------------------------------------------+
-| 01     | '1' aka 'fake' or '2' aka real'                                 |
+| 01     | '1' aka 'real' or '2' aka 'fake'                                 |
 +--------+-----------------------------------------------------------------+
 
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+|        |                                                                 |
++--------+-----------------------------------------------------------------+
+
+
+Hash Prefix
+~~~~~~~~~~~
+
+Hash prefix init
+^^^^^^^^^^^^^^^^
+
+**Description**
+
+Init prefix hash and ask user to validate time lock
+
+**Command**
+
++-----+-----+-----+-----+------+
+| CLA | INS | P1  | P2  | LC   |
++=====+=====+=====+=====+======+
+| 03  | 7D  | 01  | cnt | 05   |
++-----+-----+-----+-----+------+
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| varint | TX version                                                      |
++--------+-----------------------------------------------------------------+
+| varint | TX timelock                                                     |
++--------+-----------------------------------------------------------------+
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+|        |                                                                 |
++--------+-----------------------------------------------------------------+
+
+Hash prefix update
+^^^^^^^^^^^^^^^^^^
+
+**Description**
+
+Update prefix hash with raw data. Options fields tells if there is more data to come or not.
+
+**Command**
+
++-----+-----+-----+-----+------+
+| CLA | INS | P1  | P2  | LC   |
++=====+=====+=====+=====+======+
+| 03  | 7D  | 02  | cnt | 05   |
++-----+-----+-----+-----+------+
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length | Value                                                           |
++========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
+| var    | raw data to hash                                                |
++--------+-----------------------------------------------------------------+
 
 **Response data**
 
@@ -1738,7 +1807,7 @@ Return |s|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 77  | 00  | 00  | 21   |
+| 03  | 77  | 00  | 00  | 21   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1796,7 +1865,7 @@ return |ek|,|ev|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 78  | 00  | 00  | 81   |
+| 03  | 78  | 00  | 00  | 81   |
 +-----+-----+-----+-----+------+
 
 *specific options*
@@ -1847,7 +1916,7 @@ Generate TX output keys
 .. |sub|      replace:: :math:`\mathit{is\_subaddress}`
 .. |chgaddr|  replace:: :math:`\mathit{is\_change\_address}`
 
-Compute addtional key |P| if needed,  amount key blinding and ephemeral destination key.
+Compute additional key |P| if needed,  amount key blinding and ephemeral destination key.
 
    | if |nak| :
    |     if |sub| :
@@ -1880,7 +1949,7 @@ The application returns
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 7B  | 01  | cnt | EC   |
+| 03  | 7B  | 01  | cnt | EC   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -1960,7 +2029,7 @@ else
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 7C  | 01  | cnt  | var |                                           |
+| 03  | 7C  | 01  | cnt  | var |                                           |
 +-----+-----+-----+-----+------+
 
 
@@ -1983,6 +2052,8 @@ if ``cnt>1`` :
 +--------+-----------------------------------------------------------------+
 | Length | Value                                                           |
 +========+=================================================================+
+| 01     | options                                                         |
++--------+-----------------------------------------------------------------+
 | 20     | pseudoOut                                                       |
 +--------+-----------------------------------------------------------------+
 
@@ -2029,7 +2100,7 @@ So for each command received, do:
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 7C  | 02  | cnt | E3   |
+| 03  | 7C  | 02  | cnt | E3   |
 +-----+-----+-----+-----+------+
 
 
@@ -2073,7 +2144,7 @@ So for each command received, do:
 | ``-------00`` | Blind V1                                                 |
 +---------------+----------------------------------------------------------+
 
-Note: Whatever the mask scheme is, |v| is always transmited as 32 bytes.
+Note: Whatever the mask scheme is, |v| is always transmitted as 32 bytes.
 
 
 Finalize MLSAG-prehash
@@ -2090,14 +2161,12 @@ Finally the application receives the last part of data:
    | if last command:
    |   finalize |ctH|'
    |   check |ctH| == |ctH|'
-   |   update |mlsagH|:
    |   |s| = finalize |mlsagH|
    |   compute |mlsagH| = |Hs| (:math:`message` \| |s|  \| :math:`proof`)
    |
    | else
    |   update |ctH|': |Hupd|(|Ct|)
    |   update |mlsagH|: |Hupd|(|Ct|)
-
 
 Keep |mlsagH|
 
@@ -2106,7 +2175,7 @@ Keep |mlsagH|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 7C  | 03  | cnt | 21   |
+| 03  | 7C  | 03  | cnt | 21   |
 +-----+-----+-----+-----+------+
 
 
@@ -2118,7 +2187,6 @@ not last:
 | Length | Value                                                           |
 +========+=================================================================+
 | 01     | options                                                         |
-
 +--------+-----------------------------------------------------------------+
 | 20     | one serialized commitment :                                     |
 |        |                                                                 |
@@ -2182,7 +2250,7 @@ return |eai| , |aGi| [|aHi|, |IIi|]
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 84  | 01  | cnt | 61   |
+| 03  | 7E  | 01  | cnt | 61   |
 +-----+-----+-----+-----+------+
 
 *specific options*
@@ -2267,14 +2335,14 @@ Compute the last matrix ring parameter:
    | update |mlsagH|: |Hs|(inputs)
    |
    | if last command:
-   |  c = finalize |mlsagH| % order
+   |  c = finalize |mlsagH| % |order|
 
 **Command**
 
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 84  | 02  | cnt | 21   |
+| 03  | 7E  | 02  | cnt | 21   |
 +-----+-----+-----+-----+------+
 
 **Command data**
@@ -2325,9 +2393,8 @@ return |ss|
 +-----+-----+-----+-----+------+
 | CLA | INS | P1  | P2  | LC   |
 +=====+=====+=====+=====+======+
-| 02  | 84  | 03  | cnt | 81   |
+| 03  | 7E  | 03  | cnt | 81   |
 +-----+-----+-----+-----+------+
-
 
 **Command data**
 
@@ -2367,7 +2434,7 @@ Annexes
 References
 ----------
 
-   | [1] `<https://github.com/monero-project/monero/tree/v0.10.3.1>`_
+   | [1] `<https://github.com/monero-project/monero/tree/v0.15.0.1>`_
    | [2] `<https://github.com/monero-project/monero/pull/2056>`_
    | [3] `<https://github.com/kenshi84/monero/tree/subaddress-v2>`_
    | [4] `<https://www.reddit.com/r/Monero/comments/6invis/ledger_hardware_wallet_monero_integration>`_
@@ -2378,7 +2445,7 @@ References
 Helper functions
 ----------------
 
-**|keyDrv|**
+**|keyDrv|** (|keyDrv|)
 
    | *input* : :math:`r , P`
    | *output*:  :math:`\mathfrak{D}`
@@ -2389,7 +2456,7 @@ Helper functions
    |
 
 
-**|Hs|**
+**|Hs|** (|Hs|)
 
    | *input*: :math:`raw`
    | *output*: :math:`s`
@@ -2398,23 +2465,23 @@ Helper functions
    |      |s| = |H|(:math:`raw`)
    |
 
-**|Hps|**
+**|Hps|** (|Hps|)
 
    | *input*: :math:`D, idx`
    | *output*: :math:`s`
    |
    |      :math:`data` = :math:`point2bytes(D) | varint(idx)` 
-   |      |s| = |H|(:math:`data`) % order
+   |      |s| = |H|(:math:`data`) % |order|
    |
 
 
-**|Hp|**
+**|Hp|** (|Hp|)
 
    | *input*: :math:`P`
    | *output*: :math:`Q`
    |
    |      :math:`data` = :math:`point2bytes(P)`
-   |      |s| = |H|(:math:`data`) % order
+   |      |s| = |H|(:math:`data`) % |order|
    |      :math:`Q` = :math:`ge\_from\_fe(s)`
 
 

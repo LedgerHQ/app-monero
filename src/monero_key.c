@@ -66,7 +66,6 @@ static const unsigned int crcTable[256] = {
 static unsigned long monero_crc32( unsigned long inCrc32, const void *buf,
                                        size_t bufLen )
 {
-
     unsigned long crc32;
     unsigned char *byteBuf;
     size_t i;
@@ -82,10 +81,9 @@ static unsigned long monero_crc32( unsigned long inCrc32, const void *buf,
 
 
 void monero_clear_words() {
-  for (int i = 0; i<25; i++) {
-    monero_nvm_write((void*)N_monero_pstate->words[i], NULL,WORDS_MAX_LENGTH);
-  }
+  monero_nvm_write((void*)N_monero_pstate->words_list, NULL,sizeof(N_monero_pstate->words_list));
 }
+
 /**
  * n :  word to write
  * idx: index of word to copy
@@ -93,22 +91,20 @@ void monero_clear_words() {
  * word_list
  * len : word_list length
  */
-
 static void  monero_set_word(unsigned int n, unsigned int idx, unsigned int w_start, unsigned char* word_list, int len) {
   while (w_start < idx) {
     len -= 1 + word_list[0];
     if (len < 0) {
       monero_clear_words();
       THROW(SW_WRONG_DATA+1);
-      return;
     }
     word_list += 1 + word_list[0];
     w_start++;
   }
 
   if ((w_start != idx) || (word_list[0] > (len-1)) || (word_list[0] > 19)) {
+    monero_clear_words();
     THROW(SW_WRONG_DATA+2);
-    return;
   }
   len = word_list[0];
   word_list++;
@@ -121,6 +117,7 @@ static void  monero_set_word(unsigned int n, unsigned int idx, unsigned int w_st
 int monero_apdu_manage_seedwords() {
   unsigned int w_start, w_end;
   unsigned short wc[4];
+
   switch (G_monero_vstate.io_p1) {
     //SETUP
   case 1:
@@ -128,7 +125,6 @@ int monero_apdu_manage_seedwords() {
     w_end   = w_start+monero_io_fetch_u32();
     if ((w_start >= word_list_length) || (w_end > word_list_length) || (w_start > w_end)) {
       THROW(SW_WRONG_DATA);
-      return SW_WRONG_DATA;
     }
     for (int i = 0; i<8; i++) {
       unsigned int val = (seed[i*4+0]<<0) | (seed[i*4+1]<<8) | (seed[i*4+2]<<16) | (seed[i*4+3]<<24);
@@ -152,6 +148,20 @@ int monero_apdu_manage_seedwords() {
       }
       w_start = monero_crc32(0, G_monero_vstate.io_buffer, G_monero_vstate.io_p2*24)%24;
       monero_nvm_write((void*)N_monero_pstate->words[24], (void*)N_monero_pstate->words[w_start], WORDS_MAX_LENGTH);
+
+      #ifdef HAVE_UX_FLOW
+      //transform to list ready to display
+      unsigned char word[21];
+      w_start = 0; 
+      for (int i = 0; i<24; i++) {
+        w_end = N_monero_pstate->words[i][0];
+        os_memmove(word,  &N_monero_pstate->words[i][1], w_end);
+        word[w_end] = (i == 23) ? 0 : ' ';
+        w_end++;
+        monero_nvm_write(N_monero_pstate->words_list+w_start, word, w_end);
+        w_start += w_end;
+      }
+      #endif
     }
 
     break;
@@ -221,14 +231,8 @@ int  monero_apdu_display_address() {
       G_monero_vstate.disp_addr_mode = DISP_MAIN;
     }
   }
-  monero_base58_public_key(G_monero_vstate.ux_address,
-                           C, D,
-                           (minor|major)?1:0,
-                           (G_monero_vstate.io_p1 == 1)? payment_id : NULL);
 
-
-
-  ui_menu_any_pubaddr_display(0);
+  ui_menu_any_pubaddr_display(0, C, D, (minor|major)?1:0, (G_monero_vstate.io_p1 == 1)? payment_id : NULL);
   return 0;
 }
 
@@ -349,7 +353,6 @@ int monero_apdu_get_key() {
 
   default:
     THROW(SW_WRONG_P1P2);
-    return SW_WRONG_P1P2;
   }
   return SW_OK;
 }
@@ -377,7 +380,6 @@ int monero_apdu_verify_key() {
     break;
   default:
     THROW(SW_WRONG_P1P2);
-    return SW_WRONG_P1P2;
   }
   if (os_memcmp(computed_pub, pub, 32) ==0 ) {
     verified = 1;
@@ -416,30 +418,24 @@ int monero_apdu_sc_add(/*unsigned char *r, unsigned char *s1, unsigned char *s2*
   unsigned char s2[32];
   unsigned char r[32];
   //fetch
-  monero_io_fetch_decrypt(s1,32);
-  monero_io_fetch_decrypt(s2,32);
+  monero_io_fetch_decrypt(s1,32, TYPE_SCALAR);
+  monero_io_fetch_decrypt(s2,32, TYPE_SCALAR);
   monero_io_discard(0);
+  if (G_monero_vstate.tx_in_progress) {
+    // During a transaction, only "last_derive_secret_key+last_get_subaddress_secret_key"
+    // is allowed, in order to match the call at
+    // https://github.com/monero-project/monero/blob/v0.15.0.5/src/cryptonote_basic/cryptonote_format_utils.cpp#L331
+    //
+    //      hwdev.sc_secret_add(scalar_step2, scalar_step1,subaddr_sk);
+    if ((os_memcmp(s1, G_monero_vstate.last_derive_secret_key, 32)!=0) ||
+        (os_memcmp(s2, G_monero_vstate.last_get_subaddress_secret_key, 32)!=0)) {
+      monero_lock_and_throw(SW_WRONG_DATA);
+    }
+  }
   monero_addm(r,s1,s2);
-  monero_io_insert_encrypt(r,32);
+  monero_io_insert_encrypt(r,32, TYPE_SCALAR);
   return SW_OK;
 }
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
-int monero_apdu_sc_sub(/*unsigned char *r, unsigned char *s1, unsigned char *s2*/) {
-  unsigned char s1[32];
-  unsigned char s2[32];
-  unsigned char r[32];
-  //fetch
-  monero_io_fetch_decrypt(s1,32);
-  monero_io_fetch_decrypt(s2,32);
-  monero_io_discard(0);
-  monero_subm(r,s1,s2);
-  monero_io_insert_encrypt(r,32);
-  return SW_OK;
-}
-
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -465,7 +461,7 @@ int monero_apdu_scal_mul_base(/*const rct::key &sec, rct::key mulkey*/) {
   unsigned char sec[32];
   unsigned char r[32];
   //fetch
-  monero_io_fetch_decrypt(sec,32);
+  monero_io_fetch_decrypt(sec,32, TYPE_SCALAR);
   monero_io_discard(0);
 
   monero_ecmul_G(r,sec);
@@ -483,7 +479,7 @@ int monero_apdu_generate_keypair(/*crypto::public_key &pub, crypto::secret_key &
   monero_io_discard(0);
   monero_generate_keypair(pub,sec);
   monero_io_insert(pub,32);
-  monero_io_insert_encrypt(sec,32);
+  monero_io_insert_encrypt(sec,32, TYPE_SCALAR);
   return SW_OK;
 }
 
@@ -495,7 +491,7 @@ int monero_apdu_secret_key_to_public_key(/*const crypto::secret_key &sec, crypto
   unsigned char sec[32];
   unsigned char pub[32];
   //fetch
-  monero_io_fetch_decrypt(sec,32);
+  monero_io_fetch_decrypt(sec,32, TYPE_SCALAR);
   monero_io_discard(0);
   //pub
   monero_ecmul_G(pub,sec);
@@ -520,7 +516,7 @@ int monero_apdu_generate_key_derivation(/*const crypto::public_key &pub, const c
   //Derive  and keep
   monero_generate_key_derivation(drv, pub, sec);
 
-  monero_io_insert_encrypt(drv,32);
+  monero_io_insert_encrypt(drv,32, TYPE_DERIVATION);
   return SW_OK;
 }
 
@@ -533,7 +529,7 @@ int monero_apdu_derivation_to_scalar(/*const crypto::key_derivation &derivation,
   unsigned char res[32];
 
   //fetch
-  monero_io_fetch_decrypt(derivation,32);
+  monero_io_fetch_decrypt(derivation,32, TYPE_DERIVATION);
   output_index = monero_io_fetch_u32();
   monero_io_discard(0);
 
@@ -541,7 +537,7 @@ int monero_apdu_derivation_to_scalar(/*const crypto::key_derivation &derivation,
   monero_derivation_to_scalar(res, derivation, output_index);
 
   //pub key
-  monero_io_insert_encrypt(res,32);
+  monero_io_insert_encrypt(res,32, TYPE_SCALAR);
   return SW_OK;
 }
 
@@ -555,7 +551,7 @@ int monero_apdu_derive_public_key(/*const crypto::key_derivation &derivation, co
   unsigned char drvpub[32];
 
   //fetch
-  monero_io_fetch_decrypt(derivation,32);
+  monero_io_fetch_decrypt(derivation,32, TYPE_DERIVATION);
   output_index = monero_io_fetch_u32();
   monero_io_fetch(pub, 32);
   monero_io_discard(0);
@@ -578,7 +574,7 @@ int monero_apdu_derive_secret_key(/*const crypto::key_derivation &derivation, co
   unsigned char drvsec[32];
 
   //fetch
-  monero_io_fetch_decrypt(derivation,32);
+  monero_io_fetch_decrypt(derivation,32, TYPE_DERIVATION);
   output_index = monero_io_fetch_u32();
   monero_io_fetch_decrypt_key(sec);
   monero_io_discard(0);
@@ -586,8 +582,9 @@ int monero_apdu_derive_secret_key(/*const crypto::key_derivation &derivation, co
   //pub
   monero_derive_secret_key(drvsec, derivation, output_index, sec);
 
-  //pub key
-  monero_io_insert_encrypt(drvsec,32);
+  //sec key
+  os_memmove(G_monero_vstate.last_derive_secret_key, drvsec, 32);
+  monero_io_insert_encrypt(drvsec,32, TYPE_SCALAR);
   return SW_OK;
 }
 
@@ -601,7 +598,7 @@ int monero_apdu_generate_key_image(/*const crypto::public_key &pub, const crypto
 
   //fetch
   monero_io_fetch(pub,32);
-  monero_io_fetch_decrypt(sec, 32);
+  monero_io_fetch_decrypt(sec, 32, TYPE_SCALAR);
   monero_io_discard(0);
 
   //pub
@@ -623,7 +620,7 @@ int monero_apdu_derive_subaddress_public_key(/*const crypto::public_key &pub, co
 
   //fetch
   monero_io_fetch(pub,32);
-  monero_io_fetch_decrypt(derivation, 32);
+  monero_io_fetch_decrypt(derivation, 32, TYPE_DERIVATION);
   output_index = monero_io_fetch_u32();
   monero_io_discard(0);
 
@@ -687,14 +684,12 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
   monero_io_fetch(index,8);
   monero_io_discard(0);
 
-  //pub
   monero_get_subaddress_secret_key(sub_sec,sec,index);
 
-  //pub key
-  monero_io_insert_encrypt(sub_sec,32);
+  os_memmove(G_monero_vstate.last_get_subaddress_secret_key, sub_sec,32);
+  monero_io_insert_encrypt(sub_sec,32, TYPE_SCALAR);
   return SW_OK;
 }
-
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -719,7 +714,6 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
   //TMP
   unsigned char derivation[32];
 
-
   tx_version = monero_io_fetch_u32();
   monero_io_fetch_decrypt_key(tx_key);
   txkey_pub = G_monero_vstate.io_buffer+G_monero_vstate.io_offset; monero_io_fetch(NULL,32);
@@ -735,11 +729,9 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     monero_io_fetch(NULL,32);
   }
 
-
-
   //update outkeys hash control
-  if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-    if (G_monero_vstate.io_protocol_version == 2) {
+  if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+    if (G_monero_vstate.io_protocol_version >= 2) {
       monero_sha256_outkeys_update(Aout,32);
       monero_sha256_outkeys_update(Bout,32);
       monero_sha256_outkeys_update(&is_change,1);
@@ -766,8 +758,8 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
   //compute amount key AKout (scalar1), version is always greater than 1
   monero_derivation_to_scalar(amount_key, derivation, output_index);
-  if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-      if (G_monero_vstate.io_protocol_version == 2) {
+  if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+      if (G_monero_vstate.io_protocol_version >= 2) {
         monero_sha256_outkeys_update(amount_key,32);
       }
   }
@@ -777,11 +769,12 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
   //send all
   monero_io_discard(0);
-  monero_io_insert_encrypt(amount_key,32);
+  monero_io_insert_encrypt(amount_key,32, TYPE_AMOUNT_KEY);
   monero_io_insert(out_eph_public_key, 32);
   if (need_additional_txkeys) {
     monero_io_insert(additional_txkey_pub, 32);
   }
+  G_monero_vstate.tx_output_cnt++;
   return SW_OK;
 }
 

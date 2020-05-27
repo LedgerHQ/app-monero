@@ -74,6 +74,8 @@ struct monero_nv_state_s {
   #define KEY_MODE_SEED     0x42
   unsigned char key_mode;
 
+  /* acount id for bip derivation */
+  unsigned int account_id;
 
   /* spend key */
   unsigned char b[32];
@@ -83,8 +85,10 @@ struct monero_nv_state_s {
 
   /*words*/
   #define WORDS_MAX_LENGTH 20
-  char words[26][20];
-
+  union {
+    char words[26][WORDS_MAX_LENGTH];
+    char words_list[25*WORDS_MAX_LENGTH+25];
+  };
 } ;
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -129,11 +133,30 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
   /* ---            State Machine           --- */
   /* ------------------------------------------ */
+  unsigned int    export_view_key;
+  unsigned char   key_set;
+  
+  /* protocol guard */
+  #define PROTOCOL_LOCKED                   0x42
+  #define PROTOCOL_LOCKED_UNLOCKABLE        0x84
+  #define PROTOCOL_UNLOCKED                 0x24
+  unsigned char   protocol_barrier;
 
+  /* Tx state machine */  
+  unsigned char   tx_in_progress;
+  unsigned char   tx_cnt;
+  unsigned char   tx_sig_mode;
+  unsigned char   tx_state_ins;
+  unsigned char   tx_state_p1;
+  unsigned char   tx_state_p2;
+  unsigned char   tx_output_cnt;
+  unsigned int    tx_sign_cnt;
 
-  unsigned int   sig_mode;
-  unsigned int   export_view_key;
-
+  /* sc_add control */
+  unsigned char last_derive_secret_key[32];
+  unsigned char last_get_subaddress_secret_key[32];
+  
+  
   /* ------------------------------------------ */
   /* ---               Crypo                --- */
   /* ------------------------------------------ */
@@ -146,22 +169,15 @@ struct monero_v_state_s {
   cx_aes_key_t spk;
   unsigned char hmac_key[32];
 
-  /* Tx state machine */
-  struct {
-  unsigned char key_set:1;
-   unsigned int tx_in_progress: 1;
-   unsigned int tx_state: 4;
-  };
-  unsigned int   tx_output_cnt;
-
   /* Tx key */
   unsigned char R[32];
   unsigned char r[32];
 
-  /* mlsag hash */
+  /* prefix/mlsag hash */
   cx_sha3_t     keccakF;
   cx_sha3_t     keccakH;
-  unsigned char H[32];
+  unsigned char prefixH[32];
+  unsigned char mlsagH[32];
   unsigned char c[32];
 
   /* -- track tx-in/out and commitment -- */
@@ -174,18 +190,17 @@ struct monero_v_state_s {
   /* ------------------------------------------ */
   /* ---               UI/UX                --- */
   /* ------------------------------------------ */
-
-  #ifdef UI_NANO_X
-  char            ux_wallet_public_address[160];
   char            ux_wallet_public_short_address[5+2+5+1];
-  #endif
+  char            ux_wallet_account_name[14];
 
   union {
     struct {
-      /* menu 0: 95-chars + "<monero: >"  + null */
-      char            ux_menu[132];
+      char            ux_info1[14];
+      char            ux_info2[14];
+      /* menu */
+      char            ux_menu[16];
       // address to display: 95/106-chars + null
-      char            ux_address[132];
+      char            ux_address[160];
       // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
       char            ux_amount[23];
       // addr mode
@@ -199,11 +214,6 @@ struct monero_v_state_s {
     struct {
       unsigned char tmp[340];
     };
-    #ifdef UI_NANO_X
-    struct {
-      char ux_words[520];
-    };
-    #endif
   };
 };
 typedef struct  monero_v_state_s monero_v_state_t;
@@ -215,6 +225,13 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 
 #define STATE_IDLE                          0xC0
+
+/* --- ... --- */
+#define TYPE_SCALAR     1
+#define TYPE_DERIVATION 2
+#define TYPE_AMOUNT_KEY 3
+#define TYPE_ALPHA      4
+
 
 /* ---  ...  --- */
 #define IO_OFFSET_END                       (unsigned int)-1
@@ -232,6 +249,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 #define INS_NONE                            0x00
 #define INS_RESET                           0x02
+#define INS_LOCK_DISPLAY                    0x04
 
 #define INS_GET_KEY                         0x20
 #define INS_DISPLAY_ADDRESS                 0x21
@@ -247,7 +265,6 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_DERIVE_SECRET_KEY               0x38
 #define INS_GEN_KEY_IMAGE                   0x3A
 #define INS_SECRET_KEY_ADD                  0x3C
-#define INS_SECRET_KEY_SUB                  0x3E
 #define INS_GENERATE_KEYPAIR                0x40
 #define INS_SECRET_SCAL_MUL_KEY             0x42
 #define INS_SECRET_SCAL_MUL_BASE            0x44
@@ -265,6 +282,7 @@ typedef struct  monero_v_state_s monero_v_state_t;
 #define INS_BLIND                           0x78
 #define INS_UNBLIND                         0x7A
 #define INS_GEN_TXOUT_KEYS                  0x7B
+#define INS_PREFIX_HASH                     0x7D
 #define INS_VALIDATE                        0x7C
 #define INS_MLSAG                           0x7E
 #define INS_CLOSE_TX                        0x80
@@ -294,53 +312,37 @@ typedef struct  monero_v_state_s monero_v_state_t;
 
 
 #define SW_OK                                0x9000
-#define SW_ALGORITHM_UNSUPPORTED             0x9484
-
-#define SW_BYTES_REMAINING_00                0x6100
-
-#define SW_WARNING_STATE_UNCHANGED           0x6200
-#define SW_STATE_TERMINATED                  0x6285
-
-#define SW_MORE_DATA_AVAILABLE               0x6310
 
 #define SW_WRONG_LENGTH                      0x6700
 
-#define SW_LOGICAL_CHANNEL_NOT_SUPPORTED     0x6881
-#define SW_SECURE_MESSAGING_NOT_SUPPORTED    0x6882
-#define SW_LAST_COMMAND_EXPECTED             0x6883
-#define SW_COMMAND_CHAINING_NOT_SUPPORTED    0x6884
+#define SW_SECURITY_PIN_LOCKED               0x6910
+#define SW_SECURITY_LOAD_KEY                 0x6911
+#define SW_SECURITY_COMMITMENT_CONTROL       0x6912
+#define SW_SECURITY_AMOUNT_CHAIN_CONTROL     0x6913
+#define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6914
+#define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6915
+#define SW_SECURITY_MAXOUTPUT_REACHED        0x6916
+#define SW_SECURITY_HMAC                     0x6917
+#define SW_SECURITY_RANGE_VALUE              0x6918
+#define SW_SECURITY_INTERNAL                 0x6919
+#define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
+#define SW_SECURITY_PREFIX_HASH              0x691B
+#define SW_SECURITY_LOCKED                   0x69EE
 
 
-#define SW_SECURITY_LOAD_KEY                 0x6900
-#define SW_SECURITY_COMMITMENT_CONTROL       0x6911
-#define SW_SECURITY_AMOUNT_CHAIN_CONTROL     0x6912
-#define SW_SECURITY_COMMITMENT_CHAIN_CONTROL 0x6913
-#define SW_SECURITY_OUTKEYS_CHAIN_CONTROL    0x6914
-#define SW_SECURITY_MAXOUTPUT_REACHED        0x6915
-#define SW_SECURITY_TRUSTED_INPUT            0x6916
+#define SW_COMMAND_NOT_ALLOWED               0x6980
+#define SW_SUBCOMMAND_NOT_ALLOWED            0x6981
+#define SW_DENY                              0x6982
+#define SW_KEY_NOT_SET                       0x6983
+#define SW_WRONG_DATA                        0x6984
+#define SW_WRONG_DATA_RANGE                  0x6985
+#define SW_IO_FULL                           0x6986
 
-#define SW_CLIENT_NOT_SUPPORTED              0x6930
-
-#define SW_SECURITY_STATUS_NOT_SATISFIED     0x6982
-#define SW_FILE_INVALID                      0x6983
-#define SW_PIN_BLOCKED                       0x6983
-#define SW_DATA_INVALID                      0x6984
-#define SW_CONDITIONS_NOT_SATISFIED          0x6985
-#define SW_COMMAND_NOT_ALLOWED               0x6986
-#define SW_APPLET_SELECT_FAILED              0x6999
-
-#define SW_WRONG_DATA                        0x6a80
-#define SW_FUNC_NOT_SUPPORTED                0x6a81
-#define SW_FILE_NOT_FOUND                    0x6a82
-#define SW_RECORD_NOT_FOUND                  0x6a83
-#define SW_FILE_FULL                         0x6a84
-#define SW_INCORRECT_P1P2                    0x6a86
-#define SW_REFERENCED_DATA_NOT_FOUND         0x6a88
+#define SW_CLIENT_NOT_SUPPORTED              0x6A30
 
 #define SW_WRONG_P1P2                        0x6b00
-#define SW_CORRECT_LENGTH_00                 0x6c00
 #define SW_INS_NOT_SUPPORTED                 0x6d00
-#define SW_CLA_NOT_SUPPORTED                 0x6e00
+#define SW_PROTOCOL_NOT_SUPPORTED            0x6e00
 
 #define SW_UNKNOWN                           0x6f00
 

@@ -17,7 +17,6 @@
 #include "cx.h"
 #include "monero_types.h"
 #include "monero_api.h"
-#include "monero_ux_nanos.h"
 #include "monero_vars.h"
 
 /* ----------------------------------------------------------------------- */
@@ -30,13 +29,17 @@ int monero_apdu_mlsag_prepare() {
     unsigned char alpha[32];
     unsigned char mul[32];
 
+    G_monero_vstate.tx_sign_cnt++;
+    if (G_monero_vstate.tx_sign_cnt == 0) {
+        monero_lock_and_throw(SW_SECURITY_MAX_SIGNATURE_REACHED);
+    }
 
     if (G_monero_vstate.io_length>1) {
         monero_io_fetch(Hi,32);
         if(G_monero_vstate.options &0x40) {
             monero_io_fetch(xin,32);
         } else {
-           monero_io_fetch_decrypt(xin,32);
+           monero_io_fetch_decrypt(xin,32, TYPE_SCALAR);
         }
         options = 1;
     }  else {
@@ -48,7 +51,7 @@ int monero_apdu_mlsag_prepare() {
     //ai
     monero_rng_mod_order(alpha);
     monero_reduce(alpha, alpha);
-    monero_io_insert_encrypt(alpha, 32);
+    monero_io_insert_encrypt(alpha, 32, TYPE_ALPHA);
 
     //ai.G
     monero_ecmul_G(mul, alpha);
@@ -62,7 +65,6 @@ int monero_apdu_mlsag_prepare() {
         monero_ecmul_k(mul, Hi, xin);
         monero_io_insert(mul,32);
     }
-
     return SW_OK;
 }
 
@@ -74,7 +76,7 @@ int monero_apdu_mlsag_hash() {
     unsigned char c[32];
     if (G_monero_vstate.io_p2 == 1) {
         monero_keccak_init_H();
-        os_memmove(msg, G_monero_vstate.H, 32);
+        os_memmove(msg, G_monero_vstate.mlsagH, 32);
     } else {
         monero_io_fetch(msg, 32);
     }
@@ -99,17 +101,21 @@ int monero_apdu_mlsag_sign() {
     unsigned char ss[32];
     unsigned char ss2[32];
 
-    if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_FAKE) {
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin,32);
         monero_io_fetch(alpha,32);
-    } else if (G_monero_vstate.sig_mode == TRANSACTION_CREATE_REAL) {
-        monero_io_fetch_decrypt(xin,32);
-        monero_io_fetch_decrypt(alpha,32);
+    } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        monero_io_fetch_decrypt(xin,32, TYPE_SCALAR);
+        monero_io_fetch_decrypt(alpha,32, TYPE_ALPHA);
     } else {
-        THROW(SW_WRONG_DATA);
+        monero_lock_and_throw(SW_SECURITY_INTERNAL);
     }
     monero_io_discard(1);
 
+    //check xin and alpha are not null
+    if (cx_math_is_zero(xin,32) || cx_math_is_zero(alpha,32)) {
+        monero_lock_and_throw(SW_SECURITY_RANGE_VALUE);
+    }
 
     monero_reduce(ss, G_monero_vstate.c);
     monero_reduce(xin,xin);
@@ -119,6 +125,6 @@ int monero_apdu_mlsag_sign() {
     monero_subm(ss2, alpha, ss);
 
     monero_io_insert(ss2,32);
-    monero_io_insert_u32(G_monero_vstate.sig_mode);
+    monero_io_insert_u32(G_monero_vstate.tx_sig_mode);
     return SW_OK;
 }

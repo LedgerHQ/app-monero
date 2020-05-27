@@ -23,7 +23,7 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_reset_tx() {
+void monero_reset_tx(int reset_tx_cnt) {
     os_memset(G_monero_vstate.r, 0, 32);
     os_memset(G_monero_vstate.R, 0, 32);
     cx_rng(G_monero_vstate.hmac_key, 32);
@@ -33,7 +33,9 @@ void monero_reset_tx() {
     monero_sha256_outkeys_init();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
-
+    if (reset_tx_cnt) {
+        G_monero_vstate.tx_cnt = 0;    
+    }
  }
 
 
@@ -51,7 +53,16 @@ int monero_apdu_open_tx() {
 
     monero_io_discard(1);
 
-    monero_reset_tx();
+    monero_reset_tx(0);
+    G_monero_vstate.tx_cnt++;
+    ui_menu_opentx_display(0);
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        //return 0;
+    }
+    return monero_apdu_open_tx_cont();
+}
+
+int monero_apdu_open_tx_cont() {
     G_monero_vstate.tx_in_progress = 1;
 
     #ifdef DEBUG_HWDEVICE
@@ -64,11 +75,11 @@ int monero_apdu_open_tx() {
     monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r);
 
     monero_io_insert(G_monero_vstate.R,32);
-    monero_io_insert_encrypt(G_monero_vstate.r,32);
+    monero_io_insert_encrypt(G_monero_vstate.r,32, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY,32);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY,32);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY,32, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY,32);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY,32);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY,32,TYPE_SCALAR);
     return SW_OK;
 }
 
@@ -77,32 +88,27 @@ int monero_apdu_open_tx() {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_close_tx() {
    monero_io_discard(1);
-   monero_reset_tx();
-   G_monero_vstate.tx_in_progress = 0;
+   monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
+   ui_menu_main_display(0);
    return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/*
- * Sub dest address not yet supported: P1 = 2 not supported
- */
 int monero_abort_tx() {
-    monero_reset_tx();
+    monero_reset_tx(1);
+    ui_menu_info_display2(0, "TX", "Aborted");
     return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/*
- * Sub dest address not yet supported: P1 = 2 not supported
- */
 int monero_apdu_set_signature_mode() {
     unsigned int sig_mode;
 
-    G_monero_vstate.sig_mode = TRANSACTION_CREATE_FAKE;
+    G_monero_vstate.tx_sig_mode = TRANSACTION_CREATE_FAKE;
 
     sig_mode = monero_io_fetch_u8();
     monero_io_discard(0);
@@ -111,10 +117,10 @@ int monero_apdu_set_signature_mode() {
     case TRANSACTION_CREATE_FAKE:
         break;
     default:
-        THROW(SW_WRONG_DATA);
+        monero_lock_and_throw(SW_WRONG_DATA);
     }
-    G_monero_vstate.sig_mode = sig_mode;
+    G_monero_vstate.tx_sig_mode = sig_mode;
 
-    monero_io_insert_u32( G_monero_vstate.sig_mode );
+    monero_io_insert_u32( G_monero_vstate.tx_sig_mode );
     return SW_OK;
 }

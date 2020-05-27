@@ -23,15 +23,15 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-#ifdef TARGET_NANOX
-/* --- NANO-X config --- */
+#ifdef HAVE_UX_FLOW
+/* --- "NANO-X" and "NANO-S flow" config --- */
 
 #include "ux.h"
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 
 #else
-/* --- NANO-X config --- */
+/* --- "NANO-S legacy" config --- */
 
 ux_state_t ux;
 

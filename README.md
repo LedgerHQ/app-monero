@@ -1,6 +1,5 @@
 # ledger-app-monero
 
-
 Monero wallet application for Ledger Blue and Nano S
 
 # Install from sources
@@ -13,6 +12,14 @@ In order to install from sources for testing purpose you need to uncomment the t
 Note this is only for testing. For production usage, use the application provided by the Live Manager.
 
 # Revision
+
+## v1.6.0
+
+ Add Timelock verification on device
+
+## v1.5.x
+
+ Security Enhancement
 
 ## V1.4.2
 
@@ -28,9 +35,9 @@ Note this is only for testing. For production usage, use the application provide
 
 ## V1.4.0
 
-Add address display
-Enhence protocol security
-Remmove double ask for view key
+- Add address display
+- Enhance protocol security
+- Remove double ask for view key
 
 ## V1.3.2
 

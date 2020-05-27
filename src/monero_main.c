@@ -21,15 +21,14 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#include "monero_ux_nanos.h"
-//#include "monero_ux_blue.h"
-
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "glyphs.h"
 
-#ifdef TARGET_NANOX
+#ifdef HAVE_UX_FLOW
  #include "ux.h"
+#endif
+#ifdef TARGET_NANOX
  #include "balenos_ble.h"
 #endif
 
@@ -56,7 +55,7 @@ void monero_main(void) {
         //THROW(EXCEPTION_IO_RESET);
       }
       CATCH_OTHER(e) {
-        monero_reset_tx();
+        monero_reset_tx(1);
         if (((e&0xF000)==0x9000)||((e&0xFF00)==0x6400)) {
           sw = e;
         } else {
