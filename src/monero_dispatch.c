@@ -47,7 +47,6 @@ int check_potocol()  {
   /* the first command enforce the protocol version until application quits */
   switch(G_monero_vstate.io_protocol_version) {
    case 0x00: /* the first one: PCSC epoch */
-   case 0x02: /* protocol V2 */
    case 0x03: /* protocol V3 */
     if (G_monero_vstate.protocol == 0xff) {
       G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
@@ -305,9 +304,6 @@ int monero_dispatch() {
   /* --- PREFIX HASH  --- */
   case INS_PREFIX_HASH:
     //1. state machine check
-    if (G_monero_vstate.protocol < 3) {
-      THROW(SW_COMMAND_NOT_ALLOWED);
-    }
     if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
       (G_monero_vstate.tx_state_ins != INS_PREFIX_HASH)) {
         THROW(SW_COMMAND_NOT_ALLOWED);
@@ -351,12 +347,6 @@ int monero_dispatch() {
     /*--- COMMITMENT MASK --- */
   case INS_GEN_COMMITMENT_MASK:
     //1. state machine check
-    if (G_monero_vstate.protocol == 2) {
-      if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) && 
-          (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
-        THROW(SW_COMMAND_NOT_ALLOWED);
-      }
-    }
     if (G_monero_vstate.protocol == 3) {
       if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) && 
           (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
@@ -377,12 +367,6 @@ int monero_dispatch() {
   case INS_BLIND:
     //1. state machine check
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
-      if (G_monero_vstate.protocol == 2) {
-        if ((G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
-            (G_monero_vstate.tx_state_ins != INS_BLIND)) {
-          THROW(SW_COMMAND_NOT_ALLOWED);
-        }
-      }
       if (G_monero_vstate.protocol == 3) {
        if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
             (G_monero_vstate.tx_state_ins != INS_BLIND)) {
