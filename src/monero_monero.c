@@ -86,12 +86,11 @@ static uint64_t uint_8be_to_64(const unsigned char* data, size_t size) {
 
 static void encode_block(const unsigned char* block, unsigned int  size,  char* res) {
     uint64_t num = uint_8be_to_64(block, size);
-    int i = encoded_block_sizes[size] - 1;
-    while (0 < num) {
+    int i = encoded_block_sizes[size];
+    while (i--) {
         uint64_t remainder = num % alphabet_size;
         num /= alphabet_size;
         res[i] = alphabet[remainder];
-        --i;
     }
 }
 
