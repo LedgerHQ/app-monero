@@ -253,7 +253,8 @@ int monero_apdu_put_key() {
     unsigned char pub[32];
     unsigned char sec[32];
 
-    if (G_monero_vstate.io_length != (32 * 2 + 32 * 2 + 95)) {
+    // option + priv/pub view key + priv/pub spend key + base58 address
+    if (G_monero_vstate.io_length != (1 + 32 * 2 + 32 * 2 + 95)) {
         THROW(SW_WRONG_LENGTH);
         return SW_WRONG_LENGTH;
     }
