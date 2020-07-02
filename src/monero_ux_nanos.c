@@ -743,8 +743,8 @@ void ui_menu_pubaddr_action(unsigned int value) {
 void ui_menu_any_pubaddr_display(unsigned int value, unsigned char* pub_view,
                                  unsigned char* pub_spend, unsigned char is_subbadress,
                                  unsigned char* paymanetID) {
-    monero_base58_public_key(G_monero_vstate.ux_address + strlen(G_monero_vstate.ux_address),
-                             pub_view, pub_spend, is_subbadress, paymanetID);
+    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+                             paymanetID);
     UX_MENU_DISPLAY(value, ui_menu_pubaddr, ui_menu_pubaddr_preprocessor);
 }
 
