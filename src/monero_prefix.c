@@ -14,8 +14,8 @@
  */
 
 /*
-* Client: rctSigs.cpp.c -> get_pre_mlsag_hash
-*/
+ * Client: rctSigs.cpp.c -> get_pre_mlsag_hash
+ */
 
 #include "os.h"
 #include "cx.h"
@@ -29,18 +29,18 @@
 int monero_apdu_prefix_hash_init() {
     int timelock;
 
-    monero_keccak_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
-                            G_monero_vstate.io_length-G_monero_vstate.io_offset);
+    monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                           G_monero_vstate.io_length - G_monero_vstate.io_offset);
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         monero_io_fetch_varint();
         timelock = monero_io_fetch_varint();
-        if(monero_io_fetch_available() != 0) {
-            THROW(SW_WRONG_DATA); 
+        if (monero_io_fetch_available() != 0) {
+            THROW(SW_WRONG_DATA);
         }
-        //ask user
+        // ask user
         monero_io_discard(1);
-        if (timelock != 0 ) {        
+        if (timelock != 0) {
             monero_uint642str(timelock, G_monero_vstate.ux_amount, 15);
             ui_menu_timelock_validation_display(0);
             return 0;
@@ -57,13 +57,13 @@ int monero_apdu_prefix_hash_init() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_prefix_hash_update() {
-    monero_keccak_update_H(G_monero_vstate.io_buffer+G_monero_vstate.io_offset,
-                           G_monero_vstate.io_length-G_monero_vstate.io_offset);
+    monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                           G_monero_vstate.io_length - G_monero_vstate.io_offset);
     monero_io_discard(0);
     if ((G_monero_vstate.options & 0x80) == 0x00) {
         monero_keccak_final_H(G_monero_vstate.prefixH);
         monero_io_insert(G_monero_vstate.prefixH, 32);
     }
-    
+
     return SW_OK;
 }

@@ -16,15 +16,12 @@
 #ifndef MONERO_UX_MSG_H
 #define MONERO_UX_MSG_H
 
-extern const char * const C_OK;
-extern const char * const C_NOK;
+extern const char* const C_OK;
+extern const char* const C_NOK;
 
+#define PICSTR(x) ((char*)PIC(x))
 
-#define PICSTR(x)     ((char*)PIC(x))
-
-
-#define OK                PICSTR(C_OK)
-#define NOK               PICSTR(C_NOK)
-
+#define OK  PICSTR(C_OK)
+#define NOK PICSTR(C_NOK)
 
 #endif

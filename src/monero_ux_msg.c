@@ -13,8 +13,5 @@
  * limitations under the License.
  */
 
-
-const char * const C_OK                 = "OK";
-const char * const C_NOK                = "NOK";
-
-
+const char* const C_OK = "OK";
+const char* const C_NOK = "NOK";
