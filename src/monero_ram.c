@@ -37,6 +37,4 @@ ux_state_t ux;
 
 #endif
 
-
-monero_v_state_t  G_monero_vstate;
-
+monero_v_state_t G_monero_vstate;

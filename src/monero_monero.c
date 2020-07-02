@@ -18,17 +18,13 @@
 #include "monero_vars.h"
 
 #ifndef MONERO_ALPHA
-const unsigned char C_MAINNET_NETWORK_ID[] = {
-    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x10
-};
+const unsigned char C_MAINNET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
+                                              0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x10};
 #endif
-const unsigned char C_TESTNET_NETWORK_ID[] =  {
-    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x11
-};
-const unsigned char C_STAGENET_NETWORK_ID[] =  {
-    0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x12
-};
-
+const unsigned char C_TESTNET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
+                                              0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x11};
+const unsigned char C_STAGENET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
+                                               0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x12};
 
 // Copyright (c) 2014-2017, The Monero Project
 //
@@ -58,33 +54,46 @@ const unsigned char C_STAGENET_NETWORK_ID[] =  {
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-const char         alphabet[]              = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-#define            alphabet_size           (sizeof(alphabet) - 1)
-const unsigned int encoded_block_sizes[]   = {0, 2, 3, 5, 6, 7, 9, 10, 11};
-#define  FULL_BLOCK_SIZE                   8 //(sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1)
-#define  FULL_ENCODED_BLOCK_SIZE           11 //encoded_block_sizes[full_block_size];
-#define  ADDR_CHECKSUM_SIZE                4
-
+const char alphabet[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+#define alphabet_size (sizeof(alphabet) - 1)
+const unsigned int encoded_block_sizes[] = {0, 2, 3, 5, 6, 7, 9, 10, 11};
+#define FULL_BLOCK_SIZE         8  //(sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1)
+#define FULL_ENCODED_BLOCK_SIZE 11  // encoded_block_sizes[full_block_size];
+#define ADDR_CHECKSUM_SIZE      4
 
 static uint64_t uint_8be_to_64(const unsigned char* data, size_t size) {
     uint64_t res = 0;
     switch (9 - size) {
-    case 1:            res |= *data++;
-    case 2: res <<= 8; res |= *data++;
-    case 3: res <<= 8; res |= *data++;
-    case 4: res <<= 8; res |= *data++;
-    case 5: res <<= 8; res |= *data++;
-    case 6: res <<= 8; res |= *data++;
-    case 7: res <<= 8; res |= *data++;
-    case 8: res <<= 8; res |= *data;
-    break;
+        case 1:
+            res |= *data++;
+        case 2:
+            res <<= 8;
+            res |= *data++;
+        case 3:
+            res <<= 8;
+            res |= *data++;
+        case 4:
+            res <<= 8;
+            res |= *data++;
+        case 5:
+            res <<= 8;
+            res |= *data++;
+        case 6:
+            res <<= 8;
+            res |= *data++;
+        case 7:
+            res <<= 8;
+            res |= *data++;
+        case 8:
+            res <<= 8;
+            res |= *data;
+            break;
     }
 
     return res;
 }
 
-static void encode_block(const unsigned char* block, unsigned int  size,  char* res) {
+static void encode_block(const unsigned char* block, unsigned int size, char* res) {
     uint64_t num = uint_8be_to_64(block, size);
     int i = encoded_block_sizes[size];
     while (i--) {
@@ -94,13 +103,14 @@ static void encode_block(const unsigned char* block, unsigned int  size,  char* 
     }
 }
 
-int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *spend, unsigned char is_subbadress, unsigned char *paymanetID) {
-    unsigned char data[72+8];
+int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* spend,
+                             unsigned char is_subbadress, unsigned char* paymanetID) {
+    unsigned char data[72 + 8];
     unsigned int offset;
     unsigned int prefix;
 
-    //data[0] = N_monero_pstate->network_id;
-    switch(N_monero_pstate->network_id) {
+    // data[0] = N_monero_pstate->network_id;
+    switch (N_monero_pstate->network_id) {
         case TESTNET:
             if (paymanetID) {
                 prefix = TESTNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
@@ -119,7 +129,7 @@ int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *
                 prefix = STAGENET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
             }
             break;
-        #ifndef MONERO_ALPHA
+#ifndef MONERO_ALPHA
         case MAINNET:
             if (paymanetID) {
                 prefix = MAINNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
@@ -129,31 +139,32 @@ int monero_base58_public_key(char* str_b58, unsigned char *view, unsigned char *
                 prefix = MAINNET_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
             }
             break;
-        #endif
+#endif
     }
     offset = monero_encode_varint(data, 8, prefix);
 
-    os_memmove(data+offset,spend,32);
-    os_memmove(data+offset+32,view,32);
+    os_memmove(data + offset, spend, 32);
+    os_memmove(data + offset + 32, view, 32);
     offset += 64;
     if (paymanetID) {
-        os_memmove(data+offset, paymanetID, 8);
+        os_memmove(data + offset, paymanetID, 8);
         offset += 8;
     }
     monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
-    os_memmove(data+offset, G_monero_vstate.mlsagH, 4);
+    os_memmove(data + offset, G_monero_vstate.mlsagH, 4);
     offset += 4;
 
     unsigned int full_block_count = (offset) / FULL_BLOCK_SIZE;
-    unsigned int last_block_size  = (offset) % FULL_BLOCK_SIZE;
+    unsigned int last_block_size = (offset) % FULL_BLOCK_SIZE;
     for (size_t i = 0; i < full_block_count; ++i) {
-        encode_block(data + i * FULL_BLOCK_SIZE, FULL_BLOCK_SIZE, &str_b58[i * FULL_ENCODED_BLOCK_SIZE]);
+        encode_block(data + i * FULL_BLOCK_SIZE, FULL_BLOCK_SIZE,
+                     &str_b58[i * FULL_ENCODED_BLOCK_SIZE]);
     }
 
     if (0 < last_block_size) {
-        encode_block(data + full_block_count * FULL_BLOCK_SIZE, last_block_size, &str_b58[full_block_count * FULL_ENCODED_BLOCK_SIZE]);
+        encode_block(data + full_block_count * FULL_BLOCK_SIZE, last_block_size,
+                     &str_b58[full_block_count * FULL_ENCODED_BLOCK_SIZE]);
     }
 
     return 0;
 }
-
