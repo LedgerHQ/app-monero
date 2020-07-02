@@ -1,0 +1,19 @@
+name: Code style check
+
+on: [push, pull_request]
+
+jobs:
+  job_lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v2
+
+      - name: Lint
+        uses: DoozyX/clang-format-lint-action@v0.5
+        with:
+          source: './src'
+          extensions: 'h,c'
+          clangFormatVersion: 9
