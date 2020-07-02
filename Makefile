@@ -60,13 +60,7 @@ else
 DEFINES   += UI_NANO_S
 endif
 
-
-
 #DEFINES += IOCRYPT
-## Debug options
-#DEFINES   += DEBUG_HWDEVICE
-#DEFINES   += IODUMMYCRYPT
-#DEFINES   += IONOCRYPT
 
 ################
 # Default rule #
@@ -126,7 +120,11 @@ ifneq ($(DEBUG),0)
 		DEFINES   += HAVE_PRINTF PRINTF=screen_printf
 	endif
 	DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
-
+  # Debug options
+  DEFINES += DEBUG_HWDEVICE
+  DEFINES += IODUMMYCRYPT  # or IONOCRYPT
+  # Stagenet network by default
+  DEFINES += MONERO_BETA
 else
 
 	DEFINES   += PRINTF\(...\)=
