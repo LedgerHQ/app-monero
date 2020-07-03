@@ -1,7 +1,10 @@
 import logging
 from typing import List, Tuple
 
-import hid
+try:
+    import hid
+except ImportError:
+    hid = None
 
 from .comm import Comm
 
@@ -11,6 +14,9 @@ LEDGER_VENDOR_ID: int = 0x2C97
 
 class HID(Comm):
     def __init__(self) -> None:
+        if hid is None:
+            raise ImportError("hidapi is not installed!")
+
         self.device = hid.device()
         self.path = HID.enumerate_devices()[0]
         self.device.open_path(self.path)
