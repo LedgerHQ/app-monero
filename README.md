@@ -1,139 +1,28 @@
-# ledger-app-monero
+# Monero Ledger App
 
-Monero wallet application for Ledger Blue and Nano S
+Monero wallet application for Ledger Nano S and Nano X.
 
-# Install from sources
+## Install
 
-In order to install from sources for testing purpose you need to uncomment the two following lines in Makefile
+### Prerequisite
 
-    DEFINES   += DEBUG_HWDEVICE
-    DEFINES   += IODUMMYCRYPT
-
-Note this is only for testing. For production usage, use the application provided by the Live Manager.
-
-# Revision
-
-## v1.6.0
-
- Add Timelock verification on device
-
-## v1.5.x
-
- Security Enhancement
-
-## V1.4.2
-
- Compatibility check with client version now discards the fourth sub-version number.
-
- Release for client 0.15.0+
- firmware LNS 1.6.0 et LNX 1.2.4
-
-## V1.4.1
-
- Release for client 0.15
- firmware LNS 1.6.0 et LNX 1.2.4
-
-## V1.4.0
-
-- Add address display
-- Enhance protocol security
-- Remove double ask for view key
-
-## V1.3.2
-
---
-
-## V1.3.1
-
-Add Tx proof support Monero post 0.14.0.2
-
-## V1.3.0
-
-Targeted Client: Monero post 0.14.0.2
-
-## V1.2.2
-
-Targeted Client: Monero 0.14.0.2
-
-Partial bug Fixes in change destination address computation: Only one destination
-is allowed in transfer command
-
-## v1.2.0
-
-Targeted Client: Monero 0.14.0.0+
-
-- V11 fork integration
-- Fix change address issue.
-
-## v1.1.3
-
-- Remove rolling address display
-- Allow STEALTH instruction outside TX
-- Doc fix
-
-## v1.1.2
-
-Fix stack overflow for 1.5.5 SDK
-
-## v1.1.1
-
-Allow transaction parsing when screen is locked
-
-## v1.1.0
-
-Initial Release
-
-Targeted Client: Monero 0.13.0.0+
-
-- Security fix: Screen lock management
-- Optimisation: New protocol V2 for future
-- Fix bug in large amount display that was truncated
-- Remove confirmation for zero amount (fake sweep change)
-- Better handling for change address to not display them
-- Dual id (PIN based) management
-- Add onscreen seed words display
+Be sure to have your environment correctly set up (see [Getting Started](https://ledger.readthedocs.io/en/latest/userspace/getting_started.html)) and [ledgerblue](https://pypi.org/project/ledgerblue/) installed.
 
 
-## v1.0.0
+### Compilation
 
-Initial Release
+In order to use the app with the Monero client, you need to compile in debug mode:
 
-Targeted Client: Monero 0.13.0.0+
+```
+make DEBUG=1
+make load  # load the app on the Nano using ledgerblue
+```
 
+Note that it's for testing only.
+For production usage, use the application provided by the [Ledger Live](https://www.ledger.com/ledger-live/download/) manager.
 
-## v 0.12.4 / Beta 5
+## Useful links
 
-Targeted Client: Monero 0.12.1
+* Monero client CLI or GUI - [https://web.getmonero.org/downloads/](https://web.getmonero.org/downloads/)
 
-- U2F support
-- Fix Windows detection problem
-- activate Mainnet 'Beta stage: USE AT YOUR OWN RISK'
-
-## v 0.12.3 / Beta 4
-
-Targeted Client: Monero 0.12.1
-
-- SDK 1.4.2.1 port
-
-## v 0.12.2 / Beta 3
-
-Targeted Client: Monero 0.12.1
-
-- Activate security command chain control
-
-
-## v 0.12.1 / Beta 2
-
-Targeted Client: Monero 0.12.1
-
-- Add second PIN support
-- Remove key storage  in NVRAM, always recompute secret key at boot
-- Export secret viewkey, with agreement of user, to speed up tx scan
-- Clean-up RAM usage
-- Change some naming according to Monero client convention
-
-## Beta 1
-
-Targeted Client: Monero 0.12.0
-
-- Initial Beta.
+* Ledger's developer documentation - [https://ledger.readthedocs.io](https://ledger.readthedocs.io)
