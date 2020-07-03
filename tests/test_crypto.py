@@ -39,25 +39,23 @@ def test_key_image(monero):
     assert expected_key_img == key_image
 
 
-# Wait for PR #69 to be merged: https://github.com/LedgerHQ/app-monero/pull/69
-#
-# def test_put_key(monero):
-#     priv_view_key: bytes = bytes.fromhex("0f3fe25d0c6d4c94dde0c0bcc214b233"
-#                                          "e9c72927f813728b0f01f28f9d5e1201")
-#     pub_view_key: bytes = bytes.fromhex("865cbfab852a1d1ccdfc7328e4dac90f"
-#                                         "78fc2154257d07522e9b79e637326dfa")
-#     priv_spend_key: bytes = bytes.fromhex("3b094ca7218f175e91fa2402b4ae239a"
-#                                           "2fe8262792a3e718533a1a357a1e4109")
-#     pub_spend_key: bytes = bytes.fromhex("dae41d6b13568fdd71ec3d20c2f614c6"
-#                                          "5fe819f36ca5da8d24df3bd89b2bad9d")
-#     address: str = ("5A8FgbMkmG2e3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBvm"
-#                     "A45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELVHCRUaE")
+def test_put_key(monero):
+    priv_view_key: bytes = bytes.fromhex("0f3fe25d0c6d4c94dde0c0bcc214b233"
+                                         "e9c72927f813728b0f01f28f9d5e1201")
+    pub_view_key: bytes = bytes.fromhex("865cbfab852a1d1ccdfc7328e4dac90f"
+                                        "78fc2154257d07522e9b79e637326dfa")
+    priv_spend_key: bytes = bytes.fromhex("3b094ca7218f175e91fa2402b4ae239a"
+                                          "2fe8262792a3e718533a1a357a1e4109")
+    pub_spend_key: bytes = bytes.fromhex("dae41d6b13568fdd71ec3d20c2f614c6"
+                                         "5fe819f36ca5da8d24df3bd89b2bad9d")
+    address: str = ("5A8FgbMkmG2e3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBvm"
+                    "A45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELVHCRUaE")
 
-#     monero.put_key(priv_view_key=priv_view_key,
-#                    pub_view_key=pub_view_key,
-#                    priv_spend_key=priv_spend_key,
-#                    pub_spend_key=pub_spend_key,
-#                    address=address)
+    monero.put_key(priv_view_key=priv_view_key,
+                   pub_view_key=pub_view_key,
+                   priv_spend_key=priv_spend_key,
+                   pub_spend_key=pub_spend_key,
+                   address=address)
 
 
 def test_gen_key_derivation(monero):
