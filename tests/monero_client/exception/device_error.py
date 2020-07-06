@@ -1,10 +1,10 @@
 import enum
 from typing import Dict, Any, Optional
 
-from . import *
+from . import *  # pylint: disable=wildcard-import, unused-wildcard-import
 
 
-class DeviceError:
+class DeviceError(Exception):  # pylint: disable=too-few-public-methods
     exc: Dict[int, Any] = {
         0x6700: WrongLength,
         0x6a30: ClientNotSupported,
@@ -35,13 +35,16 @@ class DeviceError:
     }
 
     def __new__(cls,
-                value: int,
+                error_code: int = 0x6f00,
                 ins: Optional[enum.IntEnum] = None,
-                *args,
-                **kwargs) -> Any:
-        if value in DeviceError.exc:
-            msg: str = f"Error in {ins!r} command" if ins else "Error in command"
+                message: str = ""
+                ) -> Any:
+        error_message: str = (f"Error in {ins!r} command"
+                              if ins else "Error in command")
 
-            return DeviceError.exc[value](hex(value), msg, *args, **kwargs)
+        if error_code in DeviceError.exc:
+            return DeviceError.exc[error_code](hex(error_code),
+                                               error_message,
+                                               message)
 
-        return UnknownDeviceError(hex(value), *args, **kwargs)
+        return UnknownDeviceError(hex(error_code), error_message, message)

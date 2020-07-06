@@ -1,11 +1,11 @@
 import struct
 from typing import Tuple
 
-from monero_client.crypto.hmac import hmac_sha256
-from monero_client.exception.device_error import DeviceError
-from monero_client.monero_types import InsType
-from monero_client.monero_types import Type
-from monero_client.io.transport import Transport
+from .crypto.hmac import hmac_sha256
+from .exception.device_error import DeviceError
+from .monero_types import InsType
+from .monero_types import Type
+from .io.transport import Transport
 
 PROTOCOL_VERSION: int = 3
 
@@ -46,7 +46,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         assert len(response) == 32
@@ -73,7 +73,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         assert len(response) == 32
@@ -91,7 +91,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=1")
 
         assert len(response) == 159
@@ -116,7 +116,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=2")
 
         assert len(response) == 32
@@ -134,7 +134,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         if self.is_in_tx_mode:
@@ -156,7 +156,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         assert len(response) == 4
@@ -164,7 +164,7 @@ class MoneroCryptoCmd:
         # 32 bits integer (should be 0 or 1)
         verified, *_ = struct.unpack(">I", response)
 
-        return True if verified else False
+        return bool(verified)
 
     def generate_key_image(self, _priv_key: bytes, pub_key: bytes) -> bytes:
         ins: InsType = InsType.INS_GEN_KEY_IMAGE
@@ -186,7 +186,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         assert len(response) == 32
@@ -218,7 +218,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         assert len(response) == 0
@@ -243,7 +243,7 @@ class MoneroCryptoCmd:
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
+        if not sw & 0x9000:
             raise DeviceError(sw, ins)
 
         _d_in: bytes = response[:32]  # encrypted derivation

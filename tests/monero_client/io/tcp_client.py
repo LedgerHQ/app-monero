@@ -2,7 +2,7 @@ import logging
 import socket
 from typing import Tuple
 
-from .comm import Comm
+from monero_client.io.comm import Comm
 
 
 class TCPClient(Comm):

@@ -1,5 +1,6 @@
 import pytest
 
+# pylint: disable=wildcard-import, unused-wildcard-import
 from monero_client.exception import *
 
 

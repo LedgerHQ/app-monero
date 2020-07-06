@@ -6,8 +6,7 @@ try:
 except ImportError:
     hid = None
 
-from .comm import Comm
-
+from monero_client.io.comm import Comm
 
 LEDGER_VENDOR_ID: int = 0x2C97
 
@@ -32,8 +31,7 @@ class HID(Comm):
                     hid_device.get("usage_page") == 0xffa0):
                 devices.append(hid_device["path"])
 
-        assert (len(devices) != 0,
-                f"Can't find HID device with vendor id {LEDGER_VENDOR_ID}")
+        assert len(devices) != 0, f"Can't find device with vendor_id {LEDGER_VENDOR_ID}"
 
         return devices
 
@@ -54,7 +52,7 @@ class HID(Comm):
             offset += 64 - len(header)
             seq_idx += 1
 
-    def recv(self, timeout: int = 1000) -> Tuple[int, bytes]:
+    def recv(self) -> Tuple[int, bytes]:
         seq_idx: int = 0
         self.device.set_nonblocking(False)
         data_chunk: bytes = bytes(self.device.read(64 + 1))
@@ -68,20 +66,20 @@ class HID(Comm):
         data: bytes = data_chunk[7:]
 
         while len(data) < data_len:
-            read_bytes = bytes(self.device.read(64 + 1, timeout_ms=timeout))
+            read_bytes = bytes(self.device.read(64 + 1, timeout_ms=1000))
             data += read_bytes[5:]
 
         logging.debug("<= %s", data[:data_len].hex())
 
-        sw: int = int.from_bytes(data[data_len-2:data_len], byteorder="big")
-        data: bytes = data[:data_len-2]
+        sw: int = int.from_bytes(data[data_len - 2:data_len], byteorder="big")
+        data = data[:data_len - 2]
 
         return sw, data
 
-    def exchange(self, data: bytes, timeout=1000) -> Tuple[int, bytes]:
-        self.send(data)
+    def exchange(self, apdus: bytes) -> Tuple[int, bytes]:
+        self.send(apdus)
 
-        return self.recv(timeout)
+        return self.recv()
 
     def close(self):
         if self.__opened:
