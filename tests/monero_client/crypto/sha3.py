@@ -18,18 +18,24 @@ testnet address prefix:
 
 SOFTWALLET
 ------------
-integrated_address 0102030405060708
-5KpvhQBFNXYe3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBvmA45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELipMNxnGr3Wv1zf7dWq
+payment_id: 0102030405060708
+addr: 5KpvhQBFNXYe3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBv
+      mA45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELipMNxnGr3Wv1zf7dWq
 
 HWWALLET
 --------
-integrated_address 0102030405060708
-5DhUnJjS31jgAQDY6qKUP6TeBy5JqXSJzhG4i7447yMXS7wdt4hKh6gQCTTa9FiYNpEjBoHZ9iTww3vL96P1hcmTbnu8Nst8WHC21KaMVc
+payment_id: 0102030405060708
+addr: 5DhUnJjS31jgAQDY6qKUP6TeBy5JqXSJzhG4i7447yMXS7wd
+      t4hKh6gQCTTa9FiYNpEjBoHZ9iTww3vL96P1hcmTbnu8Nst8WHC21KaMVc
 
 
 >>> addr_prefix: bytes = b"\x19"
->>> pub_spend_key: bytes = bytes.fromhex("dae41d6b13568fdd71ec3d20c2f614c65fe819f36ca5da8d24df3bd89b2bad9d")
->>> pub_view_key: bytes = bytes.fromhex("865cbfab852a1d1ccdfc7328e4dac90f78fc2154257d07522e9b79e637326dfa")
+>>> pub_spend_key: bytes = bytes.fromhex(
+... "dae41d6b13568fdd71ec3d20c2f614c65fe819f36ca5da8d24df3bd89b2bad9d"
+... )
+>>> pub_view_key: bytes = bytes.fromhex(
+... "865cbfab852a1d1ccdfc7328e4dac90f78fc2154257d07522e9b79e637326dfa"
+... )
 >>> payment_id: bytes = b"\x01\x02\x03\x04\x05\x06\x07\x08"
 >>> concat: bytes = addr_prefix + pub_spend_key + pub_view_key + payment_id
 >>> addr: str = base58.encode(concat + sha3(concat)[:4])

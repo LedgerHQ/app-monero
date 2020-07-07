@@ -7,8 +7,9 @@ from monero_client.monero_types import SigType, Keys
 class TestSignature:
     """Monero signature test."""
 
+    @staticmethod
     @pytest.fixture(autouse=True, scope="class")
-    def state(self):
+    def state():
         sender = Keys(
             public_view_key=bytes.fromhex("865cbfab852a1d1ccdfc7328e4dac90f78"
                                           "fc2154257d07522e9b79e637326dfa"),
@@ -44,7 +45,8 @@ class TestSignature:
                 "blinded_mask": [],
                 "y": []}
 
-    def test_set_sig(self, monero):
+    @staticmethod
+    def test_set_sig(monero):
         major, minor, patch = monero.reset_and_get_version(
             monero_client_version=b"0.16.0.0"
         )  # type: int, int, int
@@ -53,7 +55,8 @@ class TestSignature:
         sig_mode: SigType = monero.set_signature_mode(sig_type=SigType.REAL)
         assert sig_mode == SigType.REAL
 
-    def test_open_tx(self, monero, state):
+    @staticmethod
+    def test_open_tx(monero, state):
         (tx_pub_key,
          _tx_priv_key,
          fake_view_key,
@@ -65,7 +68,8 @@ class TestSignature:
         state["tx_pub_key"] = tx_pub_key
         state["_tx_priv_key"] = _tx_priv_key
 
-    def test_gen_txout_keys(self, monero, state):
+    @staticmethod
+    def test_gen_txout_keys(monero, state):
         _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
             _tx_priv_key=state["_tx_priv_key"],
             tx_pub_key=state["tx_pub_key"],
@@ -78,7 +82,8 @@ class TestSignature:
 
         state["_ak_amount"].append(_ak_amount)  # _ak_amount_t
 
-    def test_prefix_hash(self, monero, button):
+    @staticmethod
+    def test_prefix_hash(monero, button):
         expected: bytes = bytes.fromhex("49d03a195e239b52779866b33024210f"
                                         "c7dc66e9c2998975c0aa45c1702549d5")
         # should ask for timelock validation
@@ -91,13 +96,15 @@ class TestSignature:
 
         assert result == expected
 
-    def test_gen_commitment_mask(self, monero, state):
+    @staticmethod
+    def test_gen_commitment_mask(monero, state):
         assert len(state["_ak_amount"]) != 0
 
         s: bytes = monero.gen_commitment_mask(state["_ak_amount"][0])
         state["y"].append(s)  # y_t
 
-    def test_blind(self, monero, state):
+    @staticmethod
+    def test_blind(monero, state):
         assert len(state["y"]) != 0
         assert len(state["_ak_amount"]) != 0
 
@@ -121,7 +128,8 @@ class TestSignature:
         state["blinded_mask"].append(blinded_mask)
         state["blinded_amount"].append(blinded_amount)
 
-    def test_validate(self, monero, button, state):
+    @staticmethod
+    def test_validate(monero, button, state):
         assert len(state["y"]) != 0
         assert len(state["_ak_amount"]) != 0
         assert len(state["blinded_amount"]) != 0
@@ -149,5 +157,6 @@ class TestSignature:
         #     is_last=True
         # )
 
-    def test_close_tx(self, monero):
+    @staticmethod
+    def test_close_tx(monero):
         monero.close_tx()

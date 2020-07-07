@@ -36,7 +36,7 @@ def bin_to_hex(b: bytes) -> str:
 
 
 def uint8be_to_64(data: bytes) -> int:
-    if not (1 <= len(data) <= 8):
+    if not 1 <= len(data) <= 8:
         raise ValueError(f"Invalid input length: {len(data)}")
 
     res: int = 0
@@ -138,8 +138,8 @@ def decode_block(data: bytes, buf: bytearray, index: int) -> bytearray:
                 f"Overflow: {order} * {digit} + {res_num} = {product}"
             )
 
-        res_num: int = product
-        order: int = order * B58_BASE
+        res_num = product
+        order = order * B58_BASE
 
     if res_size < FULL_BLOCK_SIZE and 2 ** (8 * res_size) <= res_num:
         raise ValueError(f"Overflow: {res_num} doesn't fit in {res_size} bit(s)")
@@ -150,9 +150,9 @@ def decode_block(data: bytes, buf: bytearray, index: int) -> bytearray:
     return buf
 
 
-def decode(data_encoded: str) -> str:
+def decode(encoded_value: str) -> str:
     """Decode a base58 string (ex: a Monero address) into hexidecimal form."""
-    data_encoded: bytearray = bytearray(data_encoded, encoding="ascii")
+    data_encoded: bytearray = bytearray(encoded_value, encoding="ascii")
     l_enc: int = len(data_encoded)
 
     if l_enc == 0:

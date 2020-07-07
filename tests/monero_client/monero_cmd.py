@@ -1,25 +1,31 @@
 """Simple client for Monero application
 
-From test seed of 12 words:
-"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+From test seed of 12 words: "abandon abandon abandon abandon abandon abandon
+abandon abandon abandon abandon abandon about".
 
-* view public: A = 865cbfab852a1d1ccdfc7328e4dac90f78fc2154257d07522e9b79e637326dfa
-* spend public: B = dae41d6b13568fdd71ec3d20c2f614c65fe819f36ca5da8d24df3bd89b2bad9d
-* view secret: a = 0f3fe25d0c6d4c94dde0c0bcc214b233e9c72927f813728b0f01f28f9d5e1201
-* spend secret: b = 3b094ca7218f175e91fa2402b4ae239a2fe8262792a3e718533a1a357a1e4109
-* Stage net address: 5A8FgbMkmG2e3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBvmA45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELVHCRUaE
+* view public:
+    A = 865cbfab852a1d1ccdfc7328e4dac90f78fc2154257d07522e9b79e637326dfa
+* spend public:
+    B = dae41d6b13568fdd71ec3d20c2f614c65fe819f36ca5da8d24df3bd89b2bad9d
+* view secret:
+    a = 0f3fe25d0c6d4c94dde0c0bcc214b233e9c72927f813728b0f01f28f9d5e1201
+* spend secret:
+    b = 3b094ca7218f175e91fa2402b4ae239a2fe8262792a3e718533a1a357a1e4109
+* Stage net address:
+    5A8FgbMkmG2e3J41sBdjvjaBUyz8qHohsQcGtRf63qEUTMBv
+    mA45fpp5pSacMdSg7A3b71RejLzB8EkGbfjp5PELVHCRUaE
 
 """
 
 import struct
 from typing import Tuple
 
-from monero_client.monero_crypto_cmd import MoneroCryptoCmd
-from monero_client.monero_types import InsType, Type, SigType
-from monero_client.crypto.hmac import hmac_sha256
-from monero_client.exception.device_error import DeviceError
-from monero_client.io.button import Button
-from monero_client.utils.varint import encode_varint
+from .monero_crypto_cmd import MoneroCryptoCmd
+from .monero_types import InsType, Type, SigType
+from .crypto.hmac import hmac_sha256
+from .exception.device_error import DeviceError
+from .io.button import Button
+from .utils.varint import encode_varint
 
 PROTOCOL_VERSION: int = 3
 
@@ -42,8 +48,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 3
 
@@ -70,15 +76,15 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 4
 
         sig_mode, *_ = struct.unpack(">I", response)
 
         if sig_mode not in (1, 2):
-            raise Exception(f"Signature mode should be 1 (real) or 2 (fake).")
+            raise Exception("Signature mode should be 1 (real) or 2 (fake).")
 
         return SigType.REAL if sig_mode else SigType.FAKE
 
@@ -97,8 +103,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         self.is_in_tx_mode = True
 
@@ -138,8 +144,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         self.is_in_tx_mode = False
 
@@ -179,8 +185,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 96
 
@@ -218,8 +224,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins, "P1=1 (init)")
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
 
         assert len(response) == 0
 
@@ -235,8 +241,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins, "P1=2 (update)")
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins, message="P1=2 (update)")
 
         if is_last:
             assert len(response) == 32
@@ -263,8 +269,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 32
 
@@ -295,8 +301,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 64
 
@@ -329,8 +335,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins)
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins)
 
         assert len(response) == 64
 
@@ -364,8 +370,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins, "P1=1 (init)")
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
 
         assert len(response) == 0
 
@@ -406,8 +412,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins, "P1=2 (update)")
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins, message="P1=2 (update)")
 
         assert len(response) == 0
 
@@ -448,7 +454,7 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
-        if not (sw & 0x9000):
-            raise DeviceError(sw, ins, "P1=3 (finalize)")
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins, message="P1=3 (finalize)")
 
         assert len(response) == 0

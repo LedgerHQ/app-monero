@@ -1,31 +1,30 @@
-import pytest
 from typing import Dict, Tuple
+import pytest
 
 from monero_client.io.button import Button, FakeButton
 from monero_client.monero_cmd import MoneroCmd
-
 
 SPECULOS: bool = True
 
 
 @pytest.fixture(scope="module")
 def monero():
-    monero = MoneroCmd(debug=True,
-                       speculos=SPECULOS)
+    monero_client = MoneroCmd(debug=True,
+                              speculos=SPECULOS)
 
-    yield monero
+    yield monero_client
 
-    monero.device.close()
+    monero_client.device.close()
 
 
 @pytest.fixture(scope="module")
 def button():
-    button = (Button(server="127.0.0.1", port=42000)
-              if SPECULOS else FakeButton())
+    button_client = (Button(server="127.0.0.1", port=42000)
+                     if SPECULOS else FakeButton())
 
-    yield button
+    yield button_client
 
-    button.close()
+    button_client.close()
 
 
 _test_failed_incremental: Dict[str, Dict[Tuple[int, ...], str]] = {}
@@ -34,7 +33,6 @@ _test_failed_incremental: Dict[str, Dict[Tuple[int, ...], str]] = {}
 def pytest_runtest_makereport(item, call):
     if "incremental" in item.keywords:
         if call.excinfo is not None:
-
             cls_name = str(item.cls)
             parametrize_index = (
                 tuple(item.callspec.indices.values())
