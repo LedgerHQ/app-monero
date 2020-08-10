@@ -50,6 +50,7 @@ int check_potocol() {
     switch (G_monero_vstate.io_protocol_version) {
         case 0x00: /* the first one: PCSC epoch */
         case 0x03: /* protocol V3 */
+        case 0x04: /* protocol V4 */
             if (G_monero_vstate.protocol == 0xff) {
                 G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
             }

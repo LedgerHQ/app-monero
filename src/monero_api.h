@@ -68,6 +68,10 @@ int monero_apdu_mlsag_prehash_init(void);
 int monero_apdu_mlsag_prehash_update(void);
 int monero_apdu_mlsag_prehash_finalize(void);
 
+int monero_apdu_clsag_prepare(void);
+int monero_apdu_clsag_hash(void);
+int monero_apdu_clsag_sign(void);
+
 int monero_apu_generate_txout_keys(void);
 
 int monero_apdu_prefix_hash_init();
@@ -129,6 +133,7 @@ extern const unsigned char C_FAKE_SEC_SPEND_KEY[32];
 int is_fake_view_key(unsigned char *s);
 int is_fake_spend_key(unsigned char *s);
 
+void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes);
 void monero_sc_add(unsigned char *r, unsigned char *s1, unsigned char *s2);
 void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int len);
 void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub);
