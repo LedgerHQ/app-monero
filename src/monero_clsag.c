@@ -69,7 +69,7 @@ int monero_apdu_clsag_prepare() {
     monero_ecmul_k(W, p, H);
     monero_io_insert(W, 32);
     // I = z.H
-    monero_ecmul(W, z, H);
+    monero_ecmul_k(W, z, H);
     monero_io_insert(W, 32);
 
     return SW_OK;
