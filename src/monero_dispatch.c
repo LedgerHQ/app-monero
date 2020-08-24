@@ -430,7 +430,7 @@ int monero_dispatch() {
             // 1. state machine check
             if ((G_monero_vstate.tx_state_ins != INS_VALIDATE) &&  //
                 (G_monero_vstate.tx_state_ins != INS_MLSAG) &&     //
-                (G_monero_vstate.protocol != 3)) {
+                ((G_monero_vstate.protocol != 3) || (G_monero_vstate.protocol != 4))) {
                 THROW(SW_COMMAND_NOT_ALLOWED);
             }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
