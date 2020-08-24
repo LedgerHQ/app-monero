@@ -58,18 +58,18 @@ int monero_apdu_clsag_prepare() {
     // a
     monero_rng_mod_order(a);
     monero_io_insert_encrypt(a, 32, TYPE_ALPHA);
-
     // a.G
     monero_ecmul_G(W, a);
     monero_io_insert(W, 32);
     // a.H
-    monero_ecmul_k(W, a, H);
+    monero_ecmul_k(W, H, a);
     monero_io_insert(W, 32);
     // I = p.H
-    monero_ecmul_k(W, p, H);
+    monero_ecmul_k(W, H, p);
     monero_io_insert(W, 32);
-    // I = z.H
-    monero_ecmul_k(W, z, H);
+
+    // D = z.H
+    monero_ecmul_k(W, H, z);
     monero_io_insert(W, 32);
 
     return SW_OK;
