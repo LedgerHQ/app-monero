@@ -160,7 +160,8 @@ int monero_apdu_clsag_sign() {
 
     // s = c*s0_add_z_mu_C + a
     monero_multm(mu_P, G_monero_vstate.c, s);
-    monero_addm(s, mu_P, a);
+    // s = a - c*(p*mu_P + mu_C*z)
+    monero_subm(s, a, mu_P);
 
     monero_io_insert(s, 32);
 
