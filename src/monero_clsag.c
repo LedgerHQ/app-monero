@@ -163,6 +163,6 @@ int monero_apdu_clsag_sign() {
     monero_addm(s, mu_P, a);
 
     monero_io_insert(s, 32);
-    monero_io_insert_u32(G_monero_vstate.tx_sig_mode);
+
     return SW_OK;
 }
