@@ -137,12 +137,12 @@ int monero_apdu_clsag_sign() {
     } else {
         monero_lock_and_throw(SW_SECURITY_INTERNAL);
     }
+
     monero_io_discard(1);
 
-    // check xin and alpha are not null
-    monero_check_scalar_range_1N(a);
-    monero_check_scalar_range_1N(p);
-    monero_check_scalar_range_1N(z);
+    monero_check_scalar_not_null(a);
+    monero_check_scalar_not_null(p);
+    monero_check_scalar_not_null(z);
 
     monero_reduce(a, a);
     monero_reduce(p, p);
