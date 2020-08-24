@@ -26,11 +26,16 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 /*
-    bool device_default::clsag_prepare(const rct::key &p, const rct::key &z, rct::key &I, rct::key
-   &D, const rct::key &H, rct::key &a, rct::key &aG, rct::key &aH) { rct::skpkGen(a,aG); // aG = a*G
-        rct::scalarmultKey(aH,H,a); // aH = a*H
-        rct::scalarmultKey(I,H,p); // I = p*H
-        rct::scalarmultKey(D,H,z); // D = z*H
+    bool device_default::clsag_prepare(const rct::key &p,
+                                       const rct::key &z,
+                                       rct::key &I, rct::key &D,
+                                       const rct::key &H,
+                                       rct::key &a, rct::key &aG,
+                                       rct::key &aH) {
+        rct::skpkGen(a, aG);          // aG = a*G
+        rct::scalarmultKey(aH, H, a); // aH = a*H
+        rct::scalarmultKey(I, H, p);  // I = p*H
+        rct::scalarmultKey(D, H,  z); // D = z*H
         return true;
     }
 */
@@ -78,6 +83,13 @@ int monero_apdu_clsag_prepare() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+/*
+    bool device_default::clsag_hash(const rct::keyV &data,
+                                    rct::key &hash) {
+        hash = rct::hash_to_scalar(data);
+        return true;
+    }
+*/
 int monero_apdu_clsag_hash() {
     unsigned char msg[32];
     unsigned char c[32];
@@ -104,12 +116,18 @@ int monero_apdu_clsag_hash() {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 /*
-    bool device_default::clsag_sign(const rct::key &c, const rct::key &a, const rct::key &p, const
-   rct::key &z, const rct::key &mu_P, const rct::key &mu_C, rct::key &s) { rct::key s0_p_mu_P;
-        sc_mul(s0_p_mu_P.bytes,mu_P.bytes,p.bytes);
+bool device_default::clsag_sign(const rct::key &c,
+                                const rct::key &a,
+                                const rct::key &p, const
+                                rct::key &z,
+                                const rct::key &mu_P,
+                                const rct::key &mu_C,
+                                rct::key &s) {
+        rct::key s0_p_mu_P;
+        sc_mul(s0_p_mu_P.bytes, mu_P.bytes, p.bytes);
         rct::key s0_add_z_mu_C;
-        sc_muladd(s0_add_z_mu_C.bytes,mu_C.bytes,z.bytes,s0_p_mu_P.bytes);
-        sc_mulsub(s.bytes,c.bytes,s0_add_z_mu_C.bytes,a.bytes);
+        sc_muladd(s0_add_z_mu_C.bytes, mu_C.bytes, z.bytes, s0_p_mu_P.bytes);
+        sc_mulsub(s.bytes, c.bytes, s0_add_z_mu_C.bytes, a.bytes);
 
         return true;
     }
@@ -151,14 +169,19 @@ int monero_apdu_clsag_sign() {
     monero_reduce(mu_C, mu_C);
     monero_reduce(G_monero_vstate.c, G_monero_vstate.c);
 
-    // s0_p_mu_P = mu_P*p ->s
-    monero_multm(s, p, mu_P);
-
+    // s0_p_mu_P = mu_P*p
     // s0_add_z_mu_C = mu_C*z + s0_p_mu_P
-    monero_multm(mu_P, mu_C, z);
-    monero_addm(s, s, mu_P);
+    //
+    // s = a - c*s0_add_z_mu_C
+    //   = a - c*(mu_C*z + mu_P*p)
 
-    // s = c*s0_add_z_mu_C + a
+    // s = p*mu_P
+    monero_multm(s, p, mu_P);
+    // mu_P = mu_C*z
+    monero_multm(mu_P, mu_C, z);
+    // s = p*mu_P + mu_C*z
+    monero_addm(s, s, mu_P);
+    // mu_P = c * (p*mu_P + mu_C*z)
     monero_multm(mu_P, G_monero_vstate.c, s);
     // s = a - c*(p*mu_P + mu_C*z)
     monero_subm(s, a, mu_P);
