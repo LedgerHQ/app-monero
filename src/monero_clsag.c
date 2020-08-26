@@ -57,9 +57,6 @@ int monero_apdu_clsag_prepare() {
     monero_io_fetch(H, 32);
     monero_io_discard(1);
 
-    // H
-    monero_ge_fromfe_frombytes(H, H);
-
     // a
     monero_rng_mod_order(a);
     monero_io_insert_encrypt(a, 32, TYPE_ALPHA);
