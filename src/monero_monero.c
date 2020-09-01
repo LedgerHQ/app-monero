@@ -17,6 +17,7 @@
  *****************************************************************************/
 
 #include "os.h"
+#include "cx.h"
 #include "monero_types.h"
 #include "monero_api.h"
 #include "monero_vars.h"
