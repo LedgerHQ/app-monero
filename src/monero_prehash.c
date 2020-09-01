@@ -191,7 +191,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_fetch(proof, 32);
         monero_io_discard(1);
         monero_keccak_init_H();
-        if (G_monero_vstate.io_protocol_version == 3) {
+        if (G_monero_vstate.io_protocol_version >= 3) {
             if (os_memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
                 monero_lock_and_throw(SW_SECURITY_PREFIX_HASH);
             }
