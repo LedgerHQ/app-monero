@@ -110,11 +110,11 @@ unsigned int monero_decode_varint(unsigned char *varint, unsigned int max_len, u
         if (len == (max_len - 1)) {
             THROW(SW_WRONG_DATA_RANGE);
         }
-        v = v + (((varint[len]) & 0x7f) << (len * 7));
+        v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
         len++;
     }
 
-    v = v + (((varint[len]) & 0x7f) << (len * 7));
+    v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
     *value = v;
     return len + 1;
 }
