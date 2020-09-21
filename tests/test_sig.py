@@ -84,10 +84,10 @@ class TestSignature:
 
     @staticmethod
     def test_prefix_hash(monero, button):
-        expected: bytes = bytes.fromhex("49d03a195e239b52779866b33024210f"
-                                        "c7dc66e9c2998975c0aa45c1702549d5")
+        expected: bytes = bytes.fromhex("9a259973bf721120aceae3d8d40696c0"
+                                        "7470331e386028753123f37fee36926b")
         # should ask for timelock validation
-        monero.prefix_hash_init(button=button, version=0, timelock=1)
+        monero.prefix_hash_init(button=button, version=0, timelock=2147483650)
         result: bytes = monero.prefix_hash_update(
             index=1,
             payload=b"",
