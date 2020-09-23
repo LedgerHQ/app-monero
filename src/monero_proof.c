@@ -73,7 +73,7 @@ int monero_apdu_get_tx_proof() {
     monero_ecmul_k(XY, A, k);
     // tmp = msg || D || X || Y
     os_memmove(G_monero_vstate.tmp + 32 * 3, XY, 32);
-    monero_keccak_H("TXPROOF_V2", 10, sep);
+    monero_keccak_H((unsigned char *)"TXPROOF_V2", 10, sep);
     // tmp = msg || D || X || Y || sep
     os_memmove(G_monero_vstate.tmp + 32 * 4, sep, 32);
     // tmp = msg || D || X || Y || sep || R
