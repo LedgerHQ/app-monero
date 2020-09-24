@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.1 - 2020-09-24
+
+- Fix `clsag_hash()` behavior which is different than MLSAG
+
+## 1.7.0 - 2020-09-13
+
+- Update to protocol v4 to support both MLSAG and CLSAG
+- Add CLSAG signature algorithm with `INS_CLSAG`
+- Update InProofv1 to InProofv2
 
 ## 1.6.0 - 2020-06-04
 
