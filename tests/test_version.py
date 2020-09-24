@@ -9,7 +9,7 @@ def test_version(monero):
         monero_client_version=b"0.17.0.0"
     )  # type: int, int, int
 
-    assert (major, minor, patch) == (1, 7, 0)  # version of the Monero app
+    assert (major, minor) == (1, 7)  # version of the Monero app
 
 
 @pytest.mark.xfail(raises=ClientNotSupported)

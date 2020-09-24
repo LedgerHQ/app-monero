@@ -50,7 +50,7 @@ class TestSignature:
         major, minor, patch = monero.reset_and_get_version(
             monero_client_version=b"0.17.0.0"
         )  # type: int, int, int
-        assert (major, minor, patch) == (1, 7, 0)  # version of the Monero app
+        assert (major, minor) == (1, 7)  # version of the Monero app
 
         sig_mode: SigType = monero.set_signature_mode(sig_type=SigType.REAL)
         assert sig_mode == SigType.REAL
