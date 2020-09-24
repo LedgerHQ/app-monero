@@ -93,10 +93,9 @@ int monero_apdu_clsag_hash() {
 
     if (G_monero_vstate.io_p2 == 1) {
         monero_keccak_init_H();
-        os_memmove(msg, G_monero_vstate.mlsagH, 32);
-    } else {
-        monero_io_fetch(msg, 32);
     }
+
+    monero_io_fetch(msg, 32);
     monero_io_discard(1);
 
     monero_keccak_update_H(msg, 32);
