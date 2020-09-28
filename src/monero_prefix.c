@@ -30,7 +30,7 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_prefix_hash_init() {
-    int timelock;
+    uint64_t timelock;
 
     monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                            G_monero_vstate.io_length - G_monero_vstate.io_offset);
