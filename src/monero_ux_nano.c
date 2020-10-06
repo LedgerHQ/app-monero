@@ -621,8 +621,8 @@ void ui_menu_any_pubaddr_display(unsigned int value, unsigned char* pub_view,
             break;
     }
 
-    monero_base58_public_key(G_monero_vstate.ux_address + strlen(G_monero_vstate.ux_address),
-                             pub_view, pub_spend, is_subbadress, paymanetID);
+    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+                             paymanetID);
     ux_layout_bnnn_paging_reset();
     ux_flow_init(0, ux_flow_pubaddr, NULL);
 }
