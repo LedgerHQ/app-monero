@@ -172,10 +172,6 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_discard(1);
         monero_keccak_update_H(H, 32);
         monero_sha256_commitment_update(H, 32);
-#ifdef DEBUG_HWDEVICE
-        monero_io_insert(H, 32);
-#endif
-
     } else {
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
@@ -191,7 +187,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_io_fetch(proof, 32);
         monero_io_discard(1);
         monero_keccak_init_H();
-        if (G_monero_vstate.io_protocol_version == 3) {
+        if (G_monero_vstate.io_protocol_version >= 3) {
             if (os_memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
                 monero_lock_and_throw(SW_SECURITY_PREFIX_HASH);
             }
@@ -200,10 +196,8 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_update_H(H, 32);
         monero_keccak_update_H(proof, 32);
         monero_keccak_final_H(G_monero_vstate.mlsagH);
-#ifdef DEBUG_HWDEVICE
+
         monero_io_insert(G_monero_vstate.mlsagH, 32);
-        monero_io_insert(H, 32);
-#endif
     }
 
     return SW_OK;

@@ -66,6 +66,7 @@ class InsType(enum.IntEnum):
     INS_PREFIX_HASH = 0x7D
     INS_VALIDATE = 0x7C
     INS_MLSAG = 0x7E
+    INS_CLSAG = 0x7F
     INS_CLOSE_TX = 0x80
 
     INS_GET_TX_PROOF = 0xA0
