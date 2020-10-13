@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## 1.7.4 - 2020-10-13
+
+- Support of Monero client version `0.17.1.*`
+
+## 1.7.3 - 2020-10-06
+
+- Fix garbage when displaying destination address on Nano
+
+## 1.7.2 - 2020-10-02
+
+- Fix behavior without `DEBUG_HWDEVICE` flag
+
+
 ## 1.7.1 - 2020-09-24
 
 - Fix `clsag_hash()` behavior which is different than MLSAG
