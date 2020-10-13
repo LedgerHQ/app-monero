@@ -177,10 +177,8 @@ void monero_install(unsigned char netId) {
 /* ----------------------------------------------------------------------- */
 /* --- Reset                                                           --- */
 /* ----------------------------------------------------------------------- */
-#define MONERO_SUPPORTED_CLIENT_SIZE 1
-const char* const monero_supported_client[MONERO_SUPPORTED_CLIENT_SIZE] = {
-    "0.17.0.",
-};
+#define MONERO_SUPPORTED_CLIENT_SIZE 2
+const char* const monero_supported_client[MONERO_SUPPORTED_CLIENT_SIZE] = {"0.17.0.", "0.17.1."};
 
 int monero_apdu_reset() {
     unsigned int client_version_len;
