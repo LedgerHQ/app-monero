@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.5 - 2020-11-16
+
+- Support of firmware 1.2.4-5
 
 ## 1.7.4 - 2020-10-13
 
