@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.6 - 2021-03-30
+
+- Support of Monero client version `0.17.2.*`
+
 ## 1.7.5 - 2020-11-16
 
 - Support of firmware 1.2.4-5
