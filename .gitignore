@@ -6,7 +6,6 @@ debug/
 dep/
 obj/
 
-
 # Editors
 .vscode/
 .idea/
@@ -18,3 +17,9 @@ __pycache__/
 *.egg-info/
 .eggs/
 .python-version
+
+# Pyinstaller
+build/
+dist/
+*.manifest
+*.spec

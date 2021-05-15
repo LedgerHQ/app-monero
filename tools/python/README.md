@@ -65,11 +65,11 @@ On Mac/Linux
 
 In tools/python/ directory run the command:
 
-     PYTHONPATH=`pwd`/src  python3 -m ledger.monero.seedconv.py offline
+     PYTHONPATH=`pwd`/src python3 src/ledger/monero/seedconv.py offline
 
 Example:
 
-    $ PYTHONPATH="$(pwd)/src" python3 -m ledger.monero.seedconv offline
+    $ PYTHONPATH="$(pwd)/src" python3 src/ledger/monero/seedconv.py offline
 
         =============================================================
         Monero Seed Converter v0.9. Copyright (c) Ledger SAS 20018.
@@ -113,11 +113,11 @@ Example:
 
 In tools/python/ directory run the command:
 
-     PYTHONPATH=`pwd`/src  python3 -m ledger.monero.seedconv.py online
+     PYTHONPATH=`pwd`/src python3 src/ledger/monero/seedconv.py online
 
 Example:
 
-        $ PYTHONPATH=`pwd`/src  python3 -m ledger.monero.seedconv.py online
+        $ PYTHONPATH=`pwd`/src python3 src/ledger/monero/seedconv.py online
 
         =============================================================
         Monero Seed Converter v0.9. Copyright (c) Ledger SAS 20018.
