@@ -206,7 +206,7 @@ unsigned int ui_menu_opentx_button(unsigned int button_mask, unsigned int button
     if (sw == SW_OK) {
         ui_menu_info_display2(0, "Processing TX", "...");
     } else {
-        ui_menu_info_display2(0, "Tansaction", "aborted");
+        ui_menu_info_display2(0, "Transaction", "aborted");
     }
     return 0;
 }

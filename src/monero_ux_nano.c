@@ -148,7 +148,7 @@ unsigned int ui_menu_opentx_action(unsigned int value) {
     } else {
         monero_abort_tx(0);
         sw = SW_DENY;
-        ui_menu_info_display2(0, "Tansaction", "aborted");
+        ui_menu_info_display2(0, "Transaction", "aborted");
     }
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
@@ -249,7 +249,7 @@ void ui_menu_timelock_validation_display(unsigned int value) {
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
 void ui_menu_validation_action(unsigned int value);
 
-UX_STEP_NOCB(ux_menu_validation_1_step, bn, {"Amout", G_monero_vstate.ux_amount});
+UX_STEP_NOCB(ux_menu_validation_1_step, bn, {"Amount", G_monero_vstate.ux_amount});
 
 UX_STEP_NOCB(ux_menu_validation_2_step,
 #ifdef UI_NANO_X
@@ -360,14 +360,14 @@ void settings_change_account(void) { ui_menu_account_display(0); }
 
 const char* const network_submenu_getter_values[] = {
 #ifdef MONERO_ALPHA
-    "Unvailable",
+    "Unavailable",
 #else
     "Main Network",
 #endif
     "Stage Network", "Test Network", "Abort"};
 const char* const network_submenu_getter_values_selected[] = {
 #ifdef MONERO_ALPHA
-    "Unvailable",
+    "Unavailable",
 #else
     "Main Network +",
 #endif
