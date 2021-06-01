@@ -158,7 +158,6 @@ int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
 /* ----------------------------------------------------------------------- */
 int monero_hash(unsigned int algo, cx_hash_t *hasher, unsigned char *buf, unsigned int len,
                 unsigned char *out) {
-    hasher->algo = algo;
     if (algo == CX_SHA256) {
         cx_sha256_init((cx_sha256_t *)hasher);
     } else {

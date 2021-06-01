@@ -24,7 +24,6 @@
 #if CX_APILEVEL == 8
 #define PIN_VERIFIED (!0)
 #elif CX_APILEVEL >= 9
-
 #define PIN_VERIFIED BOLOS_UX_OK
 #else
 #error CX_APILEVEL not  supported
