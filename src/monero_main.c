@@ -31,9 +31,6 @@
 #ifdef HAVE_UX_FLOW
 #include "ux.h"
 #endif
-#ifdef TARGET_NANOX
-#include "balenos_ble.h"
-#endif
 
 /* ----------------------------------------------------------------------- */
 /* ---                            Application Entry                    --- */
