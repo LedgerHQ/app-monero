@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: docker://ledgerhq/speculos:latest
+      image: ghcr.io/ledgerhq/speculos:latest
       ports:
         - 1234:1234
         - 9999:9999
@@ -60,7 +60,7 @@ jobs:
 
       - name: Run test
         run: |
-          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 1.6 --seed \"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\" --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
+          nohup bash -c "python /speculos/speculos.py bin/app.elf --seed \"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\" --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
           pip install pytest
           pytest
 
