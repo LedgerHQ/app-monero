@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: docker://ledgerhq/ledger-app-builder:1.6.0
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone
