@@ -1,0 +1,2 @@
+-c requirements.txt
+pip-tools~=6.4
