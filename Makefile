@@ -29,10 +29,10 @@ APPNAME = "Monero"
 
 ifeq ($(TARGET_NAME),TARGET_BLUE)
 ICONNAME = images/icon_monero_blue.gif
-else ifeq ($(TARGET_NAME),TARGET_NANOX)
-ICONNAME = images/icon_monero_nanox.gif
-else
+else ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME = images/icon_monero.gif
+else
+ICONNAME = images/icon_monero_nanox.gif
 endif
 
 #DEFINES += MONERO_ALPHA
@@ -51,13 +51,13 @@ DEFINES   += MONERO_VERSION=$(APPVERSION)
 DEFINES   += MONERO_NAME=$(APPNAME)
 DEFINES   += SPEC_VERSION=$(SPECVERSION)
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-DEFINES   += UI_NANO_X
-TARGET_UI := FLOW
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+DEFINES   += UI_NANO_S
 else ifeq ($(TARGET_NAME),TARGET_BLUE)
 DEFINES   += UI_BLUE
 else
-DEFINES   += UI_NANO_S
+DEFINES   += UI_NANO_X
+TARGET_UI := FLOW
 endif
 
 #DEFINES += IOCRYPT
@@ -90,9 +90,13 @@ DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
-# DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
-# DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
+DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
+endif
 
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+else
 DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 DEFINES       += HAVE_GLO096
 DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
@@ -100,10 +104,6 @@ DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
-DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
-else
-DEFINES		  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
 
 ifeq ($(TARGET_UI),FLOW)
@@ -114,10 +114,10 @@ endif
 DEBUG = 0
 ifneq ($(DEBUG),0)
 
-	ifeq ($(TARGET_NAME),TARGET_NANOX)
-		DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-	else
+	ifeq ($(TARGET_NAME),TARGET_NANOS)
 		DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+	else
+		DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
 	endif
 	DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
   # Debug options
