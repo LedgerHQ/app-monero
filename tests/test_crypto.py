@@ -77,3 +77,15 @@ def test_gen_key_derivation(monero):
     )
 
     assert expected == monero.xor_cipher(_d_in, b"\x55")  # decrypt _d_in
+
+def test_derive_view_tag(monero):
+    expected_view_tag: bytes = bytes.fromhex("76")
+
+    derivation: bytes = bytes.fromhex("0fc47054f355ced4d67de73bfa12e4c7"
+                                      "8ff19089548fffa7d07a674741860f97")
+
+    output_index = 0
+
+    view_tag: bytes = monero.derive_view_tag(derivation, output_index)
+
+    assert expected_view_tag == view_tag

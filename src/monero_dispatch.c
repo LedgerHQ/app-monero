@@ -84,6 +84,7 @@ int check_ins_access() {
         case INS_DERIVE_PUBLIC_KEY:
         case INS_DERIVE_SECRET_KEY:
         case INS_GEN_KEY_IMAGE:
+        case INS_DERIVE_VIEW_TAG:
         case INS_SECRET_KEY_TO_PUBLIC_KEY:
         case INS_SECRET_KEY_ADD:
         case INS_GENERATE_KEYPAIR:
@@ -187,6 +188,9 @@ int monero_dispatch() {
             break;
         case INS_GEN_KEY_IMAGE:
             sw = monero_apdu_generate_key_image();
+            break;
+        case INS_DERIVE_VIEW_TAG:
+            sw = monero_apdu_derive_view_tag();
             break;
         case INS_SECRET_KEY_ADD:
             sw = monero_apdu_sc_add();
