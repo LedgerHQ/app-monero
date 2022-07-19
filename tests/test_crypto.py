@@ -90,7 +90,8 @@ class Derivation_Test:
         self._expected_view_tag = expected_view_tag
 
     def do_test(self, monero):
-        assert self._expected_view_tag == monero.derive_view_tag(self._derivation, self._output_index)
+        encrypted_derivation = monero.xor_cipher(self._derivation, b"\x55") # encrypt with dummy key 0x55
+        assert self._expected_view_tag == monero.derive_view_tag(encrypted_derivation, self._output_index)
 
 DERIVATION_TESTS = [
     Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 0,  0x76),
