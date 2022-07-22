@@ -1,38 +1,17 @@
 import pytest
 
 # pylint: disable=wildcard-import, unused-wildcard-import
-from monero_client.exception import *
+from monero_client.exception import ClientNotSupported
 
 
 def test_version(monero):
     major, minor, patch = monero.reset_and_get_version(
-        monero_client_version=b"0.17.0.0"
+        monero_client_version=b"0.18.0.0"
     )  # type: int, int, int
 
-    assert (major, minor) == (1, 7)  # version of the Monero app
+    assert (major, minor) == (1, 8)  # version of the Monero app
 
-    # another compatible version of the Monero client
-    major, minor, patch = monero.reset_and_get_version(
-        monero_client_version=b"0.17.1.0"
-    )  # type: int, int, int
-
-    assert (major, minor) == (1, 7)  # version of the Monero app
-
-    # another compatible version of the Monero client
-    major, minor, patch = monero.reset_and_get_version(
-        monero_client_version=b"0.17.2.0"
-    )  # type: int, int, int
-
-    assert (major, minor) == (1, 7)  # version of the Monero app
-
-    # another compatible version of the Monero client
-    major, minor, patch = monero.reset_and_get_version(
-        monero_client_version=b"0.17.3.0"
-    )  # type: int, int, int
-
-    assert (major, minor) == (1, 7)  # version of the Monero app
-
-@pytest.mark.xfail(raises=ClientNotSupported)
 def test_old_client_version(monero):
     # should raise ClientNotSupported[0x6a30]
-    monero.reset_and_get_version(b"0.15.0.0")
+    with pytest.raises(ClientNotSupported) as excinfo:
+        monero.reset_and_get_version(b"0.17.0.0")

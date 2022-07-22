@@ -1,6 +1,7 @@
 import pytest
 
 from monero_client.monero_types import SigType, Keys
+from monero_client.exception import ClientNotSupported
 
 
 @pytest.mark.incremental
@@ -47,10 +48,12 @@ class TestSignature:
 
     @staticmethod
     def test_set_sig(monero):
-        major, minor, patch = monero.reset_and_get_version(
-            monero_client_version=b"0.17.0.0"
-        )  # type: int, int, int
-        assert (major, minor) == (1, 7)  # version of the Monero app
+        # Send a reset, ignore the version check and version related errors.
+        # They belong in a dedicated test
+        with pytest.raises(ClientNotSupported) as excinfo:
+            monero.reset_and_get_version(
+                monero_client_version=b"0.0.0.0"
+            )
 
         sig_mode: SigType = monero.set_signature_mode(sig_type=SigType.REAL)
         assert sig_mode == SigType.REAL
