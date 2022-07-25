@@ -48,12 +48,9 @@ class TestSignature:
 
     @staticmethod
     def test_set_sig(monero):
-        # Send a reset, ignore the version check and version related errors.
-        # They belong in a dedicated test
-        with pytest.raises(ClientNotSupported) as excinfo:
-            monero.reset_and_get_version(
-                monero_client_version=b"0.0.0.0"
-            )
+        monero.reset_and_get_version(
+            monero_client_version=b"0.18"
+        )
 
         sig_mode: SigType = monero.set_signature_mode(sig_type=SigType.REAL)
         assert sig_mode == SigType.REAL
