@@ -185,6 +185,24 @@ const char* const supported_clients[] = {"0.18."};
 const char* const refused_clients[] = {"0.18.0.0."};
 #define MONERO_REFUSED_CLIENT_SIZE (sizeof(refused_clients) / sizeof(refused_clients[0]))
 
+static bool is_client_version_valid(const char* client_version) {
+    // Check if version is explicitly refused
+    for (uint32_t i = 0; i < MONERO_REFUSED_CLIENT_SIZE; ++i) {
+        if (strcmp(PIC(refused_clients[i]), client_version) == 0) {
+            return false;
+        }
+    }
+    // Check if version is supported
+    for (uint32_t i = 0; i < MONERO_SUPPORTED_CLIENT_SIZE; ++i) {
+        // Use strncmp to allow supported version prefixing client version
+        unsigned int supported_clients_len = strlen(PIC(supported_clients[i]));
+        if (strncmp(PIC(supported_clients[i]), client_version, supported_clients_len) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int monero_apdu_reset() {
     unsigned int client_version_len;
     char client_version[16];
@@ -196,23 +214,9 @@ int monero_apdu_reset() {
     monero_io_fetch((unsigned char*)&client_version[0], client_version_len);
     // Add '.' suffix to avoid 'X.1' prefixing 'X.10'
     client_version[client_version_len] = '.';
-    // Check if version is explicitly refused
-    for (uint32_t i = 0; i < MONERO_REFUSED_CLIENT_SIZE; ++i) {
-        if (strcmp(PIC(refused_clients[i]), client_version) == 0) {
-            THROW(SW_CLIENT_NOT_SUPPORTED);
-        }
-    }
-    // Check if version is supported
-    uint32_t i;
-    for (i = 0; i < MONERO_SUPPORTED_CLIENT_SIZE + 1; ++i) {
-        // Use strncmp to allow supported version prefixing client version
-        unsigned int supported_clients_len = strlen((char*)PIC(supported_clients[i]));
-        if (strncmp(PIC(supported_clients[i]), client_version, supported_clients_len) == 0) {
-            break;
-        }
-        if (i == MONERO_SUPPORTED_CLIENT_SIZE) {
-            THROW(SW_CLIENT_NOT_SUPPORTED);
-        }
+
+    if (!is_client_version_valid(client_version)) {
+        THROW(SW_CLIENT_NOT_SUPPORTED);
     }
 
     monero_io_discard(0);
