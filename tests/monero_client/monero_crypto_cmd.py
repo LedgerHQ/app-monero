@@ -259,3 +259,27 @@ class MoneroCryptoCmd:
             assert len(response) == 32
 
         return _d_in
+
+    def derive_view_tag(self, derivation: bytes, output_index: bytes) -> int:
+        ins: InsType = InsType.INS_DERIVE_VIEW_TAG
+
+        payload: bytes = b"".join([
+            derivation,
+            output_index,
+        ])
+
+        self.device.send(cla=PROTOCOL_VERSION,
+                         ins=ins,
+                         p1=0,
+                         p2=0,
+                         option=0,
+                         payload=payload)
+
+        sw, response = self.device.recv()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(sw, ins)
+
+        assert len(response) == 1
+
+        return int.from_bytes(response, "big")

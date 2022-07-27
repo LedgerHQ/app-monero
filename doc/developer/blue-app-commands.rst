@@ -104,6 +104,8 @@
 .. |eDRVout| replace:: :math:`\widetilde{\mathfrak{D}_\mathrm{out}}`
 .. |AKout|  replace::  :math:`\mathcal{AK}_\mathrm{amount}`
 .. |eAKout| replace:: :math:`\widetilde{\mathcal{AK}_\mathrm{amount}}`
+.. |vtf|    replace:: :math:`\mathit{view_tag_full}`
+.. |vt|     replace:: :math:`\mathit{view_tag}`
 
 
 .. |ctH|       replace:: :math:`\mathcal{H}_\mathrm{commitment}`
@@ -198,6 +200,7 @@ To summarize, the signature process is:
 
        - compute the range proof
        - blind the amount
+       - compute the view tag
 
    . Compute the final confidential ring signature
 
@@ -1139,6 +1142,54 @@ return |Img|.
 | Length |    Value                                                        |
 +========+=================================================================+
 | 20     | key image  |Img|                                                |
++--------+-----------------------------------------------------------------+
+
+
+Derive View Tag
+~~~~~~~~~~~~~~~~~~
+
+**Monero**
+
+crypto::derive_view_tag.
+
+**Description**
+
+Derive the view tag of an output.
+
+    | compute  |Drv|  = |dec|[|spk|](|eDrv|)
+    | compute  |vtf|  = |Hs|("view_tag" \|, |Drv|, |idx|)
+    | compute  |vt|   = |vtf|[0:1]
+
+return |vt|.
+
+**Command**
+
++-----+-----+-----+-----+----------+
+| CLA | INS | P1  | P2  | LC       |
++=====+=====+=====+=====+==========+
+| 03  | 3B  | 00  | 00  | 25 or 45 |
++-----+-----+-----+-----+----------+
+
+**Command data**
+
++--------+-----------------------------------------------------------------+
+| Length |    Value                                                        |
++========+=================================================================+
+| 01     | 00                                                              |
++--------+-----------------------------------------------------------------+
+| 20     | encrypted key derivation |eDrv|                                 |
++--------+-----------------------------------------------------------------+
+| 20     | ephemeral hmac (optional, only during active transaction)       |
++--------+-----------------------------------------------------------------+
+| 04     | index                                                           |
++--------+-----------------------------------------------------------------+
+
+**Response data**
+
++--------+-----------------------------------------------------------------+
+| Length |    Value                                                        |
++========+=================================================================+
+| 01     | view tag |vt|                                                   |
 +--------+-----------------------------------------------------------------+
 
 

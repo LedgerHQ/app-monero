@@ -174,6 +174,7 @@ class MoneroCmd(MoneroCryptoCmd):
             b"\x01" if is_change_addr else b"\x00",
             b"\x01" if is_subaddress else b"\x00",
             b"\x00" * 33,  # additional_txkeys
+            b"\x00" * 33,  # use_view_tags
         ))
 
         self.device.send(cla=PROTOCOL_VERSION,

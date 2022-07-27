@@ -177,32 +177,45 @@ void monero_install(unsigned char netId) {
 /* ----------------------------------------------------------------------- */
 /* --- Reset                                                           --- */
 /* ----------------------------------------------------------------------- */
-const char* const monero_supported_client[] = {"0.17.0.", "0.17.1.", "0.17.2.", "0.17.3."};
-#define MONERO_SUPPORTED_CLIENT_SIZE \
-    (sizeof(monero_supported_client) / sizeof(monero_supported_client[0]))
+// Accept the following versions and their derivates
+const char* const supported_clients[] = {"0.18."};
+#define MONERO_SUPPORTED_CLIENT_SIZE (sizeof(supported_clients) / sizeof(supported_clients[0]))
+
+// Explicitly refuse the following versions
+const char* const refused_clients[] = {"0.18.0.0."};
+#define MONERO_REFUSED_CLIENT_SIZE (sizeof(refused_clients) / sizeof(refused_clients[0]))
+
+static bool is_client_version_valid(const char* client_version) {
+    // Check if version is explicitly refused
+    for (uint32_t i = 0; i < MONERO_REFUSED_CLIENT_SIZE; ++i) {
+        if (strcmp(PIC(refused_clients[i]), client_version) == 0) {
+            return false;
+        }
+    }
+    // Check if version is supported
+    for (uint32_t i = 0; i < MONERO_SUPPORTED_CLIENT_SIZE; ++i) {
+        // Use strncmp to allow supported version prefixing client version
+        unsigned int supported_clients_len = strlen(PIC(supported_clients[i]));
+        if (strncmp(PIC(supported_clients[i]), client_version, supported_clients_len) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 int monero_apdu_reset() {
     unsigned int client_version_len;
     char client_version[16];
+    memset(client_version, '\0', 16);
     client_version_len = G_monero_vstate.io_length - G_monero_vstate.io_offset;
     if (client_version_len > 14) {
         THROW(SW_CLIENT_NOT_SUPPORTED + 1);
     }
     monero_io_fetch((unsigned char*)&client_version[0], client_version_len);
+    // Add '.' suffix to avoid 'X.1' prefixing 'X.10'
     client_version[client_version_len] = '.';
-    client_version_len++;
-    client_version[client_version_len] = 0;
-    unsigned int i = 0;
-    while (i < MONERO_SUPPORTED_CLIENT_SIZE) {
-        unsigned int monero_supported_client_len = strlen((char*)PIC(monero_supported_client[i]));
-        if ((monero_supported_client_len <= client_version_len) &&
-            (os_memcmp((char*)PIC(monero_supported_client[i]), client_version,
-                       monero_supported_client_len) == 0)) {
-            break;
-        }
-        i++;
-    }
-    if (i == MONERO_SUPPORTED_CLIENT_SIZE) {
+
+    if (!is_client_version_valid(client_version)) {
         THROW(SW_CLIENT_NOT_SUPPORTED);
     }
 
