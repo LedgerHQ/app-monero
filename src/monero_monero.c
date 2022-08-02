@@ -150,15 +150,15 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
     }
     offset = monero_encode_varint(data, 8, prefix);
 
-    os_memmove(data + offset, spend, 32);
-    os_memmove(data + offset + 32, view, 32);
+    memcpy(data + offset, spend, 32);
+    memcpy(data + offset + 32, view, 32);
     offset += 64;
     if (paymanetID) {
-        os_memmove(data + offset, paymanetID, 8);
+        memcpy(data + offset, paymanetID, 8);
         offset += 8;
     }
     monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
-    os_memmove(data + offset, G_monero_vstate.mlsagH, 4);
+    memcpy(data + offset, G_monero_vstate.mlsagH, 4);
     offset += 4;
 
     unsigned int full_block_count = (offset) / FULL_BLOCK_SIZE;
