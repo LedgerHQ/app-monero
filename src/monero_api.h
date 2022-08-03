@@ -116,7 +116,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len);
 /** uint64  amount to str */
 void monero_uint642str(uint64_t val, char *str, unsigned int str_len);
 
-int monero_abort_tx();
+int monero_abort_tx(void);
 int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout,
                    unsigned int short_amount);
 void ui_menu_validation_display(unsigned int value);
