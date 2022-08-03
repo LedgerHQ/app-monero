@@ -170,7 +170,8 @@ void monero_derive_public_key(unsigned char *x, unsigned char *drv_data, unsigne
                               unsigned char *ec_pub);
 void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv);
 void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char *x);
-void monero_derive_view_tag(unsigned char *view_tag, unsigned char *drv_data, unsigned int out_idx);
+void monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_data[static 32],
+                            unsigned int out_idx);
 
 void monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub,
                                          unsigned char *drv_data, unsigned int index);

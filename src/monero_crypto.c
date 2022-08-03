@@ -522,7 +522,7 @@ void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned ch
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_view_tag(unsigned char *view_tag, unsigned char *drv_data,
+void monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_data[static 32],
                             unsigned int out_idx) {
     unsigned char varint[8 + 32 + 8];
     unsigned int len_varint;
@@ -532,7 +532,7 @@ void monero_derive_view_tag(unsigned char *view_tag, unsigned char *drv_data,
     len_varint = monero_encode_varint(varint + 8 + 32, 8, out_idx);
     len_varint += 8 + 32;
     monero_keccak_F(varint, len_varint, varint);
-    os_memmove(view_tag, varint, 1);
+    *view_tag = varint[0];
 }
 
 /* ======================================================================= */
