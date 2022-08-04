@@ -304,8 +304,8 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
 #define rY (G_monero_vstate.io_buffer + 7 * 32)
 #define rZ (G_monero_vstate.io_buffer + 8 * 32)
 
-    //#define uv7 (G_monero_vstate.io_buffer+9*32)
-    //#define v3  (G_monero_vstate.io_buffer+10*32)
+    // #define uv7 (G_monero_vstate.io_buffer+9*32)
+    // #define v3  (G_monero_vstate.io_buffer+10*32)
     union {
         unsigned char _Pxy[65];
         struct {
@@ -335,7 +335,7 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
     cx_math_multm(v, u, u, MOD); /* 2 * u^2 */
     cx_math_addm(v, v, v, MOD);
 
-    os_memset(w, 0, 32);
+    memset(w, 0, 32);
     w[31] = 1;                                           /* w = 1 */
     cx_math_addm(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
     cx_math_multm(x, w, w, MOD);                         /* w^2 */
@@ -359,7 +359,7 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
     cx_math_multm(y, rX, rX, MOD);
     cx_math_multm(x, y, x, MOD);
     cx_math_subm(y, w, x, MOD);
-    os_memmove(z, C_fe_ma, 32);
+    memcpy(z, C_fe_ma, 32);
 
     if (!cx_math_is_zero(y, 32)) {
         cx_math_addm(y, w, x, MOD);
@@ -404,8 +404,8 @@ setsign:
     Pxy[0] = 0x04;
     cx_math_multm(&Pxy[1], rX, u, MOD);
     cx_math_multm(&Pxy[1 + 32], rY, u, MOD);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    os_memmove(ge, &Pxy[1], 32);
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(ge, &Pxy[1], 32);
 
 #undef u
 #undef v
@@ -468,7 +468,7 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
     unsigned char varint[32 + 8];
     unsigned int len_varint;
 
-    os_memmove(varint, drv_data, 32);
+    memcpy(varint, drv_data, 32);
     len_varint = monero_encode_varint(varint + 32, 8, out_idx);
     len_varint += 32;
     monero_keccak_F(varint, len_varint, varint);
@@ -527,12 +527,12 @@ void monero_derive_view_tag(unsigned char *view_tag, unsigned char *drv_data,
     unsigned char varint[8 + 32 + 8];
     unsigned int len_varint;
 
-    os_memmove(varint, "view_tag", 8);
-    os_memmove(varint + 8, drv_data, 32);
+    memcpy(varint, "view_tag", 8);
+    memcpy(varint + 8, drv_data, 32);
     len_varint = monero_encode_varint(varint + 8 + 32, 8, out_idx);
     len_varint += 8 + 32;
     monero_keccak_F(varint, len_varint, varint);
-    os_memmove(view_tag, varint, 1);
+    memcpy(view_tag, varint, 1);
 }
 
 /* ======================================================================= */
@@ -582,9 +582,9 @@ void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
                                       unsigned char *index) {
     unsigned char in[sizeof(C_sub_address_prefix) + 32 + 8];
 
-    os_memmove(in, C_sub_address_prefix, sizeof(C_sub_address_prefix)),
-        os_memmove(in + sizeof(C_sub_address_prefix), s, 32);
-    os_memmove(in + sizeof(C_sub_address_prefix) + 32, index, 8);
+    memcpy(in, C_sub_address_prefix, sizeof(C_sub_address_prefix));
+    memcpy(in + sizeof(C_sub_address_prefix), s, 32);
+    memcpy(in + sizeof(C_sub_address_prefix) + 32, index, 8);
     // hash_to_scalar with more that 32bytes:
     monero_keccak_F(in, sizeof(in), sub_s);
     monero_reduce(sub_s, sub_s);
@@ -620,10 +620,10 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
     unsigned char Pxy[65];
     unsigned char s[32];
     monero_reverse32(s, scalar32);
-    os_memmove(Pxy, C_ED25519_G, 65);
+    memcpy(Pxy, C_ED25519_G, 65);
     cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    os_memmove(W, &Pxy[1], 32);
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -636,13 +636,13 @@ void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
     monero_reverse32(s, scalar32);
 
     Pxy[0] = 0x02;
-    os_memmove(&Pxy[1], C_ED25519_Hy, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(&Pxy[1], C_ED25519_Hy, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    os_memmove(W, &Pxy[1], 32);
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -655,13 +655,13 @@ void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32)
     monero_reverse32(s, scalar32);
 
     Pxy[0] = 0x02;
-    os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(&Pxy[1], P, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    os_memmove(W, &Pxy[1], 32);
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -680,13 +680,13 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P) {
     unsigned char Pxy[65];
 
     Pxy[0] = 0x02;
-    os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(&Pxy[1], P, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    os_memmove(W, &Pxy[1], 32);
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -697,17 +697,17 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
     unsigned char Qxy[65];
 
     Pxy[0] = 0x02;
-    os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(&Pxy[1], P, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
-    os_memmove(&Qxy[1], Q, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    memcpy(&Qxy[1], Q, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
 
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    os_memmove(W, &Pxy[1], 32);
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -718,18 +718,18 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
     unsigned char Qxy[65];
 
     Pxy[0] = 0x02;
-    os_memmove(&Pxy[1], P, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(&Pxy[1], P, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
-    os_memmove(&Qxy[1], Q, 32);
-    cx_edward_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    memcpy(&Qxy[1], Q, 32);
+    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
     cx_math_sub(Qxy + 1, (unsigned char *)C_ED25519_FIELD, Qxy + 1, 32);
     cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
 
-    cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    os_memmove(W, &Pxy[1], 32);
+    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    memcpy(W, &Pxy[1], 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -748,8 +748,8 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
 */
 void monero_ecdhHash(unsigned char *x, unsigned char *k) {
     unsigned char data[38];
-    os_memmove(data, "amount", 6);
-    os_memmove(data + 6, k, 32);
+    memcpy(data, "amount", 6);
+    memcpy(data + 6, k, 32);
     monero_keccak_F(data, 38, x);
 }
 
@@ -769,8 +769,8 @@ void monero_ecdhHash(unsigned char *x, unsigned char *k) {
 */
 void monero_genCommitmentMask(unsigned char *c, unsigned char *sk) {
     unsigned char data[15 + 32];
-    os_memmove(data, "commitment_mask", 15);
-    os_memmove(data + 15, sk, 32);
+    memcpy(data, "commitment_mask", 15);
+    memcpy(data + 15, sk, 32);
     monero_hash_to_scalar(c, data, 15 + 32);
 }
 
@@ -820,7 +820,7 @@ void monero_multm_8(unsigned char *r, unsigned char *a) {
     unsigned char rb[32];
 
     monero_reverse32(ra, a);
-    os_memset(rb, 0, 32);
+    memset(rb, 0, 32);
     rb[31] = 8;
     cx_math_multm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, r);
@@ -854,7 +854,7 @@ void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len;
 
-    os_memset(str, 0, str_len);
+    memset(str, 0, str_len);
 
     offset = 22;
     while (val) {
@@ -866,7 +866,7 @@ void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     if (len > str_len) {
         THROW(SW_WRONG_DATA_RANGE);
     }
-    os_memmove(str, stramount + offset, len);
+    memcpy(str, stramount + offset, len);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -878,9 +878,9 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len, ov;
 
-    os_memset(str, 0, str_len);
+    memset(str, 0, str_len);
 
-    os_memset(stramount, '0', sizeof(stramount));
+    memset(stramount, '0', sizeof(stramount));
     stramount[21] = 0;
     // special case
     if (xmr == 0) {
@@ -902,7 +902,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     // offset: 0-7 | 8 | 9-20 |21
     // ----------------------
     // value:  xmr | . | units| 0
-    os_memmove(stramount, stramount + 1, 8);
+    memmove(stramount, stramount + 1, 8);
     stramount[8] = '.';
     offset = 0;
     while ((stramount[offset] == '0') && (stramount[offset] != '.')) {
@@ -921,7 +921,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
         len = str_len - 1;
         ov = 1;
     }
-    os_memmove(str, stramount + offset, len);
+    memcpy(str, stramount + offset, len);
     return ov;
 }
 

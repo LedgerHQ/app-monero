@@ -103,7 +103,7 @@ int monero_apdu_clsag_hash() {
         monero_keccak_final_H(c);
         monero_reduce(c, c);
         monero_io_insert(c, 32);
-        os_memmove(G_monero_vstate.c, c, 32);
+        memcpy(G_monero_vstate.c, c, 32);
     }
     return SW_OK;
 }

@@ -80,7 +80,7 @@ void monero_main(void) {
     }
 }
 
-unsigned char io_event(unsigned char channel) {
+unsigned char io_event(unsigned char channel __attribute__((unused))) {
     unsigned int s_before;
     unsigned int s_after;
 
