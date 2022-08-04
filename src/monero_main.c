@@ -51,7 +51,6 @@ void monero_main(void) {
                 sw = 0;
                 cont = 0;
                 monero_io_discard(1);
-                // THROW(EXCEPTION_IO_RESET);
             }
             CATCH_OTHER(e) {
                 monero_reset_tx(1);

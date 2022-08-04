@@ -116,7 +116,6 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
     unsigned int offset;
     unsigned int prefix;
 
-    // data[0] = N_monero_pstate->network_id;
     switch (N_monero_pstate->network_id) {
         case TESTNET:
             if (paymanetID) {

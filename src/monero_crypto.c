@@ -390,7 +390,6 @@ negative:
 
 setsign:
     if (fe_isnegative(rX) != sign) {
-        // fe_neg(r->X, r->X);
         cx_math_sub(rX, (unsigned char *)C_ED25519_FIELD, rX, 32);
     }
     cx_math_addm(rZ, z, w, MOD);
@@ -947,7 +946,6 @@ int monero_bamount2str(unsigned char *binary, char *str, unsigned int str_len) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_vamount2str(unsigned char *binary, char *str, unsigned int str_len) {
-    // return monero_amount2str(monero_vamount2uint64(binary), str,str_len);
     uint64_t amount;
     monero_decode_varint(binary, 8, &amount);
     return monero_amount2str(amount, str, str_len);
