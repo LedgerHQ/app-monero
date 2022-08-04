@@ -91,7 +91,7 @@ const ux_menu_entry_t ui_menu_words[] = {
 
 const bagl_element_t* ui_menu_words_preprocessor(const ux_menu_entry_t* entry,
                                                  bagl_element_t* element) {
-    if ((entry->userid >= 0) && (entry->userid < 25)) {
+    if (entry->userid < 25) {
         if (element->component.userid == 0x21) {
             element->text = N_monero_pstate->words[entry->userid];
         }
