@@ -185,12 +185,11 @@ const bagl_element_t ui_menu_opentx[] = {
 
 unsigned int ui_menu_opentx_button(unsigned int button_mask,
                                    unsigned int button_mask_counter __attribute__((unused))) {
-    unsigned int sw;
+    unsigned int sw = SW_OK;
     unsigned char x[32];
 
     monero_io_discard(0);
     memset(x, 0, 32);
-    sw = SW_OK;
 
     switch (button_mask) {
         case BUTTON_EVT_RELEASED | BUTTON_LEFT:  // CANCEL

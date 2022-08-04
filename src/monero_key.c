@@ -715,7 +715,6 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 
 int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_sec, crypto::public_key Aout, crypto::public_key Bout, size_t output_index, bool is_change, bool is_subaddress, bool need_additional_key, bool use_view_tags*/) {
     // IN
-    unsigned int tx_version;
     unsigned char tx_key[32];
     unsigned char *txkey_pub;
     unsigned char *Aout;
@@ -734,7 +733,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // TMP
     unsigned char derivation[32];
 
-    tx_version = monero_io_fetch_u32();
+    monero_io_fetch_u32();  // skip tx_version
     monero_io_fetch_decrypt_key(tx_key);
     txkey_pub = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
     monero_io_fetch(NULL, 32);

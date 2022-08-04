@@ -147,6 +147,9 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
             }
             break;
 #endif
+        default:
+            str_b58[0] = 0;
+            return 0;
     }
     offset = monero_encode_varint(data, 8, prefix);
 

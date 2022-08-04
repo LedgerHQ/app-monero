@@ -47,9 +47,7 @@ void monero_reset_tx(int reset_tx_cnt) {
  * HD wallet not yet supported : account is assumed to be zero
  */
 int monero_apdu_open_tx() {
-    unsigned int account;
-
-    account = monero_io_fetch_u32();
+    monero_io_fetch_u32();  // skip account
 
     monero_io_discard(1);
 

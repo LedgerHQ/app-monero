@@ -139,12 +139,11 @@ UX_STEP_CB(ux_menu_opentx_3_step, pb, ui_menu_opentx_action(REJECT), {&C_icon_cr
 UX_FLOW(ux_flow_opentx, &ux_menu_opentx_1_step, &ux_menu_opentx_2_step, &ux_menu_opentx_3_step);
 
 unsigned int ui_menu_opentx_action(unsigned int value) {
-    unsigned int sw;
+    unsigned int sw = SW_OK;
     unsigned char x[32];
 
     monero_io_discard(0);
     memset(x, 0, 32);
-    sw = SW_OK;
 
     if (value == ACCEPT) {
         sw = monero_apdu_open_tx_cont();
