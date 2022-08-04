@@ -101,9 +101,9 @@ unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, u
 /* ----------------------------------------------------------------------- */
 /* --- assert: max_len>0                                               --- */
 /* ----------------------------------------------------------------------- */
-unsigned int monero_decode_varint(unsigned char *varint, unsigned int max_len, uint64_t *value) {
+unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, uint64_t *value) {
     uint64_t v;
-    int len;
+    size_t len;
     v = 0;
     len = 0;
     while ((varint[len]) & 0x80) {

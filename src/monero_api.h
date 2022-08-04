@@ -242,7 +242,7 @@ unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, u
 /**
  * LE-7-bits decoding. High bit set says one more byte to decode.
  */
-unsigned int monero_decode_varint(unsigned char *varint, unsigned int max_len, uint64_t *v);
+unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, uint64_t *value);
 
 /** */
 void monero_reverse32(unsigned char *rscal, unsigned char *scal);

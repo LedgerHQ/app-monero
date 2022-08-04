@@ -40,7 +40,6 @@
     }
 */
 int monero_apdu_clsag_prepare() {
-    int options;
     unsigned char a[32];
     unsigned char p[32];
     unsigned char z[32];

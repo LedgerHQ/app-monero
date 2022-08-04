@@ -156,10 +156,10 @@ int monero_apdu_manage_seedwords() {
                 w_start = 0;
                 for (int i = 0; i < 24; i++) {
                     w_end = N_monero_pstate->words[i][0];
-                    memcpy(word, &N_monero_pstate->words[i][1], w_end);
+                    memcpy(word, (char *)&N_monero_pstate->words[i][1], w_end);
                     word[w_end] = (i == 23) ? 0 : ' ';
                     w_end++;
-                    monero_nvm_write(N_monero_pstate->words_list + w_start, word, w_end);
+                    monero_nvm_write((char *)N_monero_pstate->words_list + w_start, word, w_end);
                     w_start += w_end;
                 }
 #endif
