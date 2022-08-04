@@ -21,7 +21,7 @@
 
 int monero_apdu_reset(void);
 int monero_apdu_lock(void);
-void monero_lock_and_throw(int sw);
+void monero_lock_and_throw(int sw) __attribute__((noreturn));
 
 void monero_install(unsigned char netId);
 void monero_init(void);
