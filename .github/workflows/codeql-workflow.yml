@@ -1,0 +1,43 @@
+name: "CodeQL"
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  analyse:
+    name: Analyse
+    strategy: 
+      matrix:
+        sdk: [ "$NANOS_SDK", "$NANOX_SDK", "$NANOSP_SDK" ]
+        language: [ 'cpp', 'python' ]
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Build Nano 
+        run: |
+          make clean
+          make BOLOS_SDK=${{ matrix.sdk }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
