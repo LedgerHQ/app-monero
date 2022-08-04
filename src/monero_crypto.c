@@ -142,7 +142,7 @@ void monero_hash_init_keccak(cx_hash_t *hasher) { cx_keccak_init((cx_sha3_t *)ha
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_update(cx_hash_t *hasher, unsigned char *buf, unsigned int len) {
+void monero_hash_update(cx_hash_t *hasher, const unsigned char *buf, unsigned int len) {
     cx_hash(hasher, 0, buf, len, NULL, 0);
 }
 
@@ -156,7 +156,7 @@ int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_hash(unsigned int algo, cx_hash_t *hasher, unsigned char *buf, unsigned int len,
+int monero_hash(unsigned int algo, cx_hash_t *hasher, const unsigned char *buf, unsigned int len,
                 unsigned char *out) {
     if (algo == CX_SHA256) {
         cx_sha256_init((cx_sha256_t *)hasher);

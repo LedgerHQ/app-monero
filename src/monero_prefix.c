@@ -29,7 +29,7 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_prefix_hash_init() {
+int monero_apdu_prefix_hash_init(void) {
     uint64_t timelock;
 
     monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
@@ -59,7 +59,7 @@ int monero_apdu_prefix_hash_init() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_prefix_hash_update() {
+int monero_apdu_prefix_hash_update(void) {
     monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                            G_monero_vstate.io_length - G_monero_vstate.io_offset);
     monero_io_discard(0);

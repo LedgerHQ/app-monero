@@ -73,7 +73,7 @@ static unsigned long monero_crc32(unsigned long inCrc32, const void *buf, size_t
     return (crc32 ^ 0xFFFFFFFF);
 }
 
-void monero_clear_words() {
+void monero_clear_words(void) {
     monero_nvm_write((void *)N_monero_pstate->words_list, NULL,
                      sizeof(N_monero_pstate->words_list));
 }
@@ -109,7 +109,7 @@ static void monero_set_word(unsigned int n, unsigned int idx, unsigned int w_sta
 #define word_list_length 1626
 #define seed             G_monero_vstate.b
 
-int monero_apdu_manage_seedwords() {
+int monero_apdu_manage_seedwords(void) {
     unsigned int w_start, w_end;
     unsigned short wc[4];
 

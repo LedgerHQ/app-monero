@@ -196,7 +196,9 @@ void monero_io_insert_tlv(unsigned int T, unsigned int L, unsigned char const* V
 /* ----------------------------------------------------------------------- */
 /* FECTH data from received buffer                                         */
 /* ----------------------------------------------------------------------- */
-int monero_io_fetch_available() { return G_monero_vstate.io_length - G_monero_vstate.io_offset; }
+int monero_io_fetch_available(void) {
+    return G_monero_vstate.io_length - G_monero_vstate.io_offset;
+}
 void monero_io_assert_available(int sz) {
     if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
         THROW(SW_WRONG_LENGTH + (sz & 0xFF));
