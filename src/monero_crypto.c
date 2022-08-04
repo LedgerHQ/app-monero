@@ -304,8 +304,6 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
 #define rY (G_monero_vstate.io_buffer + 7 * 32)
 #define rZ (G_monero_vstate.io_buffer + 8 * 32)
 
-    // #define uv7 (G_monero_vstate.io_buffer+9*32)
-    // #define v3  (G_monero_vstate.io_buffer+10*32)
     union {
         unsigned char _Pxy[65];
         struct {
