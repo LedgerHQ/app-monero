@@ -263,7 +263,7 @@ int monero_apdu_put_key() {
     monero_io_fetch(sec, 32);
     monero_io_fetch(pub, 32);
     monero_ecmul_G(raw, sec);
-    if (memcmp(pub, raw, 32)) {
+    if (memcmp(pub, raw, 32) != 0) {
         THROW(SW_WRONG_DATA);
         return SW_WRONG_DATA;
     }
@@ -273,7 +273,7 @@ int monero_apdu_put_key() {
     monero_io_fetch(sec, 32);
     monero_io_fetch(pub, 32);
     monero_ecmul_G(raw, sec);
-    if (memcmp(pub, raw, 32)) {
+    if (memcmp(pub, raw, 32) != 0) {
         THROW(SW_WRONG_DATA);
         return SW_WRONG_DATA;
     }

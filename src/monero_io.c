@@ -236,7 +236,7 @@ static void monero_io_verify_hmac_for(const unsigned char* buffer, int len,
         hmac[36] = 0;
     }
     cx_hmac_sha256(G_monero_vstate.hmac_key, 32, hmac, 37, hmac, 32);
-    if (memcmp(hmac, expected_hmac, 32)) {
+    if (memcmp(hmac, expected_hmac, 32) != 0) {
         monero_lock_and_throw(SW_SECURITY_HMAC);
     }
 }
