@@ -113,7 +113,9 @@ void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
     ui_menu_main_display(0);
 }
 
-void ui_menu_words_back(unsigned int value __attribute__((unused))) { ui_menu_settings_display(1); }
+void ui_menu_words_back(unsigned int value __attribute__((unused))) {
+    ui_menu_settings_display(1);
+}
 
 /* -------------------------------- INFO UX --------------------------------- */
 unsigned int ui_menu_info_button(unsigned int button_mask, unsigned int button_mask_counter);
@@ -771,7 +773,9 @@ const ux_menu_entry_t ui_menu_main[] = {
     {NULL, (void*)os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
     UX_MENU_END};
 
-void ui_menu_main_display(unsigned int value) { UX_MENU_DISPLAY(value, ui_menu_main, NULL); }
+void ui_menu_main_display(unsigned int value) {
+    UX_MENU_DISPLAY(value, ui_menu_main, NULL);
+}
 
 void ui_init(void) {
     ui_menu_main_display(0);

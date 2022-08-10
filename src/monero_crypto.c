@@ -135,9 +135,13 @@ void monero_reverse32(unsigned char *rscal, unsigned char *scal) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_init_sha256(cx_hash_t *hasher) { cx_sha256_init((cx_sha256_t *)hasher); }
+void monero_hash_init_sha256(cx_hash_t *hasher) {
+    cx_sha256_init((cx_sha256_t *)hasher);
+}
 
-void monero_hash_init_keccak(cx_hash_t *hasher) { cx_keccak_init((cx_sha3_t *)hasher, 256); }
+void monero_hash_init_keccak(cx_hash_t *hasher) {
+    cx_keccak_init((cx_sha3_t *)hasher, 256);
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */

@@ -241,9 +241,13 @@ int monero_apdu_display_address() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int is_fake_view_key(unsigned char *s) { return memcmp(s, C_FAKE_SEC_VIEW_KEY, 32) == 0; }
+int is_fake_view_key(unsigned char *s) {
+    return memcmp(s, C_FAKE_SEC_VIEW_KEY, 32) == 0;
+}
 
-int is_fake_spend_key(unsigned char *s) { return memcmp(s, C_FAKE_SEC_SPEND_KEY, 32) == 0; }
+int is_fake_spend_key(unsigned char *s) {
+    return memcmp(s, C_FAKE_SEC_SPEND_KEY, 32) == 0;
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */

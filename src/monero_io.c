@@ -50,7 +50,9 @@ void monero_io_set_offset(unsigned int offset) {
     }
 }
 
-void monero_io_mark() { G_monero_vstate.io_mark = G_monero_vstate.io_offset; }
+void monero_io_mark() {
+    G_monero_vstate.io_mark = G_monero_vstate.io_offset;
+}
 
 void monero_io_inserted(unsigned int len) {
     G_monero_vstate.io_offset += len;
@@ -66,7 +68,9 @@ void monero_io_discard(int clear) {
     }
 }
 
-void monero_io_clear() { memset(G_monero_vstate.io_buffer, 0, MONERO_IO_BUFFER_LENGTH); }
+void monero_io_clear() {
+    memset(G_monero_vstate.io_buffer, 0, MONERO_IO_BUFFER_LENGTH);
+}
 
 /* ----------------------------------------------------------------------- */
 /* INSERT data to be sent                                                  */

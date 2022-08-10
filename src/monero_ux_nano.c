@@ -90,13 +90,17 @@ void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
     ui_menu_main_display(0);
 }
 
-void ui_menu_words_back(unsigned int value __attribute__((unused))) { ui_menu_main_display(1); }
+void ui_menu_words_back(unsigned int value __attribute__((unused))) {
+    ui_menu_main_display(1);
+}
 
 void ui_menu_words_display(unsigned int value __attribute__((unused))) {
     ux_flow_init(0, ux_flow_words, NULL);
 }
 
-void settings_show_25_words(void) { ui_menu_words_display(0); }
+void settings_show_25_words(void) {
+    ui_menu_words_display(0);
+}
 /* -------------------------------- INFO UX --------------------------------- */
 unsigned int ui_menu_info_action(unsigned int value);
 
@@ -347,7 +351,9 @@ const char* account_submenu_getter(unsigned int idx) {
     }
 }
 
-void account_back(void) { ui_menu_main_display(0); }
+void account_back(void) {
+    ui_menu_main_display(0);
+}
 
 void account_submenu_selector(unsigned int idx) {
     if (idx <= 9) {
@@ -361,7 +367,9 @@ void ui_menu_account_display(void) {
     ux_menulist_init(G_ux.stack_count - 1, account_submenu_getter, account_submenu_selector);
 }
 
-void settings_change_account(void) { ui_menu_account_display(); }
+void settings_change_account(void) {
+    ui_menu_account_display();
+}
 
 /* -------------------------------- NETWORK UX --------------------------------- */
 
@@ -410,7 +418,9 @@ const char* network_submenu_getter(unsigned int idx) {
     }
 }
 
-void network_back(void) { ui_menu_main_display(0); }
+void network_back(void) {
+    ui_menu_main_display(0);
+}
 
 static void network_set_net(unsigned int network) {
     monero_install(network);
@@ -440,7 +450,9 @@ void ui_menu_network_display(void) {
     ux_menulist_init(G_ux.stack_count - 1, network_submenu_getter, network_submenu_selector);
 }
 
-void settings_change_network(void) { ui_menu_network_display(); }
+void settings_change_network(void) {
+    ui_menu_network_display();
+}
 /* -------------------------------- RESET UX --------------------------------- */
 void ui_menu_reset_display(void);
 void ui_menu_reset_action(unsigned int value);
@@ -465,9 +477,13 @@ UX_STEP_CB(ux_menu_reset_3_step, pb, ui_menu_reset_action(ACCEPT),
 
 UX_FLOW(ux_flow_reset, &ux_menu_reset_1_step, &ux_menu_reset_2_step, &ux_menu_reset_3_step);
 
-void ui_menu_reset_display(void) { ux_flow_init(0, ux_flow_reset, 0); }
+void ui_menu_reset_display(void) {
+    ux_flow_init(0, ux_flow_reset, 0);
+}
 
-void settings_reset(void) { ui_menu_reset_display(); }
+void settings_reset(void) {
+    ui_menu_reset_display();
+}
 
 void ui_menu_reset_action(unsigned int value) {
     if (value == ACCEPT) {
@@ -494,7 +510,9 @@ const char* settings_submenu_getter(unsigned int idx) {
     return NULL;
 }
 
-void settings_back(void) { ui_menu_main_display(0); }
+void settings_back(void) {
+    ui_menu_main_display(0);
+}
 
 void settings_submenu_selector(unsigned int idx) {
     switch (idx) {
@@ -556,7 +574,9 @@ UX_FLOW(ux_flow_about,
 #endif
         &ux_menu_about_2_step);
 
-void ui_menu_about_display(void) { ux_flow_init(0, ux_flow_about, NULL); }
+void ui_menu_about_display(void) {
+    ux_flow_init(0, ux_flow_about, NULL);
+}
 
 #undef STR
 #undef XSTR
@@ -674,7 +694,9 @@ void ui_menu_main_display(unsigned int value __attribute__((unused))) {
 }
 /* --- INIT --- */
 
-void ui_init(void) { ui_menu_main_display(0); }
+void ui_init(void) {
+    ui_menu_main_display(0);
+}
 
 void io_seproxyhal_display(const bagl_element_t* element) {
     io_seproxyhal_display_default((bagl_element_t*)element);
