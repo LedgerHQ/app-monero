@@ -104,8 +104,8 @@
 .. |eDRVout| replace:: :math:`\widetilde{\mathfrak{D}_\mathrm{out}}`
 .. |AKout|  replace::  :math:`\mathcal{AK}_\mathrm{amount}`
 .. |eAKout| replace:: :math:`\widetilde{\mathcal{AK}_\mathrm{amount}}`
-.. |vtf|    replace:: :math:`\mathit{view_tag_full}`
-.. |vt|     replace:: :math:`\mathit{view_tag}`
+.. |vtf|    replace:: :math:`\mathit{view\_tag\_full}`
+.. |vt|     replace:: :math:`\mathit{view\_tag}`
 
 
 .. |ctH|       replace:: :math:`\mathcal{H}_\mathrm{commitment}`
