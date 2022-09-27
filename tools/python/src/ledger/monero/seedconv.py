@@ -25,7 +25,7 @@ from Cryptodome.Hash import keccak
 
 
 
-from .dictionaries.languages import monero_langs
+from ledger.monero.dictionaries.languages import monero_langs
 
 
 # =========================================================================================

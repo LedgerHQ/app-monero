@@ -607,6 +607,27 @@ int monero_apdu_generate_key_image(
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+int monero_apdu_derive_view_tag(
+    /*const crypto::key_derivation &derivation, const size_t output_index, crypto::view_tag &view_tag*/) {
+    unsigned char derivation[32];
+    unsigned int output_index;
+    unsigned char res[1];
+
+    // fetch
+    monero_io_fetch_decrypt(derivation, 32, TYPE_DERIVATION);
+    output_index = monero_io_fetch_u32();
+    monero_io_discard(0);
+
+    // derive and keep
+    monero_derive_view_tag(res, derivation, output_index);
+
+    monero_io_insert(res, 1);
+    return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_apdu_derive_subaddress_public_key(/*const crypto::public_key &pub, const crypto::key_derivation &derivation, const std::size_t output_index, public_key &derived_pub*/) {
     unsigned char pub[32];
     unsigned char derivation[32];
@@ -692,7 +713,7 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 
-int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_sec, crypto::public_key Aout, crypto::public_key Bout, size_t output_index, bool is_change, bool is_subaddress, bool need_additional_key*/) {
+int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_sec, crypto::public_key Aout, crypto::public_key Bout, size_t output_index, bool is_change, bool is_subaddress, bool need_additional_key, bool use_view_tags*/) {
     // IN
     unsigned int tx_version;
     unsigned char tx_key[32];
@@ -704,10 +725,12 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     unsigned char is_subaddress;
     unsigned char need_additional_txkeys;
     unsigned char additional_txkey_sec[32];
+    unsigned char use_view_tags;
     // OUT
     unsigned char additional_txkey_pub[32];
 #define amount_key         tx_key
 #define out_eph_public_key additional_txkey_sec
+    unsigned char view_tag[1];
     // TMP
     unsigned char derivation[32];
 
@@ -728,6 +751,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     } else {
         monero_io_fetch(NULL, 32);
     }
+    use_view_tags = monero_io_fetch_u8();
 
     // update outkeys hash control
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
@@ -769,12 +793,20 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // compute ephemeral output key
     monero_derive_public_key(out_eph_public_key, derivation, output_index, Bout);
 
+    // compute view tag
+    if (use_view_tags) {
+        monero_derive_view_tag(view_tag, derivation, output_index);
+    }
+
     // send all
     monero_io_discard(0);
     monero_io_insert_encrypt(amount_key, 32, TYPE_AMOUNT_KEY);
     monero_io_insert(out_eph_public_key, 32);
     if (need_additional_txkeys) {
         monero_io_insert(additional_txkey_pub, 32);
+    }
+    if (use_view_tags) {
+        monero_io_insert(view_tag, 1);
     }
     G_monero_vstate.tx_output_cnt++;
     return SW_OK;

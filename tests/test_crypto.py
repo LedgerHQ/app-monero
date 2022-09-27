@@ -77,3 +77,81 @@ def test_gen_key_derivation(monero):
     )
 
     assert expected == monero.xor_cipher(_d_in, b"\x55")  # decrypt _d_in
+
+
+class Derivation_Test:
+    _derivation: bytes
+    _output_index: bytes
+    _expected_view_tag: int
+
+    def __init__(self, derivation, output_index, expected_view_tag):
+        self._derivation = bytes.fromhex(derivation)
+        self._output_index = (output_index).to_bytes(4, byteorder='big')
+        self._expected_view_tag = expected_view_tag
+
+    def do_test(self, monero):
+        encrypted_derivation = monero.xor_cipher(self._derivation, b"\x55") # encrypt with dummy key 0x55
+        assert self._expected_view_tag == monero.derive_view_tag(encrypted_derivation, self._output_index)
+
+DERIVATION_TESTS = [
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 0,  0x76),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 1,  0xd6),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 2,  0x87),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 3,  0x1b),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 12, 0xd6),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 13, 0xe9),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 14, 0x12),
+    Derivation_Test("0fc47054f355ced4d67de73bfa12e4c78ff19089548fffa7d07a674741860f97", 15, 0x26),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 0,  0x70),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 1,  0x81),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 2,  0xa0),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 3,  0xec),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 12, 0x22),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 13, 0x0a),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 14, 0x87),
+    Derivation_Test("a36ba7b4d31349ad278a6df8f77adb76748b59f4929348e67dd92adb9fa174dc", 15, 0x76),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 0,  0x93),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 1,  0x67),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 2,  0x9d),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 3,  0x2d),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 12, 0x63),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 13, 0xcf),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 14, 0xef),
+    Derivation_Test("7498d5bf0b69e08653f6d420a17f866dd2bd490ab43074f46065cb501fe7e2d8", 15, 0x10),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 0,  0x90),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 1,  0x5a),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 2,  0xde),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 3,  0x21),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 12, 0x57),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 13, 0x52),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 14, 0x6f),
+    Derivation_Test("fe7770c4b076e95ddb8026affcfab39d31c7c4a2266e0e25e343bc4badc907d0", 15, 0xeb),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 0,  0xc6),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 1,  0x60),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 2,  0xf0),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 3,  0x71),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 12, 0x0e),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 13, 0x42),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 14, 0xb2),
+    Derivation_Test("ea9337d0ddf480abdc4fc56a0cb223702729cb230ae7b9de50243ad25ce90e8d", 15, 0x61),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 0,  0x4c),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 1,  0x9b),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 2,  0x64),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 3,  0xff),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 12, 0xe3),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 13, 0x24),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 14, 0xea),
+    Derivation_Test("25d538315bcb81aff9574189ea65f418aeb0392f5cbbc84cd8a33c7ade31ef0a", 15, 0x3b),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 0,  0x74),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 1,  0x77),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 2,  0xa9),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 3,  0x44),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 12, 0x75),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 13, 0x05),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 14, 0xca),
+    Derivation_Test("8edfabada2b24ef4d8d915826c9ff0245910e4b835b59c2cf8ed8fc991b2e1e8", 15, 0x00),
+]
+
+def test_derive_view_tag(monero):
+    for test in DERIVATION_TESTS:
+        test.do_test(monero)

@@ -564,7 +564,7 @@ void ui_menu_reset_action(unsigned int value) {
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
 const ux_menu_entry_t ui_menu_settings[] = {
-    {NULL, ui_menu_account_display, 0, NULL, "Select Account", NULL, 0, 0},
+    {NULL, ui_menu_account_display, 0, NULL, "Select Wallet", NULL, 0, 0},
     {NULL, ui_menu_network_display, 0, NULL, "Select Network", NULL, 0, 0},
     {NULL, ui_menu_words_display, 0, NULL, "Show 25 words", NULL, 0, 0},
     {ui_menu_reset, NULL, 0, NULL, "Reset", NULL, 0, 0},
