@@ -6,6 +6,7 @@ Language: Cpp
 ColumnLimit: 100
 PointerAlignment: Right
 AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: None
 AlignConsecutiveMacros: true
 AllowAllParametersOfDeclarationOnNextLine: false
 SortIncludes: false
