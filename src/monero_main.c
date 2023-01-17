@@ -196,11 +196,11 @@ __attribute__((section(".boot"))) int main(void) {
                 io_usb_ccid_set_card_inserted(1);
 #endif
 
-#ifdef TARGET_NANOX
+#ifdef HAVE_BLE
                 G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
                 BLE_power(0, NULL);
                 BLE_power(1, "Nano X - Monero");
-#endif
+#endif // HAVE_BLE
 
                 monero_init();
 
