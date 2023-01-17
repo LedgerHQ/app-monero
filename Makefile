@@ -27,9 +27,7 @@ include $(BOLOS_SDK)/Makefile.defines
 APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS) --appFlags 0x240
 APPNAME = "Monero"
 
-ifeq ($(TARGET_NAME),TARGET_BLUE)
-ICONNAME = images/icon_monero_blue.gif
-else ifeq ($(TARGET_NAME),TARGET_NANOS)
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME = images/icon_monero.gif
 else
 ICONNAME = images/icon_monero_nanox.gif
@@ -53,8 +51,6 @@ DEFINES   += SPEC_VERSION=$(SPECVERSION)
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
 DEFINES   += UI_NANO_S
-else ifeq ($(TARGET_NAME),TARGET_BLUE)
-DEFINES   += UI_BLUE
 else
 DEFINES   += UI_NANO_X
 TARGET_UI := FLOW
