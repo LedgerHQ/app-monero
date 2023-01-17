@@ -94,7 +94,9 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
             break;
         // power off if long push, else pass to the application callback if any
         case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:  // for Nano S
+#ifdef HAVE_BAGL
             UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif
             break;
 
         // other events are propagated to the UX just in case
@@ -103,14 +105,21 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
             break;
 
         case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
             UX_DISPLAYED_EVENT({});
+#endif  // HAVE_BAGL
+#ifdef HAVE_NBGL
+            UX_DEFAULT_EVENT();
+#endif  // HAVE_NBGL
             break;
         case SEPROXYHAL_TAG_TICKER_EVENT:
             UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
+#ifdef HAVE_BAGL
                 // only allow display when not locked of overlayed by an OS UX.
                 if (UX_ALLOWED) {
                     UX_REDISPLAY();
                 }
+#endif
             });
             break;
     }
@@ -182,7 +191,12 @@ __attribute__((section(".boot"))) int main(void) {
     // ensure exception will work as planned
     os_boot();
     while (cont) {
+#ifdef HAVE_BAGL
         UX_INIT();
+#endif  // HAVE_BAGL
+#ifdef HAVE_NBGL
+        nbgl_objInit();
+#endif  // HAVE_NBGL
 
         BEGIN_TRY {
             TRY {

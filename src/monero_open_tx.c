@@ -84,7 +84,9 @@ int monero_apdu_open_tx_cont() {
 int monero_apdu_close_tx() {
     monero_io_discard(1);
     monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
+#ifdef HAVE_BAGL
     ui_menu_main_display(0);
+#endif
     return SW_OK;
 }
 

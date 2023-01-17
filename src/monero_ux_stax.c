@@ -1,0 +1,496 @@
+/*****************************************************************************
+ *   Ledger Monero App.
+ *   (c) 2017-2020 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS.
+ *   (c) 2020 Ledger SAS.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *****************************************************************************/
+
+#if defined(UI_STAX)
+
+#include "os.h"
+#include "cx.h"
+#include "monero_types.h"
+#include "monero_api.h"
+#include "monero_vars.h"
+
+#include "monero_ux_msg.h"
+#include "os_io_seproxyhal.h"
+#include "string.h"
+#include "glyphs.h"
+
+#include "nbgl_use_case.h"
+
+ux_state_t G_ux;
+bolos_ux_params_t G_ux_params;
+/* ----------------------------------------------------------------------- */
+/* ---                        NanoX  UI layout                         --- */
+/* ----------------------------------------------------------------------- */
+
+#define ACCEPT 0xACCE
+#define REJECT ~ACCEPT
+
+void ui_menu_main_display(unsigned int value);
+
+/* -------------------------------------- LOCK--------------------------------------- */
+
+void ui_menu_pinlock_display() {
+    struct {
+        bolos_ux_t ux_id;
+        // length of parameters in the u union to be copied during the syscall
+        unsigned int len;
+        union {
+            struct {
+                unsigned int cancellable;
+            } validate_pin;
+        } u;
+
+    } ux_params;
+
+    os_global_pin_invalidate();
+    G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED_UNLOCKABLE;
+    ux_params.ux_id = BOLOS_UX_VALIDATE_PIN;
+    ux_params.len = sizeof(ux_params.u.validate_pin);
+    ux_params.u.validate_pin.cancellable = 0;
+    os_ux((bolos_ux_params_t*)&ux_params);
+    ui_menu_main_display(0);
+}
+
+/* -------------------------------------- 25 WORDS --------------------------------------- */
+void ui_menu_words_display(unsigned int value);
+void ui_menu_words_clear(unsigned int value);
+void ui_menu_words_back(unsigned int value);
+
+void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
+    monero_clear_words();
+    ui_menu_main_display(0);
+}
+
+void ui_menu_words_back(unsigned int value __attribute__((unused))) {
+    ui_menu_main_display(1);
+}
+
+void ui_menu_words_display(unsigned int value __attribute__((unused))) {
+//    ux_flow_init(0, ux_flow_words, NULL);
+}
+
+void settings_show_25_words(void) {
+    ui_menu_words_display(0);
+}
+/* -------------------------------- INFO UX --------------------------------- */
+unsigned int ui_menu_info_action(unsigned int value);
+
+unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
+    if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
+        ui_menu_pinlock_display();
+    } else {
+        ui_menu_main_display(0);
+    }
+    return 0;
+}
+
+void ui_menu_info_display2(unsigned int value __attribute__((unused)), char* line1, char* line2) {
+    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "%s", line1);
+    snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%s", line2);
+    //ux_flow_init(0, ux_flow_info, NULL);
+}
+
+void ui_menu_info_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_info, NULL);
+}
+
+/* -------------------------------- OPEN TX UX --------------------------------- */
+unsigned int ui_menu_opentx_action(unsigned int value);
+
+unsigned int ui_menu_opentx_action(unsigned int value) {
+    unsigned int sw = SW_OK;
+    unsigned char x[32];
+
+    monero_io_discard(0);
+    memset(x, 0, 32);
+
+    if (value == ACCEPT) {
+        sw = monero_apdu_open_tx_cont();
+        ui_menu_info_display2(0, "Processing TX", "...");
+    } else {
+        monero_abort_tx();
+        sw = SW_DENY;
+        ui_menu_info_display2(0, "Transaction", "aborted");
+    }
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    return 0;
+}
+
+void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
+    uint32_t i;
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Processing TX");
+    } else {
+        snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Preparing TX");
+    }
+    for (i = 0; (i < G_monero_vstate.tx_cnt) && (i < 12); i++) {
+        G_monero_vstate.ux_info2[i] = '.';
+    }
+    G_monero_vstate.ux_info2[i] = 0;
+    ui_menu_info_display(0);
+}
+
+/* ----------------- FEE/CHANGE/TIMELOCK VALIDATION ----------------- */
+
+void ui_menu_amount_validation_action(unsigned int value);
+
+void ui_menu_amount_validation_action(unsigned int value) {
+    unsigned short sw;
+    if (value == ACCEPT) {
+        sw = SW_OK;
+    } else {
+        monero_abort_tx();
+        sw = SW_DENY;
+    }
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    ui_menu_info_display2(0, "Processing TX", "...");
+}
+
+void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_fee, NULL);
+}
+
+void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_change, NULL);
+}
+
+void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_timelock, NULL);
+}
+/* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
+void ui_menu_validation_action(unsigned int value);
+
+void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_validation, NULL);
+}
+
+void ui_menu_validation_action(unsigned int value) {
+    unsigned short sw;
+    if (value == ACCEPT) {
+        sw = SW_OK;
+    } else {
+        monero_abort_tx();
+        sw = SW_DENY;
+    }
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    ui_menu_info_display2(0, "Processing TX", "...");
+}
+
+/* -------------------------------- EXPORT VIEW KEY UX --------------------------------- */
+unsigned int ui_menu_export_viewkey_action(unsigned int value);
+
+void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_export_viewkey, NULL);
+}
+
+unsigned int ui_menu_export_viewkey_action(unsigned int value) {
+    unsigned int sw;
+    unsigned char x[32];
+
+    monero_io_discard(0);
+    memset(x, 0, 32);
+    sw = SW_OK;
+
+    if (value == ACCEPT) {
+        monero_io_insert(G_monero_vstate.a, 32);
+        G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
+    } else {
+        monero_io_insert(x, 32);
+        G_monero_vstate.export_view_key = 0;
+    }
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    ui_menu_main_display(0);
+    return 0;
+}
+
+/* -------------------------------- ACCOUNT UX --------------------------------- */
+
+const char* const account_submenu_getter_values[] = {"0", "1", "2", "3", "4",    "5",
+                                                     "6", "7", "8", "9", "Abort"};
+const char* const account_submenu_getter_values_selected[] = {
+    "0 +", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "7 +", "8 +", "9 +", "Abort"};
+
+const char* account_submenu_getter(unsigned int idx) {
+    if (idx >= ARRAYLEN(account_submenu_getter_values)) {
+        return NULL;
+    }
+    if (N_monero_pstate->account_id == idx) {
+        return account_submenu_getter_values_selected[idx];
+    } else {
+        return account_submenu_getter_values[idx];
+    }
+}
+
+void account_back(void) {
+    ui_menu_main_display(0);
+}
+
+void account_submenu_selector(unsigned int idx) {
+    if (idx <= 9) {
+        monero_nvm_write((void*)&N_monero_pstate->account_id, &idx, sizeof(unsigned int));
+        monero_init();
+    }
+    ui_menu_main_display(0);
+}
+
+void ui_menu_account_display(void) {
+    //ux_menulist_init(G_ux.stack_count - 1, account_submenu_getter, account_submenu_selector);
+}
+
+void settings_change_account(void) {
+    ui_menu_account_display();
+}
+
+/* -------------------------------- NETWORK UX --------------------------------- */
+
+const char* const network_submenu_getter_values[] = {
+#ifdef MONERO_ALPHA
+    "Unavailable",
+#else
+    "Main Network",
+#endif
+    "Stage Network", "Test Network", "Abort"};
+const char* const network_submenu_getter_values_selected[] = {
+#ifdef MONERO_ALPHA
+    "Unavailable",
+#else
+    "Main Network +",
+#endif
+    "Stage Network +", "Test Network +", "Abort"};
+
+const char* network_submenu_getter(unsigned int idx) {
+    if (idx >= ARRAYLEN(network_submenu_getter_values)) {
+        return NULL;
+    }
+    int net;
+    switch (idx) {
+        case 0:
+#ifdef MONERO_ALPHA
+            net = -1;
+#else
+            net = MAINNET;
+#endif
+            break;
+        case 1:
+            net = STAGENET;
+            break;
+        case 2:
+            net = TESTNET;
+            break;
+        default:
+            net = -1;
+            break;
+    }
+    if (N_monero_pstate->network_id == net) {
+        return network_submenu_getter_values_selected[idx];
+    } else {
+        return network_submenu_getter_values[idx];
+    }
+}
+
+void network_back(void) {
+    ui_menu_main_display(0);
+}
+
+static void network_set_net(unsigned int network) {
+    monero_install(network);
+    monero_init();
+}
+
+void network_submenu_selector(unsigned int idx) {
+    switch (idx) {
+        case 0:
+#ifndef MONERO_ALPHA
+            network_set_net(MAINNET);
+#endif
+            break;
+        case 1:
+            network_set_net(STAGENET);
+            break;
+        case 2:
+            network_set_net(TESTNET);
+            break;
+        default:
+            break;
+    }
+    ui_menu_main_display(0);
+}
+
+void ui_menu_network_display(void) {
+    //ux_menulist_init(G_ux.stack_count - 1, network_submenu_getter, network_submenu_selector);
+}
+
+void settings_change_network(void) {
+    ui_menu_network_display();
+}
+/* -------------------------------- RESET UX --------------------------------- */
+void ui_menu_reset_display(void);
+void ui_menu_reset_action(unsigned int value);
+
+void ui_menu_reset_display(void) {
+    //ux_flow_init(0, ux_flow_reset, 0);
+}
+
+void settings_reset(void) {
+    ui_menu_reset_display();
+}
+
+void ui_menu_reset_action(unsigned int value) {
+    if (value == ACCEPT) {
+        unsigned char magic[4];
+        magic[0] = 0;
+        magic[1] = 0;
+        magic[2] = 0;
+        magic[3] = 0;
+        monero_nvm_write((void*)N_monero_pstate->magic, magic, 4);
+        monero_init();
+    }
+    ui_menu_main_display(0);
+}
+/* ------------------------------- SETTINGS UX ------------------------------- */
+
+const char* const settings_submenu_getter_values[] = {
+    "Select Account", "Select Network", "Show 25 words", "Reset", "Back",
+};
+
+const char* settings_submenu_getter(unsigned int idx) {
+    if (idx < ARRAYLEN(settings_submenu_getter_values)) {
+        return settings_submenu_getter_values[idx];
+    }
+    return NULL;
+}
+
+void settings_back(void) {
+    ui_menu_main_display(0);
+}
+
+void settings_submenu_selector(unsigned int idx) {
+    switch (idx) {
+        case 0:
+            settings_change_account();
+            break;
+        case 1:
+            settings_change_network();
+            break;
+        case 2:
+            settings_show_25_words();
+            break;
+        case 3:
+            settings_reset();
+            break;
+        default:
+            settings_back();
+    }
+}
+
+/* --------------------------------- ABOUT UX --------------------------------- */
+#define STR(x)  #x
+#define XSTR(x) STR(x)
+
+void ui_menu_about_display(void) {
+    //ux_flow_init(0, ux_flow_about, NULL);
+}
+
+#undef STR
+#undef XSTR
+
+/* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
+void ui_menu_pubaddr_action(unsigned int value);
+
+#define ADDR_TYPE  G_monero_vstate.ux_address + 108
+#define ADDR_MAJOR G_monero_vstate.ux_address + 124
+#define ADDR_MINOR G_monero_vstate.ux_address + 140
+#define ADDR_IDSTR G_monero_vstate.ux_address + 124
+#define ADDR_ID    G_monero_vstate.ux_address + 140
+
+void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
+    if (G_monero_vstate.disp_addr_mode) {
+        monero_io_insert_u16(SW_OK);
+        monero_io_do(IO_RETURN_AFTER_TX);
+    }
+    G_monero_vstate.disp_addr_mode = 0;
+    ui_menu_main_display(0);
+}
+
+/**
+ *
+ */
+void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
+                                 unsigned char* pub_view, unsigned char* pub_spend,
+                                 unsigned char is_subbadress, unsigned char* paymanetID) {
+    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+
+    switch (G_monero_vstate.disp_addr_mode) {
+        case 0:
+        case DISP_MAIN:
+            memcpy(ADDR_TYPE, "Main", 4);
+            memcpy(ADDR_MAJOR, "Major: 0", 8);
+            memcpy(ADDR_MINOR, "minor: 0", 8);
+            break;
+
+        case DISP_SUB:
+            memcpy(ADDR_TYPE, "Sub", 3);
+            snprintf(ADDR_MAJOR, 16, "Major: %d", G_monero_vstate.disp_addr_M);
+            snprintf(ADDR_MINOR, 16, "minor: %d", G_monero_vstate.disp_addr_m);
+            break;
+
+        case DISP_INTEGRATED:
+            memcpy(ADDR_TYPE, "Integrated", 10);
+            memcpy(ADDR_IDSTR, "Payment ID", 10);
+            memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            break;
+    }
+
+    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+                             paymanetID);
+    //ux_flow_init(0, ux_flow_pubaddr, NULL);
+}
+
+void ui_menu_pubaddr_display(unsigned int value) {
+    G_monero_vstate.disp_addr_mode = 0;
+    G_monero_vstate.disp_addr_M = 0;
+    G_monero_vstate.disp_addr_M = 0;
+    ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+}
+
+#undef ADDR_TYPE
+#undef ADDR_MAJOR
+#undef ADDR_MINOR
+#undef ADDR_IDSTR
+#undef ADDR_ID
+
+/* --------------------------------- MAIN UX --------------------------------- */
+
+void ui_menu_main_display(unsigned int value __attribute__((unused))) {
+    //ux_flow_init(0, ux_flow_main, NULL);
+}
+/* --- INIT --- */
+
+void ui_init(void) {
+    ui_menu_main_display(0);
+}
+
+void io_seproxyhal_display(void) {
+    io_seproxyhal_display_default();
+}
+
+#endif
