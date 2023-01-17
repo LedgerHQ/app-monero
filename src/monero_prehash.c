@@ -147,10 +147,19 @@ int monero_apdu_mlsag_prehash_update() {
         amount = monero_bamount2uint64(v);
         if (amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
-            if (!is_change) {
-                ui_menu_validation_display(0);
+
+            if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
+                if (!is_change) {
+                    ui_menu_validation_display_last(0);
+                } else {
+                    ui_menu_change_validation_display_last(0);
+                }
             } else {
-                ui_menu_change_validation_display(0);
+                if (!is_change) {
+                    ui_menu_validation_display(0);
+                } else {
+                    ui_menu_change_validation_display(0);
+                }
             }
             return 0;
         }

@@ -131,6 +131,8 @@ void ui_menu_change_validation_display_last(unsigned int value);
 void ui_menu_timelock_validation_display(unsigned int value);
 
 void ui_menu_opentx_display(unsigned int value);
+
+void display_account(void);
 /* ----------------------------------------------------------------------- */
 /* ---                          KEYS & ADDRESS                        ---- */
 /* ----------------------------------------------------------------------- */
