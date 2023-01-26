@@ -133,6 +133,14 @@ void ui_menu_info_display(unsigned int value __attribute__((unused))) {
 }
 
 /* -------------------------------- OPEN TX UX --------------------------------- */
+unsigned int ui_menu_transaction_start(void) {
+    return SW_OK;
+}
+
+unsigned int ui_menu_transaction_signed(void) {
+    return SW_OK;
+}
+
 unsigned int ui_menu_opentx_action(unsigned int value);
 
 UX_STEP_NOCB(ux_menu_opentx_1_step, nn, {"Process", "new TX ?"});
@@ -253,6 +261,10 @@ void ui_menu_change_validation_display(unsigned int value __attribute__((unused)
     ux_flow_init(0, ux_flow_change, NULL);
 }
 
+void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
+    ux_flow_init(0, ux_flow_change, NULL);
+}
+
 void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
     ux_flow_init(0, ux_flow_timelock, NULL);
 }
@@ -279,6 +291,10 @@ UX_FLOW(ux_flow_validation, &ux_menu_validation_1_step, &ux_menu_validation_2_st
         &ux_menu_validation_3_step, &ux_menu_validation_4_step);
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
+    ux_flow_init(0, ux_flow_validation, NULL);
+}
+
+void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
     ux_flow_init(0, ux_flow_validation, NULL);
 }
 

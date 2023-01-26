@@ -96,6 +96,8 @@ void ui_menu_any_pubaddr_display(unsigned int value, unsigned char *pub_view,
                                  unsigned char *paymanetID);
 void ui_menu_pubaddr_display(unsigned int value);
 
+unsigned int ui_menu_transaction_start(void);
+unsigned int ui_menu_transaction_signed(void);
 /* ----------------------------------------------------------------------- */
 /* ---                               MISC                             ---- */
 /* ----------------------------------------------------------------------- */
@@ -122,8 +124,10 @@ int monero_abort_tx(void);
 int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout,
                    unsigned int short_amount);
 void ui_menu_validation_display(unsigned int value);
+void ui_menu_validation_display_last(unsigned int value);
 void ui_menu_fee_validation_display(unsigned int value);
 void ui_menu_change_validation_display(unsigned int value);
+void ui_menu_change_validation_display_last(unsigned int value);
 void ui_menu_timelock_validation_display(unsigned int value);
 
 void ui_menu_opentx_display(unsigned int value);

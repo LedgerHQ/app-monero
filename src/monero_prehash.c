@@ -204,6 +204,10 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_final_H(G_monero_vstate.mlsagH);
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
+
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+            ui_menu_transaction_signed();
+        }
     }
 
     return SW_OK;

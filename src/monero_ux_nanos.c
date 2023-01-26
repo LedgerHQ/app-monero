@@ -165,6 +165,14 @@ void ui_menu_info_display(unsigned int value __attribute__((unused))) {
 
 /* -------------------------------- OPEN TX UX --------------------------------- */
 
+unsigned int ui_menu_transaction_signed(void) {
+    return SW_OK;
+}
+
+unsigned int ui_menu_transaction_start(void) {
+    return SW_OK;
+}
+
 unsigned int ui_menu_opentx_button(unsigned int button_mask, unsigned int button_mask_counter);
 
 const bagl_element_t ui_menu_opentx[] = {
@@ -295,6 +303,9 @@ void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) 
 void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_change_validation, ui_menu_amount_validation_preprocessor);
 }
+void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
+    UX_MENU_DISPLAY(0, ui_menu_change_validation, ui_menu_amount_validation_preprocessor);
+}
 void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_timelock_validation, ui_menu_amount_validation_preprocessor);
 }
@@ -375,6 +386,10 @@ const bagl_element_t* ui_menu_validation_preprocessor(const ux_menu_entry_t* ent
 }
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
+    UX_MENU_DISPLAY(0, ui_menu_validation, ui_menu_validation_preprocessor);
+}
+
+void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_validation, ui_menu_validation_preprocessor);
 }
 
