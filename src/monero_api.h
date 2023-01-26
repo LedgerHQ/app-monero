@@ -96,6 +96,8 @@ void ui_menu_any_pubaddr_display(unsigned int value, unsigned char *pub_view,
                                  unsigned char *paymanetID);
 void ui_menu_pubaddr_display(unsigned int value);
 
+unsigned int ui_menu_transaction_start(void);
+unsigned int ui_menu_transaction_signed(void);
 /* ----------------------------------------------------------------------- */
 /* ---                               MISC                             ---- */
 /* ----------------------------------------------------------------------- */

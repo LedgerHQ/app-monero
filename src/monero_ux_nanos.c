@@ -164,6 +164,14 @@ void ui_menu_info_display(unsigned int value __attribute__((unused))) {
 
 /* -------------------------------- OPEN TX UX --------------------------------- */
 
+unsigned int ui_menu_transaction_signed(void) {
+    return SW_OK;
+}
+
+unsigned int ui_menu_transaction_start(void) {
+    return SW_OK;
+}
+
 unsigned int ui_menu_opentx_button(unsigned int button_mask, unsigned int button_mask_counter);
 
 const bagl_element_t ui_menu_opentx[] = {
