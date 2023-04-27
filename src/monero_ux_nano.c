@@ -36,7 +36,7 @@
 #define ACCEPT 0xACCE
 #define REJECT ~ACCEPT
 
-void ui_menu_main_display(unsigned int value);
+void ui_menu_main_display();
 
 /* -------------------------------------- LOCK--------------------------------------- */
 
@@ -59,7 +59,7 @@ void ui_menu_pinlock_display() {
     ux_params.len = sizeof(ux_params.u.validate_pin);
     ux_params.u.validate_pin.cancellable = 0;
     os_ux((bolos_ux_params_t*)&ux_params);
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 /* -------------------------------------- 25 WORDS --------------------------------------- */
@@ -87,11 +87,11 @@ UX_FLOW(ux_flow_words, &ux_menu_words_1_step, &ux_menu_words_2_step, &ux_menu_wo
 
 void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
     monero_clear_words();
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void ui_menu_words_back(unsigned int value __attribute__((unused))) {
-    ui_menu_main_display(1);
+    ui_menu_main_display();
 }
 
 void ui_menu_words_display(unsigned int value __attribute__((unused))) {
@@ -116,7 +116,7 @@ unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
     if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
         ui_menu_pinlock_display();
     } else {
-        ui_menu_main_display(0);
+        ui_menu_main_display();
     }
     return 0;
 }
@@ -329,7 +329,7 @@ unsigned int ui_menu_export_viewkey_action(unsigned int value) {
     }
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
-    ui_menu_main_display(0);
+    ui_menu_main_display();
     return 0;
 }
 
@@ -352,7 +352,7 @@ const char* account_submenu_getter(unsigned int idx) {
 }
 
 void account_back(void) {
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void account_submenu_selector(unsigned int idx) {
@@ -360,7 +360,7 @@ void account_submenu_selector(unsigned int idx) {
         monero_nvm_write((void*)&N_monero_pstate->account_id, &idx, sizeof(unsigned int));
         monero_init();
     }
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void ui_menu_account_display(void) {
@@ -419,7 +419,7 @@ const char* network_submenu_getter(unsigned int idx) {
 }
 
 void network_back(void) {
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 static void network_set_net(unsigned int network) {
@@ -443,7 +443,7 @@ void network_submenu_selector(unsigned int idx) {
         default:
             break;
     }
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void ui_menu_network_display(void) {
@@ -495,7 +495,7 @@ void ui_menu_reset_action(unsigned int value) {
         monero_nvm_write((void*)N_monero_pstate->magic, magic, 4);
         monero_init();
     }
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
@@ -511,7 +511,7 @@ const char* settings_submenu_getter(unsigned int idx) {
 }
 
 void settings_back(void) {
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void settings_submenu_selector(unsigned int idx) {
@@ -560,7 +560,7 @@ UX_STEP_NOCB(ux_menu_about_1b_step, nn,
 
 #endif
 
-UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(0),
+UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(),
            {
                &C_icon_back,
                "Back",
@@ -616,7 +616,7 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
         monero_io_do(IO_RETURN_AFTER_TX);
     }
     G_monero_vstate.disp_addr_mode = 0;
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 /**
@@ -685,7 +685,7 @@ UX_STEP_CB(ux_menu_main_4_step, pb, os_sched_exit(0), {&C_icon_dashboard_x, "Qui
 UX_FLOW(ux_flow_main, &ux_menu_main_1_step, &ux_menu_main_2_step, &ux_menu_main_3_step,
         &ux_menu_main_4_step);
 
-void ui_menu_main_display(unsigned int value __attribute__((unused))) {
+void ui_menu_main_display(void) {
     // reserve a display stack slot if none yet
     if (G_ux.stack_count == 0) {
         ux_stack_push();
@@ -695,7 +695,7 @@ void ui_menu_main_display(unsigned int value __attribute__((unused))) {
 /* --- INIT --- */
 
 void ui_init(void) {
-    ui_menu_main_display(0);
+    ui_menu_main_display();
 }
 
 void io_seproxyhal_display(const bagl_element_t* element) {

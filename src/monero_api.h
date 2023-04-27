@@ -87,9 +87,9 @@ int monero_apdu_close_tx(void);
 
 void ui_init(void);
 void ui_menu_lock_display(void);
-void ui_menu_main_display(unsigned int value);
+void ui_menu_main_display(void);
 void ui_menu_info_display(unsigned int value);
-void ui_menu_info_display2(unsigned int value, char *line1, char *line2);
+void ui_menu_info_display2(unsigned int value, const char *line1, const char *line2);
 void ui_export_viewkey_display(unsigned int value);
 void ui_menu_any_pubaddr_display(unsigned int value, unsigned char *pub_view,
                                  unsigned char *pub_spend, unsigned char is_subbadress,
