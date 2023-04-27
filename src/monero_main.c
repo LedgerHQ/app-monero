@@ -216,10 +216,12 @@ __attribute__((section(".boot"))) int main(void) {
             }
             CATCH(EXCEPTION_IO_RESET) {
                 // reset IO and UX
+                CLOSE_TRY;
                 ;
             }
             CATCH_OTHER(e) {
                 cont = 0;
+                CLOSE_TRY;
             }
             FINALLY {
             }
