@@ -73,24 +73,31 @@ static uint64_t uint_8be_to_64(const unsigned char* data, size_t size) {
     switch (9 - size) {
         case 1:
             res |= *data++;
+            __attribute__((fallthrough));
         case 2:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 3:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 4:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 5:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 6:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 7:
             res <<= 8;
             res |= *data++;
+            __attribute__((fallthrough));
         case 8:
             res <<= 8;
             res |= *data;

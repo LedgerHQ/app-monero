@@ -58,7 +58,7 @@ int check_potocol() {
                 break;
             }
             // unknown protocol or hot protocol switch is not allowed
-            // FALL THROUGH
+            __attribute__((fallthrough));
 
         default:
             return SW_PROTOCOL_NOT_SUPPORTED;

@@ -121,7 +121,8 @@ unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
     return 0;
 }
 
-void ui_menu_info_display2(unsigned int value __attribute__((unused)), char* line1, char* line2) {
+void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
+                           const char* line2) {
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "%s", line1);
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%s", line2);
     ux_flow_init(0, ux_flow_info, NULL);

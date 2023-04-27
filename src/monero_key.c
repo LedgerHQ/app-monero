@@ -321,7 +321,7 @@ int monero_apdu_get_key() {
             }
             break;
 
-#if DEBUG_HWDEVICE
+#ifdef DEBUG_HWDEVICE
         // get info
         case 3: {
             unsigned int path[5];
