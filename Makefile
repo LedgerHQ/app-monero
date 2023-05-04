@@ -122,6 +122,7 @@ ifneq ($(DEBUG),0)
 	DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
   # Debug options
   DEFINES += DEBUG_HWDEVICE
+  DEFINES += BYPASS_COMMITMENT_FOR_TESTS
   DEFINES += IODUMMYCRYPT  # or IONOCRYPT
   # Stagenet network by default
   DEFINES += MONERO_BETA

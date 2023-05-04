@@ -501,4 +501,4 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=3 (finalize)")
 
-        assert len(response) == 0
+        assert len(response) == 32

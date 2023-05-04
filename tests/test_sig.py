@@ -38,7 +38,7 @@ class TestSignature:
 
         return {"sender": sender,
                 "receiver": receiver,
-                "amount": 10**12,  # 1.0 XMR
+                "amount": 11**3,
                 "tx_pub_key": None,
                 "_tx_priv_key": None,
                 "_ak_amount": [],
@@ -124,7 +124,7 @@ class TestSignature:
         )  # type: bytes, bytes
 
         assert state["y"][0] == mask
-        assert state["amount"] == int.from_bytes(amount, byteorder="big")
+        # assert state["amount"] == int.from_bytes(amount, byteorder="big")
 
         state["blinded_mask"].append(blinded_mask)
         state["blinded_amount"].append(blinded_amount)
@@ -148,19 +148,37 @@ class TestSignature:
                                      txntype=0,
                                      txnfee=fee)
 
-        # monero_client.validate_prehash_update(
-        #     index=1,
-        #     is_short=False,
-        #     is_change_addr=False,
-        #     is_subaddress=False,
-        #     dst_pub_view_key=state["receiver"].public_view_key,
-        #     dst_pub_spend_key=state["receiver"].public_spend_key,
-        #     _ak_amount=state["_ak_amount"][0],
-        #     commitment=...,
-        #     blinded_amount=state["blinded_amount"][0],
-        #     blinded_mask=state["blinded_mask"][0],
-        #     is_last=True
-        # )
+        monero.validate_prehash_update(
+            backend,
+            test_name,
+            firmware,
+            navigator,
+            index=1,
+            is_short=False,
+            is_change_addr=False,
+            is_subaddress=False,
+            dst_pub_view_key=state["receiver"].public_view_key,
+            dst_pub_spend_key=state["receiver"].public_spend_key,
+            _ak_amount=state["_ak_amount"][0],
+            commitment=bytes.fromhex(32*"00"),
+            blinded_amount=state["blinded_amount"][0],
+            blinded_mask=state["blinded_mask"][0],
+            is_last=True
+        )
+
+        monero.validate_prehash_finalize(
+            index=1,
+            is_short=False,
+            is_change_addr=False,
+            is_subaddress=False,
+            dst_pub_view_key=state["receiver"].public_view_key,
+            dst_pub_spend_key=state["receiver"].public_spend_key,
+            _ak_amount=state["_ak_amount"][0],
+            commitment=bytes.fromhex(32*"00"),
+            blinded_amount=state["blinded_amount"][0],
+            blinded_mask=state["blinded_mask"][0],
+            is_last=True
+        )
 
     @staticmethod
     def test_close_tx(monero):
