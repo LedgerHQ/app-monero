@@ -83,11 +83,12 @@ class TestSignature:
         state["_ak_amount"].append(_ak_amount)  # _ak_amount_t
 
     @staticmethod
-    def test_prefix_hash(monero, button):
+    def test_prefix_hash(monero, backend, navigator, firmware, test_name):
         expected: bytes = bytes.fromhex("9a259973bf721120aceae3d8d40696c0"
                                         "7470331e386028753123f37fee36926b")
         # should ask for timelock validation
-        monero.prefix_hash_init(button=button, version=0, timelock=2147483650)
+        monero.prefix_hash_init(backend, test_name, firmware,
+                                navigator=navigator, version=0, timelock=2147483650)
         result: bytes = monero.prefix_hash_update(
             index=1,
             payload=b"",
@@ -128,17 +129,21 @@ class TestSignature:
         state["blinded_mask"].append(blinded_mask)
         state["blinded_amount"].append(blinded_amount)
 
-    @staticmethod
-    def test_validate(monero, button, state):
         assert len(state["y"]) != 0
         assert len(state["_ak_amount"]) != 0
         assert len(state["blinded_amount"]) != 0
         assert len(state["blinded_mask"]) != 0
 
+    @staticmethod
+    def test_validate(monero, backend, navigator, firmware, test_name, state):
+
         fee: int = 100000000  # 0.0001 XMR
 
         # should ask for fee validation
-        monero.validate_prehash_init(button=button,
+        monero.validate_prehash_init(backend,
+                                     navigator=navigator,
+                                     firmware=firmware,
+                                     test_name=test_name,
                                      index=1,  # start at 1
                                      txntype=0,
                                      txnfee=fee)

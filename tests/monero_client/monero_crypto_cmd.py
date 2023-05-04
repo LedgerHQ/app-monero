@@ -13,8 +13,8 @@ PROTOCOL_VERSION: int = 3
 class MoneroCryptoCmd:
     HMAC_KEY: bytes = b"\xab" * 32
 
-    def __init__(self, debug: bool = False, speculos: bool = False) -> None:
-        self.device = Transport(debug=debug, speculos=speculos)
+    def __init__(self, backend, debug: bool = False) -> None:
+        self.device = Transport(backend, debug=debug)
         self.is_in_tx_mode = False
 
     @staticmethod
