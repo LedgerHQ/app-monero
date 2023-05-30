@@ -91,13 +91,11 @@ static void ui_menu_info_action(void) {
     }
 }
 
-void ui_menu_info_display2(unsigned int value __attribute__((unused)),
-                           const char* line1 __attribute__((unused)),
-                           const char* line2 __attribute__((unused))) {
+void ui_menu_show_tx_aborted(void) {
     nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_info_action);
 }
 
-void ui_menu_info_display(unsigned int value __attribute__((unused))) {
+void ui_menu_show_security_error(void) {
     nbgl_useCaseStatus("Security Error", false, ui_menu_info_action);
 }
 

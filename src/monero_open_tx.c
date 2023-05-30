@@ -95,7 +95,7 @@ int monero_apdu_close_tx() {
 /* ----------------------------------------------------------------------- */
 int monero_abort_tx() {
     monero_reset_tx(1);
-    ui_menu_info_display2(0, "TX", "Aborted");
+    ui_menu_show_tx_aborted();
     return 0;
 }
 

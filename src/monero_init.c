@@ -240,6 +240,6 @@ void monero_lock_and_throw(int sw) {
     G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED;
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Security Err");
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%x", sw);
-    ui_menu_info_display(0);
+    ui_menu_show_security_error();
     THROW(sw);
 }

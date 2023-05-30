@@ -121,15 +121,23 @@ unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
     return 0;
 }
 
-void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
-                           const char* line2) {
+static void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
+                                  const char* line2) {
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "%s", line1);
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%s", line2);
     ux_flow_init(0, ux_flow_info, NULL);
 }
 
-void ui_menu_info_display(unsigned int value __attribute__((unused))) {
+static void ui_menu_info_display(unsigned int value __attribute__((unused))) {
     ux_flow_init(0, ux_flow_info, NULL);
+}
+
+void ui_menu_show_tx_aborted(void) {
+    ui_menu_info_display2(0, "TX", "Aborted");
+}
+
+void ui_menu_show_security_error(void) {
+    ui_menu_info_display(0);
 }
 
 /* -------------------------------- OPEN TX UX --------------------------------- */
