@@ -84,7 +84,9 @@ int monero_apdu_open_tx_cont() {
 int monero_apdu_close_tx() {
     monero_io_discard(1);
     monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
-    ui_menu_main_display(0);
+#ifdef HAVE_BAGL
+    ui_menu_main_display();
+#endif
     return SW_OK;
 }
 
@@ -93,7 +95,7 @@ int monero_apdu_close_tx() {
 /* ----------------------------------------------------------------------- */
 int monero_abort_tx() {
     monero_reset_tx(1);
-    ui_menu_info_display2(0, "TX", "Aborted");
+    ui_menu_show_tx_aborted();
     return 0;
 }
 

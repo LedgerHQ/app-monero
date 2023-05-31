@@ -2,18 +2,18 @@ import enum
 import logging
 import struct
 from typing import Union, Tuple
-
-from monero_client.io.tcp_client import TCPClient
-from monero_client.io.hid_device import HID
+from ragger.backend.interface import BackendInterface, RAPDU
+from contextlib import contextmanager
 
 
 class Transport:
-    def __init__(self, debug: bool = False, speculos: bool = False) -> None:
+    backend: BackendInterface
+
+    def __init__(self, backend, debug) -> None:
         if debug:
             logging.basicConfig(format="%(message)s", level=logging.DEBUG)
 
-        self.com: Union[TCPClient, HID] = (TCPClient(server="127.0.0.1", port=9999)
-                                           if speculos else HID())
+        self._client = backend
 
     def exchange(self,
                  cla: int,
@@ -30,7 +30,7 @@ class Transport:
                                     1 + len(payload),
                                     option)
 
-        return self.com.exchange(header + payload)
+        return self._client.exchange(header + payload)
 
     def send(self,
              cla: int,
@@ -46,10 +46,30 @@ class Transport:
                                     p2,
                                     1 + len(payload),
                                     option)
-        self.com.send(header + payload)
+        self._client.send_raw(header + payload)
+
+    @contextmanager
+    def send_async(self,
+                   cla: int,
+                   ins: enum.IntEnum,
+                   p1: int = 0,
+                   p2: int = 0,
+                   option: int = 0,
+                   payload: bytes = b"") -> None:
+        header: bytes = struct.pack("BBBBBB",
+                                    cla,
+                                    ins.value,
+                                    p1,
+                                    p2,
+                                    1 + len(payload),
+                                    option)
+        with self._client.exchange_async_raw(header + payload):
+            yield
 
     def recv(self) -> Tuple[int, bytes]:
-        return self.com.recv()
+        response = self._client.receive()
+        return (response.status, response.data)
 
-    def close(self) -> None:
-        self.com.close()
+    def async_response(self) -> Tuple[int, bytes]:
+        response = self._client.last_async_response
+        return (response.status, response.data)

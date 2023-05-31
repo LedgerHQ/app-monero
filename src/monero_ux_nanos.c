@@ -39,7 +39,7 @@ void ui_menu_reset_action(unsigned int value);
 const ux_menu_entry_t ui_menu_settings[];
 
 const ux_menu_entry_t ui_menu_main[];
-void ui_menu_main_display(unsigned int value);
+void ui_menu_main_display_value(unsigned int value);
 const bagl_element_t* ui_menu_main_preprocessor(const ux_menu_entry_t* entry,
                                                 bagl_element_t* element);
 
@@ -65,7 +65,7 @@ void ui_menu_pinlock_display() {
     ux_params.len = sizeof(ux_params.u.validate_pin);
     ux_params.u.validate_pin.cancellable = 0;
     os_ux((bolos_ux_params_t*)&ux_params);
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 
 /* -------------------------------------- 25 WORDS --------------------------------------- */
@@ -110,7 +110,7 @@ void ui_menu_words_display(unsigned int value __attribute__((unused))) {
 
 void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
     monero_clear_words();
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 
 void ui_menu_words_back(unsigned int value __attribute__((unused))) {
@@ -142,7 +142,7 @@ unsigned int ui_menu_info_button(unsigned int button_mask,
             if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
                 ui_menu_pinlock_display();
             } else {
-                ui_menu_main_display(0);
+                ui_menu_main_display_value(0);
             }
             break;
 
@@ -152,17 +152,34 @@ unsigned int ui_menu_info_button(unsigned int button_mask,
     return 0;
 }
 
-void ui_menu_info_display2(unsigned int value __attribute__((unused)), char* line1, char* line2) {
+static void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
+                                  const char* line2) {
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "%s", line1);
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%s", line2);
     UX_DISPLAY(ui_menu_info, NULL);
 }
 
-void ui_menu_info_display(unsigned int value __attribute__((unused))) {
+static void ui_menu_info_display(unsigned int value __attribute__((unused))) {
     UX_DISPLAY(ui_menu_info, NULL);
 }
 
+void ui_menu_show_tx_aborted(void) {
+    ui_menu_info_display2(0, "TX", "Aborted");
+}
+
+void ui_menu_show_security_error(void) {
+    ui_menu_info_display(0);
+}
+
 /* -------------------------------- OPEN TX UX --------------------------------- */
+
+unsigned int ui_menu_transaction_signed(void) {
+    return SW_OK;
+}
+
+unsigned int ui_menu_transaction_start(void) {
+    return SW_OK;
+}
 
 unsigned int ui_menu_opentx_button(unsigned int button_mask, unsigned int button_mask_counter);
 
@@ -294,6 +311,9 @@ void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) 
 void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_change_validation, ui_menu_amount_validation_preprocessor);
 }
+void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
+    UX_MENU_DISPLAY(0, ui_menu_change_validation, ui_menu_amount_validation_preprocessor);
+}
 void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_timelock_validation, ui_menu_amount_validation_preprocessor);
 }
@@ -377,6 +397,10 @@ void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
     UX_MENU_DISPLAY(0, ui_menu_validation, ui_menu_validation_preprocessor);
 }
 
+void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
+    UX_MENU_DISPLAY(0, ui_menu_validation, ui_menu_validation_preprocessor);
+}
+
 void ui_menu_validation_action(unsigned int value) {
     unsigned short sw;
     if (value == ACCEPT) {
@@ -454,7 +478,7 @@ unsigned int ui_export_viewkey_button(unsigned int button_mask,
     }
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
     return 0;
 }
 
@@ -463,7 +487,7 @@ unsigned int ui_export_viewkey_button(unsigned int button_mask,
 void ui_menu_account_action(unsigned int value);
 const ux_menu_entry_t ui_menu_account[] = {
     {NULL, NULL, 0, NULL, "It will reset", "the application!", 0, 0},
-    {NULL, ui_menu_main_display, 0, &C_badge_back, "Abort", NULL, 61, 40},
+    {NULL, ui_menu_main_display_value, 0, &C_badge_back, "Abort", NULL, 61, 40},
     {NULL, ui_menu_account_action, 0, NULL, "0", NULL, 0, 0},
     {NULL, ui_menu_account_action, 1, NULL, "1", NULL, 0, 0},
     {NULL, ui_menu_account_action, 2, NULL, "2", NULL, 0, 0},
@@ -494,7 +518,7 @@ const bagl_element_t* ui_menu_account_preprocessor(const ux_menu_entry_t* entry,
 void ui_menu_account_action(unsigned int value) {
     monero_nvm_write((void*)&N_monero_pstate->account_id, &value, sizeof(unsigned int));
     monero_init();
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 
 void ui_menu_account_display(unsigned int value) {
@@ -505,7 +529,7 @@ void ui_menu_account_display(unsigned int value) {
 void ui_menu_network_action(unsigned int value);
 const ux_menu_entry_t ui_menu_network[] = {
     {NULL, NULL, 0, NULL, "It will reset", "the application!", 0, 0},
-    {NULL, ui_menu_main_display, 0, &C_badge_back, "Abort", NULL, 61, 40},
+    {NULL, ui_menu_main_display_value, 0, &C_badge_back, "Abort", NULL, 61, 40},
     {NULL, ui_menu_network_action, TESTNET, NULL, "Test Network ", NULL, 0, 0},
     {NULL, ui_menu_network_action, STAGENET, NULL, "Stage Network", NULL, 0, 0},
 #ifndef MONERO_ALPHA
@@ -542,7 +566,7 @@ const bagl_element_t* ui_menu_network_preprocessor(const ux_menu_entry_t* entry,
 void ui_menu_network_action(unsigned int value) {
     monero_install(value);
     monero_init();
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 
 void ui_menu_network_display(unsigned int value) {
@@ -553,7 +577,7 @@ void ui_menu_network_display(unsigned int value) {
 
 const ux_menu_entry_t ui_menu_reset[] = {
     {NULL, NULL, 0, NULL, "Really Reset ?", NULL, 0, 0},
-    {NULL, ui_menu_main_display, 0, &C_badge_back, "No", NULL, 61, 40},
+    {NULL, ui_menu_main_display_value, 0, &C_badge_back, "No", NULL, 61, 40},
     {NULL, ui_menu_reset_action, 0, NULL, "Yes", NULL, 0, 0},
     UX_MENU_END};
 
@@ -565,7 +589,7 @@ void ui_menu_reset_action(unsigned int value __attribute__((unused))) {
     magic[3] = 0;
     monero_nvm_write(N_monero_pstate->magic, magic, 4);
     monero_init();
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
@@ -574,7 +598,7 @@ const ux_menu_entry_t ui_menu_settings[] = {
     {NULL, ui_menu_network_display, 0, NULL, "Select Network", NULL, 0, 0},
     {NULL, ui_menu_words_display, 0, NULL, "Show 25 words", NULL, 0, 0},
     {ui_menu_reset, NULL, 0, NULL, "Reset", NULL, 0, 0},
-    {NULL, ui_menu_main_display, 2, &C_badge_back, "Back", NULL, 61, 40},
+    {NULL, ui_menu_main_display_value, 2, &C_badge_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 
 void ui_menu_settings_display(unsigned int value) {
@@ -591,7 +615,7 @@ const ux_menu_entry_t ui_menu_about[] = {
     {NULL, NULL, -1, NULL, "(c) Ledger SAS", NULL, 0, 0},
     {NULL, NULL, -1, NULL, "Spec  " XSTR(SPEC_VERSION), NULL, 0, 0},
     {NULL, NULL, -1, NULL, "App  " XSTR(MONERO_VERSION), NULL, 0, 0},
-    {NULL, ui_menu_main_display, 3, &C_badge_back, "Back", NULL, 61, 40},
+    {NULL, ui_menu_main_display_value, 3, &C_badge_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 
 #undef STR
@@ -611,7 +635,8 @@ const ux_menu_entry_t ui_menu_pubaddr[] = {
     {NULL, NULL, 7, NULL, "l3.1", "l3.2", 0, 0},
     {NULL, NULL, 6, NULL, "l4.1", "l4.2", 0, 0},
     {NULL, NULL, 7, NULL, "l5.1", "l5.2", 0, 0},
-    //{NULL,  ui_menu_main_display,  0, &C_badge_back, "Back",                     NULL, 61, 40},
+    //{NULL,  ui_menu_main_display_value,  0, &C_badge_back, "Back",                     NULL, 61,
+    // 40},
     {NULL, ui_menu_pubaddr_action, 0, &C_badge_back, "Ok", NULL, 61, 40},
     UX_MENU_END};
 
@@ -743,7 +768,7 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
     G_monero_vstate.disp_addr_mode = 0;
     G_monero_vstate.disp_addr_M = 0;
     G_monero_vstate.disp_addr_m = 0;
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
 }
 
 void ui_menu_any_pubaddr_display(unsigned int value, unsigned char* pub_view,
@@ -773,12 +798,16 @@ const ux_menu_entry_t ui_menu_main[] = {
     {NULL, (void*)os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
     UX_MENU_END};
 
-void ui_menu_main_display(unsigned int value) {
+void ui_menu_main_display_value(unsigned int value) {
     UX_MENU_DISPLAY(value, ui_menu_main, NULL);
 }
 
+void ui_menu_main_display(void) {
+    ui_menu_main_display_value(0);
+}
+
 void ui_init(void) {
-    ui_menu_main_display(0);
+    ui_menu_main_display_value(0);
     // setup the first screen changing
     UX_CALLBACK_SET_INTERVAL(1000);
 }

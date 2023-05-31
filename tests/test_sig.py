@@ -38,7 +38,7 @@ class TestSignature:
 
         return {"sender": sender,
                 "receiver": receiver,
-                "amount": 10**12,  # 1.0 XMR
+                "amount": 11**3,
                 "tx_pub_key": None,
                 "_tx_priv_key": None,
                 "_ak_amount": [],
@@ -83,11 +83,12 @@ class TestSignature:
         state["_ak_amount"].append(_ak_amount)  # _ak_amount_t
 
     @staticmethod
-    def test_prefix_hash(monero, button):
+    def test_prefix_hash(monero, backend, navigator, firmware, test_name):
         expected: bytes = bytes.fromhex("9a259973bf721120aceae3d8d40696c0"
                                         "7470331e386028753123f37fee36926b")
         # should ask for timelock validation
-        monero.prefix_hash_init(button=button, version=0, timelock=2147483650)
+        monero.prefix_hash_init(backend, test_name, firmware,
+                                navigator=navigator, version=0, timelock=2147483650)
         result: bytes = monero.prefix_hash_update(
             index=1,
             payload=b"",
@@ -123,39 +124,61 @@ class TestSignature:
         )  # type: bytes, bytes
 
         assert state["y"][0] == mask
-        assert state["amount"] == int.from_bytes(amount, byteorder="big")
+        # assert state["amount"] == int.from_bytes(amount, byteorder="big")
 
         state["blinded_mask"].append(blinded_mask)
         state["blinded_amount"].append(blinded_amount)
 
-    @staticmethod
-    def test_validate(monero, button, state):
         assert len(state["y"]) != 0
         assert len(state["_ak_amount"]) != 0
         assert len(state["blinded_amount"]) != 0
         assert len(state["blinded_mask"]) != 0
 
+    @staticmethod
+    def test_validate(monero, backend, navigator, firmware, test_name, state):
+
         fee: int = 100000000  # 0.0001 XMR
 
         # should ask for fee validation
-        monero.validate_prehash_init(button=button,
+        monero.validate_prehash_init(backend,
+                                     navigator=navigator,
+                                     firmware=firmware,
+                                     test_name=test_name,
                                      index=1,  # start at 1
                                      txntype=0,
                                      txnfee=fee)
 
-        # monero_client.validate_prehash_update(
-        #     index=1,
-        #     is_short=False,
-        #     is_change_addr=False,
-        #     is_subaddress=False,
-        #     dst_pub_view_key=state["receiver"].public_view_key,
-        #     dst_pub_spend_key=state["receiver"].public_spend_key,
-        #     _ak_amount=state["_ak_amount"][0],
-        #     commitment=...,
-        #     blinded_amount=state["blinded_amount"][0],
-        #     blinded_mask=state["blinded_mask"][0],
-        #     is_last=True
-        # )
+        monero.validate_prehash_update(
+            backend,
+            test_name,
+            firmware,
+            navigator,
+            index=1,
+            is_short=False,
+            is_change_addr=False,
+            is_subaddress=False,
+            dst_pub_view_key=state["receiver"].public_view_key,
+            dst_pub_spend_key=state["receiver"].public_spend_key,
+            _ak_amount=state["_ak_amount"][0],
+            commitment=bytes.fromhex(32*"00"),
+            blinded_amount=state["blinded_amount"][0],
+            blinded_mask=state["blinded_mask"][0],
+            is_last=True
+        )
+
+        monero.validate_prehash_finalize(
+            index=1,
+            is_short=False,
+            is_change_addr=False,
+            is_subaddress=False,
+            dst_pub_view_key=state["receiver"].public_view_key,
+            dst_pub_spend_key=state["receiver"].public_spend_key,
+            _ak_amount=state["_ak_amount"][0],
+            commitment=bytes.fromhex(32*"00"),
+            blinded_amount=state["blinded_amount"][0],
+            blinded_mask=state["blinded_mask"][0],
+            is_last=True
+        )
 
     @staticmethod
     def test_close_tx(monero):

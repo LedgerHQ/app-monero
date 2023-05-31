@@ -48,7 +48,7 @@ int monero_apdu_prefix_hash_init(void) {
             ui_menu_timelock_validation_display(0);
             return 0;
         } else {
-            return SW_OK;
+            return ui_menu_transaction_start();
         }
     } else {
         monero_io_discard(1);

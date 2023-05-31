@@ -1,0 +1,23 @@
+name: Ensure compliance with Ledger guidelines
+
+# This workflow is mandatory in all applications
+# It calls a reusable workflow guidelines_enforcer developed by Ledger's internal developer team.
+# The successful completion of the reusable workflow is a mandatory step for an app to be available on the Ledger
+# application store.
+#
+# More information on the guidelines can be found in the repository:
+# LedgerHQ/ledger-app-workflows/
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  guidelines_enforcer:
+    name: Call Ledger guidelines_enforcer
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_guidelines_enforcer.yml@v1

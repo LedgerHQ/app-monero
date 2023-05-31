@@ -6,15 +6,19 @@ from .exception.device_error import DeviceError
 from .monero_types import InsType
 from .monero_types import Type
 from .io.transport import Transport
+from pathlib import Path
+from ragger.navigator import NavInsID, NavIns
+from .utils.utils import get_nano_review_instructions
 
 PROTOCOL_VERSION: int = 3
+TESTS_ROOT_DIR = Path(__file__).parent
 
 
 class MoneroCryptoCmd:
     HMAC_KEY: bytes = b"\xab" * 32
 
-    def __init__(self, debug: bool = False, speculos: bool = False) -> None:
-        self.device = Transport(debug=debug, speculos=speculos)
+    def __init__(self, backend, debug: bool = False) -> None:
+        self.device = Transport(backend, debug=debug)
         self.is_in_tx_mode = False
 
     @staticmethod
@@ -102,19 +106,69 @@ class MoneroCryptoCmd:
 
         return view_pub_key, spend_pub_key, base58_address
 
-    def get_private_view_key(self, button) -> bytes:
+    def display_address(self, test_name, firmware, navigator, derivation: bytes, output_index: bytes) -> bytes:
+        ins: InsType = InsType.INS_DISPLAY_ADDRESS
+
+        payload: bytes = b"".join([
+            derivation,
+            output_index,
+        ])
+
+        if firmware.device == "nanos":
+            instructions = get_nano_review_instructions(7)
+        elif firmware.device.startswith("nano"):
+            instructions = get_nano_review_instructions(4)
+        else:
+            instructions = [
+                NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM),
+                NavIns(NavInsID.TOUCH, (200, 410)),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_TAP),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
+                NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
+            ]
+
+        with self.device.send_async(cla=PROTOCOL_VERSION,
+                                    ins=ins,
+                                    p1=0,
+                                    p2=0,
+                                    option=0,
+                                    payload=payload):
+
+            navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                           test_name,
+                                           instructions)
+
+        sw, response = self.device.async_response()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(sw, ins, "P1=2")
+
+        return response  # priv_view_key
+
+    def get_private_view_key(self, test_name, firmware, navigator) -> bytes:
         ins: InsType = InsType.INS_GET_KEY
 
-        self.device.send(cla=PROTOCOL_VERSION,
-                         ins=ins,
-                         p1=2,
-                         p2=0,
-                         option=0)
+        if firmware.device == "nanos":
+            instructions = get_nano_review_instructions(1)
+        elif firmware.device.startswith("nano"):
+            instructions = get_nano_review_instructions(1)
+        else:
+            instructions = [
+                NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM)
+            ]
 
-        # "Export View Key"
-        button.right_click()
+        with self.device.send_async(cla=PROTOCOL_VERSION,
+                                    ins=ins,
+                                    p1=2,
+                                    p2=0,
+                                    option=0):
 
-        sw, response = self.device.recv()  # type: int, bytes
+            navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                           test_name,
+                                           instructions)
+
+        sw, response = self.device.async_response()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=2")

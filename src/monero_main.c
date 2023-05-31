@@ -94,7 +94,9 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
             break;
         // power off if long push, else pass to the application callback if any
         case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:  // for Nano S
+#ifdef HAVE_BAGL
             UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif
             break;
 
         // other events are propagated to the UX just in case
@@ -103,14 +105,21 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
             break;
 
         case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
             UX_DISPLAYED_EVENT({});
+#endif  // HAVE_BAGL
+#ifdef HAVE_NBGL
+            UX_DEFAULT_EVENT();
+#endif  // HAVE_NBGL
             break;
         case SEPROXYHAL_TAG_TICKER_EVENT:
             UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
+#ifdef HAVE_BAGL
                 // only allow display when not locked of overlayed by an OS UX.
                 if (UX_ALLOWED) {
                     UX_REDISPLAY();
                 }
+#endif
             });
             break;
     }
@@ -182,6 +191,7 @@ __attribute__((section(".boot"))) int main(void) {
     // ensure exception will work as planned
     os_boot();
     while (cont) {
+        // Initialize the UX system
         UX_INIT();
 
         BEGIN_TRY {
@@ -196,11 +206,11 @@ __attribute__((section(".boot"))) int main(void) {
                 io_usb_ccid_set_card_inserted(1);
 #endif
 
-#ifdef TARGET_NANOX
+#ifdef HAVE_BLE
                 G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
                 BLE_power(0, NULL);
-                BLE_power(1, "Nano X - Monero");
-#endif
+                BLE_power(1, NULL);
+#endif  // HAVE_BLE
 
                 monero_init();
 
@@ -216,10 +226,12 @@ __attribute__((section(".boot"))) int main(void) {
             }
             CATCH(EXCEPTION_IO_RESET) {
                 // reset IO and UX
+                CLOSE_TRY;
                 ;
             }
             CATCH_OTHER(e) {
                 cont = 0;
+                CLOSE_TRY;
             }
             FINALLY {
             }

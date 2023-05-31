@@ -1,30 +1,30 @@
 from typing import Dict, Tuple
 import pytest
 
-from monero_client.io.button import Button, FakeButton
 from monero_client.monero_cmd import MoneroCmd
 
-SPECULOS: bool = True
+from ragger.conftest import configuration
+
+###########################
+### CONFIGURATION START ###
+###########################
+MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+
+configuration.OPTIONAL.CUSTOM_SEED = MNEMONIC
+
+#########################
+### CONFIGURATION END ###
+#########################
+
+# Pull all features from the base ragger conftest using the overridden configuration
+pytest_plugins = ("ragger.conftest.base_conftest", )
 
 
-@pytest.fixture(scope="module")
-def monero():
-    monero_client = MoneroCmd(debug=True,
-                              speculos=SPECULOS)
+@pytest.fixture()
+def monero(backend, debug=False):
+    monero_client = MoneroCmd(debug, backend)
 
     yield monero_client
-
-    monero_client.device.close()
-
-
-@pytest.fixture(scope="module")
-def button():
-    button_client = (Button(server="127.0.0.1", port=42000)
-                     if SPECULOS else FakeButton())
-
-    yield button_client
-
-    button_client.close()
 
 
 _test_failed_incremental: Dict[str, Dict[Tuple[int, ...], str]] = {}

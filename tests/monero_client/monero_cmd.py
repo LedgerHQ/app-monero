@@ -24,15 +24,18 @@ from .monero_crypto_cmd import MoneroCryptoCmd
 from .monero_types import InsType, Type, SigType
 from .crypto.hmac import hmac_sha256
 from .exception.device_error import DeviceError
-from .io.button import Button
 from .utils.varint import encode_varint
+from .utils.utils import get_nano_review_instructions, get_stax_review_instructions
+from pathlib import Path
+from ragger.navigator import NavInsID, NavIns
 
 PROTOCOL_VERSION: int = 3
+TESTS_ROOT_DIR = Path(__file__).parent
 
 
 class MoneroCmd(MoneroCryptoCmd):
-    def __init__(self, debug: bool = False, speculos: bool = False) -> None:
-        MoneroCryptoCmd.__init__(self, debug, speculos)
+    def __init__(self, debug, backend) -> None:
+        MoneroCryptoCmd.__init__(self, backend, debug)
 
     def reset_and_get_version(self,
                               monero_client_version: bytes
@@ -201,7 +204,7 @@ class MoneroCmd(MoneroCryptoCmd):
 
         return _ak_amount, out_ephemeral_pub_key
 
-    def prefix_hash_init(self, button: Button, version: int, timelock: int) -> None:
+    def prefix_hash_init(self, backend, test_name, firmware, navigator, version: int, timelock: int) -> None:
         ins: InsType = InsType.INS_PREFIX_HASH
 
         payload: bytes = b"".join([
@@ -209,21 +212,27 @@ class MoneroCmd(MoneroCryptoCmd):
             encode_varint(timelock)
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
-                         ins=ins,
-                         p1=1,
-                         p2=0,
-                         option=0,
-                         payload=payload)
+        if firmware.device == "nanos":
+            instructions = get_nano_review_instructions(2)
+        elif firmware.device.startswith("nano"):
+            instructions = get_nano_review_instructions(1)
+        else:
+            instructions = [
+                NavIns(NavInsID.USE_CASE_REVIEW_TAP)
+            ]
 
-        # "Timelock" -> go down
-        button.right_click()
-        # "Reject Timelock" -> go down
-        button.right_click()
-        # "Accept Timelock" -> accept
-        button.both_click()
+        with self.device.send_async(cla=PROTOCOL_VERSION,
+                                    ins=ins,
+                                    p1=1,
+                                    p2=0,
+                                    option=0,
+                                    payload=payload):
 
-        sw, response = self.device.recv()  # type: int, bytes
+            navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                           test_name + "_hash_init",
+                                           instructions, screen_change_after_last_instruction=False)
+
+        sw, response = self.device.async_response()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
@@ -346,7 +355,10 @@ class MoneroCmd(MoneroCryptoCmd):
         return mask, amount
 
     def validate_prehash_init(self,
-                              button: Button,
+                              backend,
+                              test_name,
+                              firmware,
+                              navigator,
                               index: int,
                               txntype: int,
                               txnfee: int) -> None:
@@ -355,21 +367,30 @@ class MoneroCmd(MoneroCryptoCmd):
         # txntype is skipped in the app
         payload: bytes = struct.pack("B", txntype) + encode_varint(txnfee)
 
-        self.device.send(cla=PROTOCOL_VERSION,
-                         ins=ins,
-                         p1=1,
-                         p2=index,
-                         option=0,
-                         payload=payload)
+        if firmware.device == "nanos":
+            instructions = get_nano_review_instructions(2)
+        elif firmware.device.startswith("nano"):
+            instructions = get_nano_review_instructions(1)
+        else:
+            instructions = [
+                NavIns(NavInsID.USE_CASE_REVIEW_TAP)
+            ]
 
-        # "Fee" -> go down
-        button.right_click()
-        # "Reject Fee" -> go down
-        button.right_click()
-        # "Accept Fee" -> accept
-        button.both_click()
+        with self.device.send_async(cla=PROTOCOL_VERSION,
+                                    ins=ins,
+                                    p1=1,
+                                    p2=index,
+                                    option=0,
+                                    payload=payload):
 
-        sw, response = self.device.recv()  # type: int, bytes
+            if firmware.device.startswith("nano"):
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name + "_prehash_init",
+                                               instructions, screen_change_after_last_instruction=False)
+            else:
+                pass
+
+        sw, response = self.device.async_response()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
@@ -377,6 +398,10 @@ class MoneroCmd(MoneroCryptoCmd):
         assert len(response) == 0
 
     def validate_prehash_update(self,
+                                backend,
+                                test_name,
+                                firmware,
+                                navigator,
                                 index: int,
                                 is_short: bool,
                                 is_change_addr: bool,
@@ -404,14 +429,32 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
-        self.device.send(cla=PROTOCOL_VERSION,
-                         ins=ins,
-                         p1=2,
-                         p2=index,
-                         option=(0 if is_last else 0x80) | (0x02 if is_short else 0),
-                         payload=payload)
+        if firmware.device == "nanos":
+            instructions = get_nano_review_instructions(7)
+        elif firmware.device.startswith("nano"):
+            instructions = get_nano_review_instructions(3)
+        else:
+            instructions = [
+                NavIns(NavInsID.USE_CASE_REVIEW_TAP),
+                NavIns(NavInsID.USE_CASE_REVIEW_TAP),
+                NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
+            ]
 
-        sw, response = self.device.recv()  # type: int, bytes
+        with self.device.send_async(cla=PROTOCOL_VERSION,
+                                    ins=ins,
+                                    p1=2,
+                                    p2=index,
+                                    option=(0 if is_last else 0x80) | (
+                                        0x02 if is_short else 0),
+                                    payload=payload):
+
+            backend.wait_for_text_on_screen("Processing")
+            backend.wait_for_text_not_on_screen("Processing")
+            navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                           test_name + "_prehash_update",
+                                           instructions, screen_change_after_last_instruction=False, screen_change_before_first_instruction=False)
+
+        sw, response = self.device.async_response()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=2 (update)")
@@ -458,4 +501,4 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=3 (finalize)")
 
-        assert len(response) == 0
+        assert len(response) == 32

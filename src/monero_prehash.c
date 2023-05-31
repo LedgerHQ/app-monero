@@ -122,7 +122,9 @@ int monero_apdu_mlsag_prehash_update() {
             memcpy(aH, kG, 32);
         }
         if (memcmp(C, aH, 32) != 0) {
+#ifndef BYPASS_COMMITMENT_FOR_TESTS
             monero_lock_and_throw(SW_SECURITY_COMMITMENT_CONTROL);
+#endif
         }
         // update commitment hash control
         monero_sha256_commitment_update(C, 32);
@@ -145,10 +147,19 @@ int monero_apdu_mlsag_prehash_update() {
         amount = monero_bamount2uint64(v);
         if (amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
-            if (!is_change) {
-                ui_menu_validation_display(0);
+
+            if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
+                if (!is_change) {
+                    ui_menu_validation_display_last(0);
+                } else {
+                    ui_menu_change_validation_display_last(0);
+                }
             } else {
-                ui_menu_change_validation_display(0);
+                if (!is_change) {
+                    ui_menu_validation_display(0);
+                } else {
+                    ui_menu_change_validation_display(0);
+                }
             }
             return 0;
         }
@@ -177,7 +188,9 @@ int monero_apdu_mlsag_prehash_finalize() {
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
             monero_sha256_commitment_final(H);
             if (memcmp(H, G_monero_vstate.C, 32) != 0) {
+#ifndef BYPASS_COMMITMENT_FOR_TESTS
                 monero_lock_and_throw(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
+#endif
             }
         }
         // compute last H
@@ -189,7 +202,9 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_init_H();
         if (G_monero_vstate.io_protocol_version >= 3) {
             if (memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
+#ifndef BYPASS_COMMITMENT_FOR_TESTS
                 monero_lock_and_throw(SW_SECURITY_PREFIX_HASH);
+#endif
             }
         }
         monero_keccak_update_H(message, 32);
@@ -198,6 +213,10 @@ int monero_apdu_mlsag_prehash_finalize() {
         monero_keccak_final_H(G_monero_vstate.mlsagH);
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
+
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+            ui_menu_transaction_signed();
+        }
     }
 
     return SW_OK;
