@@ -51,7 +51,6 @@ void monero_main(void) {
                 sw = 0;
                 cont = 0;
                 monero_io_discard(1);
-                // THROW(EXCEPTION_IO_RESET);
             }
             CATCH_OTHER(e) {
                 monero_reset_tx(1);
@@ -80,7 +79,7 @@ void monero_main(void) {
     }
 }
 
-unsigned char io_event(unsigned char channel) {
+unsigned char io_event(unsigned char channel __attribute__((unused))) {
     unsigned int s_before;
     unsigned int s_after;
 
@@ -164,8 +163,11 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
 
 void app_exit(void) {
     BEGIN_TRY_L(exit) {
-        TRY_L(exit) { os_sched_exit(-1); }
-        FINALLY_L(exit) {}
+        TRY_L(exit) {
+            os_sched_exit(-1);
+        }
+        FINALLY_L(exit) {
+        }
     }
     END_TRY_L(exit);
 }
@@ -216,8 +218,11 @@ __attribute__((section(".boot"))) int main(void) {
                 // reset IO and UX
                 ;
             }
-            CATCH_OTHER(e) { cont = 0; }
-            FINALLY {}
+            CATCH_OTHER(e) {
+                cont = 0;
+            }
+            FINALLY {
+            }
         }
         END_TRY;
     }
