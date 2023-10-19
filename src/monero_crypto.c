@@ -86,6 +86,9 @@ void monero_aes_generate(cx_aes_key_t *sk) {
 unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, uint64_t value) {
     unsigned int len;
     len = 0;
+    if (!varint) {
+        return 0;
+    }
     while (value >= 0x80) {
         if (len == (max_len - 1)) {
             THROW(SW_WRONG_DATA_RANGE);
@@ -106,6 +109,9 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, u
     size_t len;
     v = 0;
     len = 0;
+    if (!varint) {
+        return 0;
+    }
     while ((varint[len]) & 0x80) {
         if (len == (max_len - 1)) {
             THROW(SW_WRONG_DATA_RANGE);
@@ -125,6 +131,9 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, u
 void monero_reverse32(unsigned char *rscal, unsigned char *scal) {
     unsigned char x;
     unsigned int i;
+    if (!rscal || !scal) {
+        return;
+    }
     for (i = 0; i < 16; i++) {
         x = scal[i];
         rscal[i] = scal[31 - i];
@@ -627,6 +636,9 @@ void monero_check_scalar_not_null(unsigned char *s) {
 void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
     unsigned char Pxy[65];
     unsigned char s[32];
+    if (!W) {
+        return;
+    }
     monero_reverse32(s, scalar32);
     memcpy(Pxy, C_ED25519_G, 65);
     cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
@@ -641,6 +653,9 @@ void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
     unsigned char Pxy[65];
     unsigned char s[32];
 
+    if (!W) {
+        return;
+    }
     monero_reverse32(s, scalar32);
 
     Pxy[0] = 0x02;
@@ -660,6 +675,9 @@ void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32)
     unsigned char Pxy[65];
     unsigned char s[32];
 
+    if (!W || !P) {
+        return;
+    }
     monero_reverse32(s, scalar32);
 
     Pxy[0] = 0x02;
@@ -687,6 +705,9 @@ void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32
 void monero_ecmul_8(unsigned char *W, unsigned char *P) {
     unsigned char Pxy[65];
 
+    if (!W || !P) {
+        return;
+    }
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
     cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
@@ -703,6 +724,10 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P) {
 void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
     unsigned char Pxy[65];
     unsigned char Qxy[65];
+
+    if (!W || !P || !Q) {
+        return;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
@@ -724,6 +749,10 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
 void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
     unsigned char Pxy[65];
     unsigned char Qxy[65];
+
+    if (!W || !P || !Q) {
+        return;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
@@ -756,6 +785,9 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
 */
 void monero_ecdhHash(unsigned char *x, unsigned char *k) {
     unsigned char data[38];
+    if (!k) {
+        return;
+    }
     memcpy(data, "amount", 6);
     memcpy(data + 6, k, 32);
     monero_keccak_F(data, 38, x);
@@ -777,6 +809,9 @@ void monero_ecdhHash(unsigned char *x, unsigned char *k) {
 */
 void monero_genCommitmentMask(unsigned char *c, unsigned char *sk) {
     unsigned char data[15 + 32];
+    if (!sk) {
+        return;
+    }
     memcpy(data, "commitment_mask", 15);
     memcpy(data + 15, sk, 32);
     monero_hash_to_scalar(c, data, 15 + 32);
@@ -862,6 +897,9 @@ void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len;
 
+    if (!str) {
+        return;
+    }
     memset(str, 0, str_len);
 
     offset = 22;
@@ -886,6 +924,9 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len, ov;
 
+    if (!str) {
+        return -1; 
+    }
     memset(str, 0, str_len);
 
     memset(stramount, '0', sizeof(stramount));
@@ -939,6 +980,9 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
 uint64_t monero_bamount2uint64(unsigned char *binary) {
     uint64_t xmr;
     int i;
+    if (!binary) {
+        return 0;
+    }
     xmr = 0;
     for (i = 7; i >= 0; i--) {
         xmr = xmr * 256 + binary[i];
