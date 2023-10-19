@@ -24,14 +24,14 @@
 
 #include "os_io_seproxyhal.h"
 
-unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+extern unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
 #ifdef HAVE_UX_FLOW
 /* --- "NANO-X" and "NANO-S flow" config --- */
 
 #include "ux.h"
-ux_state_t G_ux;
-bolos_ux_params_t G_ux_params;
+extern ux_state_t G_ux;
+extern bolos_ux_params_t G_ux_params;
 
 #else
 /* --- "NANO-S legacy" config --- */

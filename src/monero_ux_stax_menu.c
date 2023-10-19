@@ -49,9 +49,6 @@ typedef struct {
 
 static TransactionContext_t transactionContext;
 
-ux_state_t G_ux;
-bolos_ux_params_t G_ux_params;
-
 enum {
     ACCOUNT_TOKEN = FIRST_USER_TOKEN,
     NETWORK_TOKEN,
