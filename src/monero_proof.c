@@ -39,15 +39,15 @@ int monero_apdu_get_tx_proof() {
 #define k (G_monero_vstate.tmp + 256)
 
     msg = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     R = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     A = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     B = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     D = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     monero_io_fetch_decrypt_key(r);
 
     monero_io_discard(0);

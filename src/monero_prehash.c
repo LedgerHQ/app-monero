@@ -80,9 +80,9 @@ int monero_apdu_mlsag_prehash_update() {
         is_change = 0;
     }
     Aout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     Bout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
     monero_io_fetch(C, 32);
     monero_io_fetch(k, 32);

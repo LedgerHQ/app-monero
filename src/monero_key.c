@@ -742,11 +742,11 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     monero_io_fetch_u32();  // skip tx_version
     monero_io_fetch_decrypt_key(tx_key);
     txkey_pub = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     Aout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     Bout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
-    monero_io_fetch(NULL, 32);
+    monero_io_skip(32);
     output_index = monero_io_fetch_u32();
     is_change = monero_io_fetch_u8();
     is_subaddress = monero_io_fetch_u8();
@@ -754,7 +754,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     if (need_additional_txkeys) {
         monero_io_fetch_decrypt_key(additional_txkey_sec);
     } else {
-        monero_io_fetch(NULL, 32);
+        monero_io_skip(32);
     }
     use_view_tags = monero_io_fetch_u8();
 

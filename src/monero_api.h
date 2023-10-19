@@ -371,6 +371,7 @@ int monero_io_fetch_t(unsigned int *T);
 int monero_io_fetch_l(unsigned int *L);
 int monero_io_fetch_tl(unsigned int *T, unsigned int *L);
 int monero_io_fetch_nv(unsigned char *buffer, int len);
+void monero_io_skip(int len);
 int monero_io_fetch(unsigned char *buffer, int len);
 int monero_io_fetch_decrypt(unsigned char *buffer, size_t len, int type);
 int monero_io_fetch_decrypt_key(unsigned char *buffer, size_t len);

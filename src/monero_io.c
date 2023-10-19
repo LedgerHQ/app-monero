@@ -211,6 +211,11 @@ void monero_io_assert_available(int sz) {
     }
 }
 
+void monero_io_skip(int len) {
+    monero_io_assert_available(len);
+    G_monero_vstate.io_offset += len;
+}
+
 int monero_io_fetch(unsigned char* buffer, int len) {
     monero_io_assert_available(len);
     if (buffer) {
