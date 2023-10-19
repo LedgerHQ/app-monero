@@ -325,7 +325,7 @@ int monero_apdu_get_key() {
         // get info
         case 3: {
             unsigned int path[5];
-            unsigned char seed[32];
+            unsigned char seed[64];
 
             // m/44'/128'/0'/0/0
             path[0] = 0x8000002C;
@@ -334,7 +334,9 @@ int monero_apdu_get_key() {
             path[3] = 0x00000000;
             path[4] = 0x00000000;
 
-            os_perso_derive_node_bip32(CX_CURVE_SECP256K1, path, 5, seed, G_monero_vstate.a);
+            if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, path, 5, seed, G_monero_vstate.a)) {
+                return SW_WRONG_DATA;
+            }
             monero_io_insert(seed, 32);
 
             monero_io_insert(G_monero_vstate.b, 32);

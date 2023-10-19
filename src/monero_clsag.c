@@ -91,7 +91,10 @@ int monero_apdu_clsag_hash() {
     unsigned char c[32];
 
     if (G_monero_vstate.io_p2 == 1) {
-        monero_keccak_init_H();
+        if (monero_keccak_init_H()) 
+        {
+            return SW_WRONG_DATA;
+        }
     }
 
     monero_io_fetch(msg, 32);

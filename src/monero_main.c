@@ -133,7 +133,8 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
 
     if (s_before != s_after) {
         if (s_after == PIN_VERIFIED) {
-            monero_init_private_key();
+            if (!monero_init_private_key()) {
+            }
         } else {
             ;  // do nothing, allowing TX parsing in lock mode
             // monero_wipe_private_key();

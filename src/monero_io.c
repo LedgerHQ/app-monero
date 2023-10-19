@@ -117,7 +117,7 @@ void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
     monero_io_insert(hmac, 32);
 }
 
-void monero_io_insert_encrypt(unsigned char* buffer, int len, int type) {
+void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
     // for now, only 32bytes block are allowed
     if (len != 32) {
         THROW(SW_WRONG_DATA);
@@ -126,14 +126,16 @@ void monero_io_insert_encrypt(unsigned char* buffer, int len, int type) {
     monero_io_hole(len);
 
 #if defined(IODUMMYCRYPT)
-    for (int i = 0; i < len; i++) {
+    for (unsigned int i = 0; i < len; i++) {
         G_monero_vstate.io_buffer[G_monero_vstate.io_offset + i] = buffer[i] ^ 0x55;
     }
 #elif defined(IONOCRYPT)
     memcpy(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, buffer, len);
 #else
-    cx_aes(&G_monero_vstate.spk, CX_ENCRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE, buffer, len,
-           G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len);
+    if (cx_aes_no_throw(&G_monero_vstate.spk, CX_ENCRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE, buffer, len,
+           G_monero_vstate.io_buffer + G_monero_vstate.io_offset, &len)) {
+        send_error_and_kill_app(SW_SECURITY_INTERNAL);
+    }
 #endif
     G_monero_vstate.io_offset += len;
     if (G_monero_vstate.tx_in_progress) {
@@ -262,14 +264,14 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type) {
 
     if (buffer) {
 #if defined(IODUMMYCRYPT)
-        for (int i = 0; i < len; i++) {
+        for (unsigned int i = 0; i < len; i++) {
             buffer[i] = G_monero_vstate.io_buffer[G_monero_vstate.io_offset + i] ^ 0x55;
         }
 #elif defined(IONOCRYPT)
         memcpy(buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len);
 #else  // IOCRYPT
-        cx_aes(&G_monero_vstate.spk, CX_DECRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE,
-               G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len, buffer, len);
+        error = cx_aes_no_throw(&G_monero_vstate.spk, CX_DECRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE,
+               G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len, buffer, &len);
 #endif
     }
     G_monero_vstate.io_offset += len;

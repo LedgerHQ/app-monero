@@ -56,7 +56,7 @@ unsigned char const C_EIGHT[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
+int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
                        unsigned char *b) {
     unsigned char h1[32];
 
@@ -68,7 +68,7 @@ void monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a
 
     monero_keccak_H(h1, 32, h1);
 
-    cx_aes_init_key(h1, 16, sk);
+    return cx_aes_init_key_no_throw(h1, 16, sk);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -77,7 +77,7 @@ void monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a
 void monero_aes_generate(cx_aes_key_t *sk) {
     unsigned char h1[16];
     cx_rng(h1, 16);
-    cx_aes_init_key(h1, 16, sk);
+    cx_aes_init_key_no_throw(h1, 16, sk);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -139,22 +139,22 @@ void monero_hash_init_sha256(cx_hash_t *hasher) {
     cx_sha256_init((cx_sha256_t *)hasher);
 }
 
-void monero_hash_init_keccak(cx_hash_t *hasher) {
-    cx_keccak_init((cx_sha3_t *)hasher, 256);
+int monero_hash_init_keccak(cx_hash_t *hasher) {
+    return cx_keccak_init_no_throw((cx_sha3_t *)hasher, 256);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_update(cx_hash_t *hasher, const unsigned char *buf, unsigned int len) {
-    cx_hash(hasher, 0, buf, len, NULL, 0);
+int monero_hash_update(cx_hash_t *hasher, const unsigned char *buf, unsigned int len) {
+    return cx_hash_no_throw(hasher, 0, buf, len, NULL, 0);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
-    return cx_hash(hasher, CX_LAST, NULL, 0, out, 32);
+    return cx_hash_no_throw(hasher, CX_LAST, NULL, 0, out, 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -162,12 +162,17 @@ int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
 /* ----------------------------------------------------------------------- */
 int monero_hash(unsigned int algo, cx_hash_t *hasher, const unsigned char *buf, unsigned int len,
                 unsigned char *out) {
+    int err = 0;
     if (algo == CX_SHA256) {
         cx_sha256_init((cx_sha256_t *)hasher);
     } else {
-        cx_keccak_init((cx_sha3_t *)hasher, 256);
+        err = cx_keccak_init_no_throw((cx_sha3_t *)hasher, 256);
+        if (err) {
+            return err;
+        }
     }
-    return cx_hash(hasher, CX_LAST, buf, len, out, 32);
+    err = cx_hash_no_throw(hasher, CX_LAST, buf, len, out, 32);
+    return err;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -331,62 +336,62 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
 
     // cx works in BE
     monero_reverse32(u, bytes);
-    cx_math_modm(u, 32, (unsigned char *)C_ED25519_FIELD, 32);
+    cx_math_modm_no_throw(u, 32, (unsigned char *)C_ED25519_FIELD, 32);
 
     // go on
-    cx_math_multm(v, u, u, MOD); /* 2 * u^2 */
-    cx_math_addm(v, v, v, MOD);
+    cx_math_multm_no_throw(v, u, u, MOD); /* 2 * u^2 */
+    cx_math_addm_no_throw(v, v, v, MOD);
 
     memset(w, 0, 32);
     w[31] = 1;                                           /* w = 1 */
-    cx_math_addm(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
-    cx_math_multm(x, w, w, MOD);                         /* w^2 */
-    cx_math_multm(y, (unsigned char *)C_fe_ma2, v, MOD); /* -2 * A^2 * u^2 */
-    cx_math_addm(x, x, y, MOD);                          /* x = w^2 - 2 * A^2 * u^2 */
+    cx_math_addm_no_throw(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
+    cx_math_multm_no_throw(x, w, w, MOD);                         /* w^2 */
+    cx_math_multm_no_throw(y, (unsigned char *)C_fe_ma2, v, MOD); /* -2 * A^2 * u^2 */
+    cx_math_addm_no_throw(x, x, y, MOD);                          /* x = w^2 - 2 * A^2 * u^2 */
 
 // inline fe_divpowm1(r->X, w, x);     // (w / x)^(m + 1) => fe_divpowm1(r,u,v)
 #define _u w
 #define _v x
-    cx_math_multm(v3, _v, _v, MOD);
-    cx_math_multm(v3, v3, _v, MOD); /* v3 = v^3 */
-    cx_math_multm(uv7, v3, v3, MOD);
-    cx_math_multm(uv7, uv7, _v, MOD);
-    cx_math_multm(uv7, uv7, _u, MOD);                               /* uv7 = uv^7 */
-    cx_math_powm(uv7, uv7, (unsigned char *)C_fe_qm5div8, 32, MOD); /* (uv^7)^((q-5)/8)*/
-    cx_math_multm(uv7, uv7, v3, MOD);
-    cx_math_multm(rX, uv7, w, MOD); /* u^(m+1)v^(-(m+1)) */
+    cx_math_multm_no_throw(v3, _v, _v, MOD);
+    cx_math_multm_no_throw(v3, v3, _v, MOD); /* v3 = v^3 */
+    cx_math_multm_no_throw(uv7, v3, v3, MOD);
+    cx_math_multm_no_throw(uv7, uv7, _v, MOD);
+    cx_math_multm_no_throw(uv7, uv7, _u, MOD);                               /* uv7 = uv^7 */
+    cx_math_powm_no_throw(uv7, uv7, (unsigned char *)C_fe_qm5div8, 32, MOD); /* (uv^7)^((q-5)/8)*/
+    cx_math_multm_no_throw(uv7, uv7, v3, MOD);
+    cx_math_multm_no_throw(rX, uv7, w, MOD); /* u^(m+1)v^(-(m+1)) */
 #undef _u
 #undef _v
 
-    cx_math_multm(y, rX, rX, MOD);
-    cx_math_multm(x, y, x, MOD);
-    cx_math_subm(y, w, x, MOD);
+    cx_math_multm_no_throw(y, rX, rX, MOD);
+    cx_math_multm_no_throw(x, y, x, MOD);
+    cx_math_subm_no_throw(y, w, x, MOD);
     memcpy(z, C_fe_ma, 32);
 
     if (!cx_math_is_zero(y, 32)) {
-        cx_math_addm(y, w, x, MOD);
+        cx_math_addm_no_throw(y, w, x, MOD);
         if (!cx_math_is_zero(y, 32)) {
             goto negative;
         } else {
-            cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb1, MOD);
+            cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb1, MOD);
         }
     } else {
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb2, MOD);
+        cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb2, MOD);
     }
-    cx_math_multm(rX, rX, u, MOD);  // u * sqrt(2 * A * (A + 2) * w / x)
-    cx_math_multm(z, z, v, MOD);    // -2 * A * u^2
+    cx_math_multm_no_throw(rX, rX, u, MOD);  // u * sqrt(2 * A * (A + 2) * w / x)
+    cx_math_multm_no_throw(z, z, v, MOD);    // -2 * A * u^2
     sign = 0;
 
     goto setsign;
 
 negative:
-    cx_math_multm(x, x, (unsigned char *)C_fe_sqrtm1, MOD);
-    cx_math_subm(y, w, x, MOD);
+    cx_math_multm_no_throw(x, x, (unsigned char *)C_fe_sqrtm1, MOD);
+    cx_math_subm_no_throw(y, w, x, MOD);
     if (!cx_math_is_zero(y, 32)) {
-        cx_math_addm(y, w, x, MOD);
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb3, MOD);
+        cx_math_addm_no_throw(y, w, x, MOD);
+        cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb3, MOD);
     } else {
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb4, MOD);
+        cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb4, MOD);
     }
     // r->X = sqrt(A * (A + 2) * w / x)
     // z = -A
@@ -396,16 +401,16 @@ setsign:
     if (fe_isnegative(rX) != sign) {
         cx_math_sub(rX, (unsigned char *)C_ED25519_FIELD, rX, 32);
     }
-    cx_math_addm(rZ, z, w, MOD);
-    cx_math_subm(rY, z, w, MOD);
-    cx_math_multm(rX, rX, rZ, MOD);
+    cx_math_addm_no_throw(rZ, z, w, MOD);
+    cx_math_subm_no_throw(rY, z, w, MOD);
+    cx_math_multm_no_throw(rX, rX, rZ, MOD);
 
     // back to monero y-affine
-    cx_math_invprimem(u, rZ, MOD);
+    cx_math_invprimem_no_throw(u, rZ, MOD);
     Pxy[0] = 0x04;
-    cx_math_multm(&Pxy[1], rX, u, MOD);
-    cx_math_multm(&Pxy[1 + 32], rY, u, MOD);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_math_multm_no_throw(&Pxy[1], rX, u, MOD);
+    cx_math_multm_no_throw(&Pxy[1 + 32], rY, u, MOD);
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(ge, &Pxy[1], 32);
 
 #undef u
@@ -601,7 +606,9 @@ void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
 void monero_check_scalar_range_1N(unsigned char *s) {
     unsigned char x[32];
     monero_reverse32(x, s);
-    if (cx_math_is_zero(x, 32) || cx_math_cmp(x, C_ED25519_ORDER, 32) >= 0) {
+    int diff;
+    cx_math_cmp_no_throw(x, C_ED25519_ORDER, 32, &diff);
+    if (cx_math_is_zero(x, 32) || diff >= 0) {
         THROW(SW_WRONG_DATA_RANGE);
     }
 }
@@ -622,8 +629,8 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
     unsigned char s[32];
     monero_reverse32(s, scalar32);
     memcpy(Pxy, C_ED25519_G, 65);
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
 }
 
@@ -638,10 +645,10 @@ void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], C_ED25519_Hy, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     memcpy(W, &Pxy[1], 32);
 }
@@ -657,10 +664,10 @@ void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32)
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     memcpy(W, &Pxy[1], 32);
 }
@@ -682,11 +689,11 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P) {
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
 }
 
@@ -699,15 +706,15 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     memcpy(&Qxy[1], Q, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
+    cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
 
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
 }
 
@@ -720,16 +727,16 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     memcpy(&Qxy[1], Q, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
     cx_math_sub(Qxy + 1, (unsigned char *)C_ED25519_FIELD, Qxy + 1, 32);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
+    cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
 
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
 }
 
@@ -784,7 +791,7 @@ void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b) {
 
     monero_reverse32(ra, a);
     monero_reverse32(rb, b);
-    cx_math_addm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_addm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, r);
 }
 
@@ -797,7 +804,7 @@ void monero_subm(unsigned char *r, unsigned char *a, unsigned char *b) {
 
     monero_reverse32(ra, a);
     monero_reverse32(rb, b);
-    cx_math_subm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_subm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, r);
 }
 /* ----------------------------------------------------------------------- */
@@ -809,7 +816,7 @@ void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b) {
 
     monero_reverse32(ra, a);
     monero_reverse32(rb, b);
-    cx_math_multm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, r);
 }
 
@@ -823,7 +830,7 @@ void monero_multm_8(unsigned char *r, unsigned char *a) {
     monero_reverse32(ra, a);
     memset(rb, 0, 32);
     rb[31] = 8;
-    cx_math_multm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, r);
 }
 
@@ -833,7 +840,7 @@ void monero_multm_8(unsigned char *r, unsigned char *a) {
 void monero_reduce(unsigned char *r, unsigned char *a) {
     unsigned char ra[32];
     monero_reverse32(ra, a);
-    cx_math_modm(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_modm_no_throw(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, ra);
 }
 
@@ -843,7 +850,7 @@ void monero_reduce(unsigned char *r, unsigned char *a) {
 void monero_rng_mod_order(unsigned char *r) {
     unsigned char rnd[32 + 8];
     cx_rng(rnd, 32 + 8);
-    cx_math_modm(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
+    cx_math_modm_no_throw(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
     monero_reverse32(r, rnd + 8);
 }
 
