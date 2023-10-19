@@ -480,7 +480,6 @@ int monero_io_do(unsigned int io_flags) {
     G_monero_vstate.io_ins = G_io_apdu_buffer[1];
     G_monero_vstate.io_p1 = G_io_apdu_buffer[2];
     G_monero_vstate.io_p2 = G_io_apdu_buffer[3];
-    G_monero_vstate.io_lc = 0;
     G_monero_vstate.io_le = 0;
     G_monero_vstate.io_lc = G_io_apdu_buffer[4];
     memcpy(G_monero_vstate.io_buffer, G_io_apdu_buffer + 5, G_monero_vstate.io_lc);
