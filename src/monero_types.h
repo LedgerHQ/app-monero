@@ -30,9 +30,9 @@
 #endif
 
 /* cannot send more that F0 bytes in CCID, why? do not know for now
- *  So set up length to F0 minus 2 bytes for SW
+ *  So set up length to F0
  */
-#define MONERO_APDU_LENGTH 0xFE
+#define MONERO_APDU_LENGTH 0xF0
 
 /* big private DO */
 #define MONERO_EXT_PRIVATE_DO_LENGTH 512
