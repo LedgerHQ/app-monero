@@ -35,7 +35,7 @@ int monero_apdu_stealth() {
     // fetch pub
     monero_io_fetch(pub, 32);
     // fetch sec
-    monero_io_fetch_decrypt_key(sec);
+    monero_io_fetch_decrypt_key(sec, sizeof(sec));
     // fetch paymentID
     monero_io_fetch(payID, 8);
 

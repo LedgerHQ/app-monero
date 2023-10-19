@@ -314,9 +314,12 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type) {
     return len;
 }
 
-int monero_io_fetch_decrypt_key(unsigned char* buffer) {
+int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
     unsigned char* k;
     if (!buffer) {
+        return -1;
+    }
+    if (buffer_size > 32) {
         return -1;
     }
     monero_io_assert_available(32);
