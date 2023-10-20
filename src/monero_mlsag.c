@@ -52,20 +52,20 @@ int monero_apdu_mlsag_prepare() {
     monero_io_discard(1);
 
     // ai
-    monero_rng_mod_order(alpha);
-    monero_reduce(alpha, alpha);
+    monero_rng_mod_order(alpha, sizeof(alpha));
+    monero_reduce(alpha, alpha, sizeof(alpha), sizeof(alpha));
     monero_io_insert_encrypt(alpha, 32, TYPE_ALPHA);
 
     // ai.G
-    monero_ecmul_G(mul, alpha);
+    monero_ecmul_G(mul, alpha, sizeof(mul), sizeof(alpha));
     monero_io_insert(mul, 32);
 
     if (options) {
         // ai.Hi
-        monero_ecmul_k(mul, Hi, alpha);
+        monero_ecmul_k(mul, Hi, alpha, sizeof(mul), sizeof(Hi), sizeof(alpha));
         monero_io_insert(mul, 32);
         // IIi = xin.Hi
-        monero_ecmul_k(mul, Hi, xin);
+        monero_ecmul_k(mul, Hi, xin, sizeof(mul), sizeof(Hi), sizeof(xin));
         monero_io_insert(mul, 32);
     }
     return SW_OK;
@@ -91,7 +91,7 @@ int monero_apdu_mlsag_hash() {
     monero_keccak_update_H(msg, 32);
     if ((G_monero_vstate.options & 0x80) == 0) {
         monero_keccak_final_H(c);
-        monero_reduce(c, c);
+        monero_reduce(c, c, sizeof(c), sizeof(c));
         monero_io_insert(c, 32);
         memcpy(G_monero_vstate.c, c, 32);
     }
@@ -123,12 +123,12 @@ int monero_apdu_mlsag_sign() {
         monero_lock_and_throw(SW_SECURITY_RANGE_VALUE);
     }
 
-    monero_reduce(ss, G_monero_vstate.c);
-    monero_reduce(xin, xin);
-    monero_multm(ss, ss, xin);
+    monero_reduce(ss, G_monero_vstate.c, sizeof(ss), sizeof(G_monero_vstate.c));
+    monero_reduce(xin, xin, sizeof(xin), sizeof(xin));
+    monero_multm(ss, ss, xin, sizeof(ss), sizeof(ss), sizeof(xin));
 
-    monero_reduce(alpha, alpha);
-    monero_subm(ss2, alpha, ss);
+    monero_reduce(alpha, alpha, sizeof(alpha), sizeof(alpha));
+    monero_subm(ss2, alpha, ss, sizeof(ss2), sizeof(alpha), sizeof(ss));
 
     monero_io_insert(ss2, 32);
     monero_io_insert_u32(G_monero_vstate.tx_sig_mode);

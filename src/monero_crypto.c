@@ -89,6 +89,7 @@ unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, u
     unsigned int len;
     len = 0;
     if (!varint) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return 0;
     }
     while (value >= 0x80) {
@@ -112,6 +113,7 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, u
     v = 0;
     len = 0;
     if (!varint) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return 0;
     }
     while ((varint[len]) & 0x80) {
@@ -130,10 +132,15 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, u
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_reverse32(unsigned char *rscal, unsigned char *scal) {
+void monero_reverse32(unsigned char *rscal, unsigned char *scal, size_t rscal_len, size_t scal_len) {
     unsigned char x;
     unsigned int i;
     if (!rscal || !scal) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+    if (rscal_len < 32 || scal_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
     for (i = 0; i < 16; i++) {
@@ -294,7 +301,7 @@ const unsigned char C_fe_qm5div8[] = {
     0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};
 
-void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
+void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t ge_len, size_t bytes_len) {
 #define MOD              (unsigned char *)C_ED25519_FIELD, 32
 #define fe_isnegative(f) (f[31] & 1)
 #if 0
@@ -344,9 +351,17 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
 #endif
 
     unsigned char sign;
+    if (!ge) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
 
+    if (ge_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
     // cx works in BE
-    monero_reverse32(u, bytes);
+    monero_reverse32(u, bytes, 32, bytes_len);
     cx_math_modm_no_throw(u, 32, (unsigned char *)C_ED25519_FIELD, 32);
 
     // go on
@@ -447,93 +462,98 @@ setsign:
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int raw_len) {
+void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, size_t scalar_len, unsigned int raw_len) {
     monero_keccak_F(raw, raw_len, scalar);
-    monero_reduce(scalar, scalar);
+    monero_reduce(scalar, scalar, scalar_len, scalar_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub) {
+void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub, size_t ec_len) {
     monero_keccak_F(ec_pub, 32, ec);
-    monero_ge_fromfe_frombytes(ec, ec);
-    monero_ecmul_8(ec, ec);
+    monero_ge_fromfe_frombytes(ec, ec, ec_len, ec_len);
+    monero_ecmul_8(ec, ec, ec_len, ec_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv) {
-    monero_rng_mod_order(ec_priv);
-    monero_ecmul_G(ec_pub, ec_priv);
+void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv, size_t ec_pub_len, size_t ec_priv_len) {
+    monero_rng_mod_order(ec_priv, ec_priv_len);
+    monero_ecmul_G(ec_pub, ec_priv, ec_pub_len, ec_priv_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
 void monero_generate_key_derivation(unsigned char *drv_data, unsigned char *P,
-                                    unsigned char *scalar) {
-    monero_ecmul_8k(drv_data, P, scalar);
+                                    unsigned char *scalar, size_t drv_data_len, size_t P_len, size_t scalar_len) {
+    monero_ecmul_8k(drv_data, P, scalar, drv_data_len, P_len, scalar_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---  ok                                                             --- */
 /* ----------------------------------------------------------------------- */
 void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
-                                 unsigned int out_idx) {
+                                 unsigned int out_idx, size_t scalar_len, size_t drv_data_len) {
     unsigned char varint[32 + 8];
     unsigned int len_varint;
+
+    if (drv_data_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
 
     memcpy(varint, drv_data, 32);
     len_varint = monero_encode_varint(varint + 32, 8, out_idx);
     len_varint += 32;
     monero_keccak_F(varint, len_varint, varint);
-    monero_reduce(scalar, varint);
+    monero_reduce(scalar, varint, scalar_len, sizeof(varint));
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
-                              unsigned char *ec_priv) {
+                              unsigned char *ec_priv, size_t x_len, size_t drv_data_len, size_t ec_priv_len) {
     unsigned char tmp[32];
 
     // derivation to scalar
-    monero_derivation_to_scalar(tmp, drv_data, out_idx);
+    monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
 
     // generate
-    monero_addm(x, tmp, ec_priv);
+    monero_addm(x, tmp, ec_priv, x_len, sizeof(tmp), ec_priv_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 void monero_derive_public_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
-                              unsigned char *ec_pub) {
+                              unsigned char *ec_pub, size_t x_len, size_t drv_data_len, size_t ec_pub_len) {
     unsigned char tmp[32];
 
     // derivation to scalar
-    monero_derivation_to_scalar(tmp, drv_data, out_idx);
+    monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
     // generate
-    monero_ecmul_G(tmp, tmp);
-    monero_ecadd(x, tmp, ec_pub);
+    monero_ecmul_G(tmp, tmp, sizeof(tmp), sizeof(tmp));
+    monero_ecadd(x, tmp, ec_pub, x_len, sizeof(tmp), ec_pub_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv) {
-    monero_ecmul_G(ec_pub, ec_priv);
+void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv, size_t ec_pub_len, size_t ec_priv_len) {
+    monero_ecmul_G(ec_pub, ec_priv, ec_pub_len, ec_priv_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char *x) {
+void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char *x, size_t img_len, size_t x_len) {
     unsigned char I[32];
-    monero_hash_to_ec(I, P);
-    monero_ecmul_k(img, I, x);
+    monero_hash_to_ec(I, P, sizeof(I));
+    monero_ecmul_k(img, I, x, img_len, sizeof(I), x_len);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -560,34 +580,35 @@ void monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_dat
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
 void monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub,
-                                         unsigned char *drv_data, unsigned int index) {
+                                         unsigned char *drv_data, unsigned int index,
+                                         size_t x_len, size_t pub_len, size_t drv_data_len) {
     unsigned char scalarG[32];
 
-    monero_derivation_to_scalar(scalarG, drv_data, index);
-    monero_ecmul_G(scalarG, scalarG);
-    monero_ecsub(x, pub, scalarG);
+    monero_derivation_to_scalar(scalarG, drv_data, index, sizeof(scalarG), drv_data_len);
+    monero_ecmul_G(scalarG, scalarG, sizeof(scalarG), sizeof(scalarG));
+    monero_ecsub(x, pub, scalarG, x_len, pub_len, sizeof(scalarG));
 }
 
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
-void monero_get_subaddress_spend_public_key(unsigned char *x, unsigned char *index) {
+void monero_get_subaddress_spend_public_key(unsigned char *x, unsigned char *index, size_t x_len, size_t index_len) {
     // m = Hs(a || index_major || index_minor)
-    monero_get_subaddress_secret_key(x, G_monero_vstate.a, index);
+    monero_get_subaddress_secret_key(x, G_monero_vstate.a, index, x_len, sizeof(G_monero_vstate.a), index_len);
     // M = m*G
-    monero_secret_key_to_public_key(x, x);
+    monero_secret_key_to_public_key(x, x, x_len, x_len);
     // D = B + M
-    monero_ecadd(x, x, G_monero_vstate.B);
+    monero_ecadd(x, x, G_monero_vstate.B, x_len, x_len, sizeof(G_monero_vstate.B));
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index) {
+void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index, size_t C_len, size_t D_len, size_t index_len) {
     // retrieve D
-    monero_get_subaddress_spend_public_key(D, index);
+    monero_get_subaddress_spend_public_key(D, index, D_len, index_len);
     // C = a*D
-    monero_ecmul_k(C, D, G_monero_vstate.a);
+    monero_ecmul_k(C, D, G_monero_vstate.a, C_len, D_len, sizeof(G_monero_vstate.a));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -596,15 +617,25 @@ void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *in
 static const char C_sub_address_prefix[] = {'S', 'u', 'b', 'A', 'd', 'd', 'r', 0};
 
 void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
-                                      unsigned char *index) {
+                                      unsigned char *index, size_t sub_s_len, size_t s_len, size_t index_len) {
     unsigned char in[sizeof(C_sub_address_prefix) + 32 + 8];
+
+    if (!s || s_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
+    if (!index || index_len < 8) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
 
     memcpy(in, C_sub_address_prefix, sizeof(C_sub_address_prefix));
     memcpy(in + sizeof(C_sub_address_prefix), s, 32);
     memcpy(in + sizeof(C_sub_address_prefix) + 32, index, 8);
     // hash_to_scalar with more that 32bytes:
     monero_keccak_F(in, sizeof(in), sub_s);
-    monero_reduce(sub_s, sub_s);
+    monero_reduce(sub_s, sub_s, sub_s_len, sub_s_len);
 }
 
 /* ======================================================================= */
@@ -614,9 +645,9 @@ void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_check_scalar_range_1N(unsigned char *s) {
+void monero_check_scalar_range_1N(unsigned char *s, size_t s_len) {
     unsigned char x[32];
-    monero_reverse32(x, s);
+    monero_reverse32(x, s, sizeof(x), s_len);
     int diff;
     cx_math_cmp_no_throw(x, C_ED25519_ORDER, 32, &diff);
     if (cx_math_is_zero(x, 32) || diff >= 0) {
@@ -635,13 +666,16 @@ void monero_check_scalar_not_null(unsigned char *s) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
+void monero_ecmul_G(unsigned char *W, unsigned char *scalar32, size_t W_len, size_t scalar32_len) {
     unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
-    if (!W) {
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
-    monero_reverse32(s, scalar32);
+
+    monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     memcpy(Pxy, C_ED25519_G, PXY_SIZE);
     cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
     cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
@@ -651,14 +685,15 @@ void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
+void monero_ecmul_H(unsigned char *W, unsigned char *scalar32, size_t W_len, size_t scalar32_len) {
     unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
 
-    if (!W) {
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
-    monero_reverse32(s, scalar32);
+    monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], C_ED25519_Hy, 32);
@@ -673,14 +708,20 @@ void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
+void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32, size_t W_len, size_t P_len, size_t scalar32_len) {
     unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
 
-    if (!W || !P) {
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
-    monero_reverse32(s, scalar32);
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+    monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
@@ -695,21 +736,28 @@ void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32)
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
+void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32, size_t W_len, size_t P_len, size_t scalar32_len) {
     unsigned char s[32];
-    monero_multm_8(s, scalar32);
-    monero_ecmul_k(W, P, s);
+    monero_multm_8(s, scalar32, sizeof(s), scalar32_len);
+    monero_ecmul_k(W, P, s, W_len, P_len, sizeof(s));
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_8(unsigned char *W, unsigned char *P) {
+void monero_ecmul_8(unsigned char *W, unsigned char *P, size_t W_len, size_t P_len) {
     unsigned char Pxy[PXY_SIZE];
 
-    if (!W || !P) {
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
     cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
@@ -723,11 +771,22 @@ void monero_ecmul_8(unsigned char *W, unsigned char *P) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
+void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q, size_t W_len, size_t P_len, size_t Q_len) {
     unsigned char Pxy[PXY_SIZE];
     unsigned char Qxy[PXY_SIZE];
 
-    if (!W || !P || !Q) {
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
+    if (!Q || Q_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
 
@@ -748,11 +807,22 @@ void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
+void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q, size_t W_len, size_t P_len, size_t Q_len) {
     unsigned char Pxy[PXY_SIZE];
     unsigned char Qxy[PXY_SIZE];
 
-    if (!W || !P || !Q) {
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return;
+    }
+
+    if (!Q || Q_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
 
@@ -785,11 +855,14 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
         return hash;
     }
 */
-void monero_ecdhHash(unsigned char *x, unsigned char *k) {
+void monero_ecdhHash(unsigned char *x, unsigned char *k, size_t k_len) {
     unsigned char data[38];
-    if (!k) {
+
+    if (!k || k_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
+
     memcpy(data, "amount", 6);
     memcpy(data + 6, k, 32);
     monero_keccak_F(data, 38, x);
@@ -809,86 +882,90 @@ void monero_ecdhHash(unsigned char *x, unsigned char *k) {
         return scalar;
     }
 */
-void monero_genCommitmentMask(unsigned char *c, unsigned char *sk) {
+void monero_genCommitmentMask(unsigned char *c, unsigned char *sk, size_t c_len, size_t sk_len) {
     unsigned char data[15 + 32];
-    if (!sk) {
+
+    if (!sk || sk_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return;
     }
+
     memcpy(data, "commitment_mask", 15);
     memcpy(data + 15, sk, 32);
-    monero_hash_to_scalar(c, data, 15 + 32);
+    monero_hash_to_scalar(c, data, c_len, 15 + 32);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b) {
+void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len, size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
+    monero_reverse32(ra, a, sizeof(ra), a_len);
+    monero_reverse32(rb, b, sizeof(rb), b_len);
     cx_math_addm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    monero_reverse32(r, r, r_len, r_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_subm(unsigned char *r, unsigned char *a, unsigned char *b) {
+void monero_subm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len, size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
+    monero_reverse32(ra, a, sizeof(ra), a_len);
+    monero_reverse32(rb, b, sizeof(rb), b_len);
     cx_math_subm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    monero_reverse32(r, r, r_len, r_len);
 }
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b) {
+void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len, size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
+    monero_reverse32(ra, a, sizeof(ra), a_len);
+    monero_reverse32(rb, b, sizeof(rb), b_len);
     cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    monero_reverse32(r, r, r_len, r_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_multm_8(unsigned char *r, unsigned char *a) {
+void monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len) {
     unsigned char ra[32];
     unsigned char rb[32];
 
-    monero_reverse32(ra, a);
+    monero_reverse32(ra, a, sizeof(ra), a_len);
     memset(rb, 0, 32);
     rb[31] = 8;
     cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    monero_reverse32(r, r, r_len, r_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_reduce(unsigned char *r, unsigned char *a) {
+void monero_reduce(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len) {
     unsigned char ra[32];
-    monero_reverse32(ra, a);
+
+    monero_reverse32(ra, a, sizeof(ra), a_len);
     cx_math_modm_no_throw(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, ra);
+    monero_reverse32(r, ra, r_len, sizeof(ra));
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_rng_mod_order(unsigned char *r) {
+void monero_rng_mod_order(unsigned char *r, size_t r_len) {
     unsigned char rnd[32 + 8];
     cx_rng(rnd, 32 + 8);
     cx_math_modm_no_throw(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, rnd + 8);
+    monero_reverse32(r, rnd + 8, r_len, 32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -900,6 +977,7 @@ void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     unsigned int offset, len;
 
     if (!str) {
+        PRINTF("%d \n\n", __LINE__);
         return;
     }
     memset(str, 0, str_len);
@@ -927,6 +1005,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     unsigned int offset, len, ov;
 
     if (!str) {
+        PRINTF("%d \n\n", __LINE__);
         return -1; 
     }
     memset(str, 0, str_len);
@@ -979,10 +1058,11 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-uint64_t monero_bamount2uint64(unsigned char *binary) {
+uint64_t monero_bamount2uint64(unsigned char *binary, size_t binary_len) {
     uint64_t xmr;
     int i;
-    if (!binary) {
+    if (!binary || binary_len < 8) {
+        PRINTF("%d \n\n", __LINE__);
         return 0;
     }
     xmr = 0;
@@ -995,8 +1075,8 @@ uint64_t monero_bamount2uint64(unsigned char *binary) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_bamount2str(unsigned char *binary, char *str, unsigned int str_len) {
-    return monero_amount2str(monero_bamount2uint64(binary), str, str_len);
+int monero_bamount2str(unsigned char *binary, char *str, size_t binary_len, unsigned int str_len) {
+    return monero_amount2str(monero_bamount2uint64(binary, binary_len), str, str_len);
 }
 
 /* ----------------------------------------------------------------------- */

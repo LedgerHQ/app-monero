@@ -42,7 +42,7 @@ int monero_apdu_stealth() {
     monero_io_discard(0);
 
     // Compute Dout
-    monero_generate_key_derivation(drv, pub, sec);
+    monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
 
     // compute mask
     drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;

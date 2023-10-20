@@ -113,11 +113,11 @@ int monero_apdu_mlsag_prehash_update() {
         }
 
         // check C = aH+kG
-        monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03);
-        monero_ecmul_G(kG, k);
+        monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k), sizeof(AKout));
+        monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
         if (!cx_math_is_zero(v, 32)) {
-            monero_ecmul_H(aH, v);
-            monero_ecadd(aH, kG, aH);
+            monero_ecmul_H(aH, v, sizeof(aH), sizeof(v));
+            monero_ecadd(aH, kG, aH, sizeof(aH), sizeof(kG), sizeof(aH));
         } else {
             memcpy(aH, kG, 32);
         }
@@ -144,7 +144,7 @@ int monero_apdu_mlsag_prehash_update() {
 
         // ask user
         uint64_t amount;
-        amount = monero_bamount2uint64(v);
+        amount = monero_bamount2uint64(v, sizeof(v));
         if (amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
 

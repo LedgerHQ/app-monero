@@ -300,7 +300,7 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type) {
     if (buffer) {
         switch (type) {
             case TYPE_SCALAR:
-                monero_check_scalar_range_1N(buffer);
+                monero_check_scalar_range_1N(buffer, len);
                 break;
             case TYPE_AMOUNT_KEY:
             case TYPE_DERIVATION:
