@@ -38,18 +38,6 @@
 /* ----------------------------------------------------------------------- */
 /* MISC                                                                    */
 /* ----------------------------------------------------------------------- */
-void monero_io_set_offset(unsigned int offset) {
-    if (offset == IO_OFFSET_END) {
-        G_monero_vstate.io_offset = G_monero_vstate.io_length;
-    } else if (offset == IO_OFFSET_MARK) {
-        G_monero_vstate.io_offset = G_monero_vstate.io_mark;
-    } else if (offset < G_monero_vstate.io_length) {
-        G_monero_vstate.io_offset = offset;
-    } else {
-        THROW(ERROR_IO_OFFSET);
-    }
-}
-
 void monero_io_mark(void) {
     G_monero_vstate.io_mark = G_monero_vstate.io_offset;
 }
@@ -88,7 +76,7 @@ void monero_io_hole(unsigned int sz) {
 
 void monero_io_insert(unsigned char const* buff, unsigned int len) {
     if (!buff) {
-        return;
+        THROW(SW_WRONG_DATA);
     }
     monero_io_hole(len);
     memcpy(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, buff, len);
@@ -97,7 +85,7 @@ void monero_io_insert(unsigned char const* buff, unsigned int len) {
 
 void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
     if (!buffer) {
-        return;
+        THROW(SW_WRONG_DATA);
     }
     // for now, only 32bytes block are allowed
     if (len != 32) {
@@ -125,7 +113,7 @@ void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
 
 void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
     if (!buffer) {
-        return;
+        THROW(SW_WRONG_DATA);
     }
 
     // for now, only 32bytes block are allowed
@@ -229,21 +217,21 @@ void monero_io_skip(int len) {
 int monero_io_fetch(unsigned char* buffer, int len) {
     monero_io_assert_available(len);
     if (!buffer) {
-        return 0;
+        THROW(SW_WRONG_DATA);
     }
     memcpy(buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len);
     G_monero_vstate.io_offset += len;
     return len;
 }
 
-static void monero_io_verify_hmac_for(const unsigned char* buffer, int len,
+static int monero_io_verify_hmac_for(const unsigned char* buffer, int len,
                                       unsigned char* expected_hmac, int type) {
     if (!buffer || !expected_hmac) {
-        return;
+        return SW_WRONG_DATA;
     }
     // for now, only 32bytes block allowed
     if (len != 32) {
-        THROW(SW_WRONG_DATA);
+        return SW_WRONG_DATA;
     }
 
     unsigned char hmac[37];
@@ -262,21 +250,27 @@ static void monero_io_verify_hmac_for(const unsigned char* buffer, int len,
     }
     cx_hmac_sha256(G_monero_vstate.hmac_key, 32, hmac, 37, hmac, 32);
     if (memcmp(hmac, expected_hmac, 32) != 0) {
-        monero_lock_and_throw(SW_SECURITY_HMAC);
+        monero_lock(SW_SECURITY_HMAC);
+        return SW_SECURITY_HMAC;
     }
+    return 0;
 }
 
-int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type) {
+int monero_io_fetch_decrypt(unsigned char* buffer, size_t len, int type) {
+    int error = 0;
     // for now, only 32bytes block allowed
     if (len != 32) {
-        THROW(SW_WRONG_LENGTH);
+        return SW_WRONG_LENGTH;
     }
 
     if (G_monero_vstate.tx_in_progress) {
         monero_io_assert_available(len + 32);
-        monero_io_verify_hmac_for(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len,
+        error = monero_io_verify_hmac_for(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len,
                                   G_monero_vstate.io_buffer + G_monero_vstate.io_offset + len,
                                   type);
+        if (error) {
+            return error;
+        }
     } else {
         monero_io_assert_available(len);
     }
@@ -300,27 +294,26 @@ int monero_io_fetch_decrypt(unsigned char* buffer, int len, int type) {
     if (buffer) {
         switch (type) {
             case TYPE_SCALAR:
-                monero_check_scalar_range_1N(buffer, len);
-                break;
+                return monero_check_scalar_range_1N(buffer, len);
             case TYPE_AMOUNT_KEY:
             case TYPE_DERIVATION:
             case TYPE_ALPHA:
-                monero_check_scalar_not_null(buffer);
-                break;
+                return monero_check_scalar_not_null(buffer);
             default:
-                THROW(SW_SECURITY_INTERNAL);
+                return SW_SECURITY_INTERNAL;
         }
     }
-    return len;
+    return error;
 }
 
 int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
     unsigned char* k;
+    int error = 0;
     if (!buffer) {
-        return -1;
+        return SW_WRONG_DATA;
     }
     if (buffer_size > 32) {
-        return -1;
+        return SW_WRONG_DATA_RANGE;
     }
     monero_io_assert_available(32);
 
@@ -330,13 +323,16 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
         G_monero_vstate.io_offset += 32;
         if (G_monero_vstate.tx_in_progress) {
             monero_io_assert_available(32);
-            monero_io_verify_hmac_for(C_FAKE_SEC_VIEW_KEY, 32,
+            error = monero_io_verify_hmac_for(C_FAKE_SEC_VIEW_KEY, 32,
                                       G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                                       TYPE_SCALAR);
+            if (error) {
+                return error;
+            }
             G_monero_vstate.io_offset += 32;
         }
         memcpy(buffer, G_monero_vstate.a, 32);
-        return 32;
+        return 0;
     }
     // spend?
     else if (memcmp(k, C_FAKE_SEC_SPEND_KEY, 32) == 0) {
@@ -346,17 +342,20 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
                 // case INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY:
                 break;
             default:
-                THROW(SW_WRONG_DATA);
+                return SW_WRONG_DATA;
         }
         G_monero_vstate.io_offset += 32;
         if (G_monero_vstate.tx_in_progress) {
             monero_io_assert_available(32);
-            monero_io_verify_hmac_for(C_FAKE_SEC_SPEND_KEY, 32,
+            error = monero_io_verify_hmac_for(C_FAKE_SEC_SPEND_KEY, 32,
                                       G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                                       TYPE_SCALAR);
+            if (error) {
+                return error;
+            }
         }
         memcpy(buffer, G_monero_vstate.b, 32);
-        return 32;
+        return 0;
     }
     // else
     else {
@@ -364,12 +363,16 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
     }
 }
 
-uint64_t monero_io_fetch_varint(void) {
-    uint64_t v64;
-    G_monero_vstate.io_offset +=
-        monero_decode_varint(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                             MIN(8, G_monero_vstate.io_length - G_monero_vstate.io_offset), &v64);
-    return v64;
+int monero_io_fetch_varint(uint64_t* out_v64) {
+    // COUOCU
+    if (!out_v64) {
+        return SW_WRONG_DATA;
+    }
+    unsigned int out_len = 0;
+    unsigned int error =  monero_decode_varint(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                             MIN(8, G_monero_vstate.io_length - G_monero_vstate.io_offset), out_v64, &out_len);
+    G_monero_vstate.io_offset += out_len;
+    return error;
 }
 
 unsigned int monero_io_fetch_u32(void) {
@@ -463,7 +466,7 @@ int monero_io_do(unsigned int io_flags) {
     else {
         G_monero_vstate.io_offset = 0;
         if (G_monero_vstate.io_length > MAX_OUT) {
-            THROW(SW_IO_FULL);
+            return SW_IO_FULL;
         }
         memcpy(G_io_apdu_buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                G_monero_vstate.io_length);

@@ -37,7 +37,7 @@ const unsigned char C_FAKE_SEC_SPEND_KEY[32] = {
 /* ----------------------------------------------------------------------- */
 /* --- Boot                                                            --- */
 /* ----------------------------------------------------------------------- */
-void monero_init() {
+unsigned int monero_init() {
     memset(&G_monero_vstate, 0, sizeof(monero_v_state_t));
 
     // first init ?
@@ -53,12 +53,15 @@ void monero_init() {
     G_monero_vstate.protocol_barrier = PROTOCOL_UNLOCKED;
 
     // load key
-    if (!monero_init_private_key()) {
+    unsigned error = monero_init_private_key();
+    if (error) {
+        return error;
     }
     // ux conf
     monero_init_ux();
     // Let's go!
     G_monero_vstate.state = STATE_IDLE;
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -88,7 +91,7 @@ int monero_init_private_key(void) {
     path[3] = 0x00000000;
     path[4] = 0x00000000;
     if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, path, 5, seed, chain)) {
-        return -1;
+        return SW_SECURITY_INTERNAL;
     }
 
     switch (N_monero_pstate->key_mode) {
@@ -106,8 +109,7 @@ int monero_init_private_key(void) {
             break;
 
         default:
-            THROW(SW_SECURITY_LOAD_KEY);
-            return 1;
+            return SW_SECURITY_LOAD_KEY;
     }
     monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A), sizeof(G_monero_vstate.a));
     monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B), sizeof(G_monero_vstate.b));
@@ -213,18 +215,21 @@ int monero_apdu_reset() {
     memset(client_version, '\0', 16);
     client_version_len = G_monero_vstate.io_length - G_monero_vstate.io_offset;
     if (client_version_len > 14) {
-        THROW(SW_CLIENT_NOT_SUPPORTED + 1);
+        return SW_CLIENT_NOT_SUPPORTED + 1;
     }
     monero_io_fetch((unsigned char*)&client_version[0], client_version_len);
     // Add '.' suffix to avoid 'X.1' prefixing 'X.10'
     client_version[client_version_len] = '.';
 
     if (!is_client_version_valid(client_version)) {
-        THROW(SW_CLIENT_NOT_SUPPORTED);
+        return SW_CLIENT_NOT_SUPPORTED;
     }
 
     monero_io_discard(0);
-    monero_init();
+    unsigned int error = monero_init();
+    if (error) {
+        return error;
+    }
     monero_io_insert_u8(MONERO_VERSION_MAJOR);
     monero_io_insert_u8(MONERO_VERSION_MINOR);
     monero_io_insert_u8(MONERO_VERSION_MICRO);
@@ -236,14 +241,13 @@ int monero_apdu_reset() {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_lock() {
     monero_io_discard(0);
-    monero_lock_and_throw(SW_SECURITY_LOCKED);
+    monero_lock(SW_SECURITY_LOCKED);
     return SW_SECURITY_LOCKED;
 }
 
-void monero_lock_and_throw(int sw) {
+void monero_lock(int sw) {
     G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED;
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Security Err");
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%x", sw);
     ui_menu_show_security_error();
-    THROW(sw);
 }

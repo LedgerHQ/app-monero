@@ -36,53 +36,38 @@
 /* ---                            Application Entry                    --- */
 /* ----------------------------------------------------------------------- */
 extern uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+void __attribute__((noreturn)) app_exit(void);
 
 void app_main(void) {
-    unsigned int io_flags, cont;
+    unsigned int io_flags;
+    unsigned int error;
     io_flags = 0;
-    cont = 1;
 
-    monero_init();
+    error = monero_init();
+    if (error) {
+        memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+        app_exit();
+    }
 
     // set up initial screen
     ui_init();
 
-    while (cont) {
+    for (;;) {
         volatile unsigned short sw = 0;
-        BEGIN_TRY {
-            TRY {
-                monero_io_do(io_flags);
-                sw = monero_dispatch();
-            }
-            CATCH(EXCEPTION_IO_RESET) {
-                sw = 0;
-                cont = 0;
-                monero_io_discard(1);
-            }
-            CATCH_OTHER(e) {
-                monero_reset_tx(1);
-                if (((e & 0xF000) == 0x9000) || ((e & 0xFF00) == 0x6400)) {
-                    sw = e;
-                } else {
-                    monero_io_discard(1);
-                    if ((e & 0xFFFF0000) || ((e & 0xF000) != 0x6000)) {
-                        monero_io_insert_u32(e);
-                        sw = 0x6f42;
-                    } else {
-                        sw = e;
-                    }
-                }
-            }
-            FINALLY {
-                if (sw) {
-                    monero_io_insert_u16(sw);
-                    io_flags = 0;
-                } else {
-                    io_flags = IO_ASYNCH_REPLY;
-                }
-            }
+        monero_io_do(io_flags);
+        sw = monero_dispatch();
+        if (sw) {
+            monero_io_insert_u16(sw);
+            io_flags = 0;
+        } else {
+            io_flags = IO_ASYNCH_REPLY;
         }
-        END_TRY;
+
+        if (sw != 0 && sw != SW_OK) {
+            monero_io_do(io_flags);
+            memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+            app_exit();
+        }
     }
 }
 
@@ -141,6 +126,8 @@ unsigned char io_event(unsigned char channel __attribute__((unused))) {
     if (s_before != s_after) {
         if (s_after == PIN_VERIFIED) {
             if (!monero_init_private_key()) {
+                memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+                app_exit();
             }
         } else {
             ;  // do nothing, allowing TX parsing in lock mode

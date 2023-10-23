@@ -71,6 +71,7 @@ int monero_apdu_mlsag_prehash_update() {
 
 #define aH AKout
     unsigned char kG[32];
+    int err = 0;
 
     // fetch destination
     is_subaddress = monero_io_fetch_u8();
@@ -83,7 +84,10 @@ int monero_apdu_mlsag_prehash_update() {
     monero_io_skip(32);
     Bout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
     monero_io_skip(32);
-    monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    err = monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    if (err) {
+        return err;
+    }
     monero_io_fetch(C, 32);
     monero_io_fetch(k, 32);
     monero_io_fetch(v, 32);
@@ -123,7 +127,8 @@ int monero_apdu_mlsag_prehash_update() {
         }
         if (memcmp(C, aH, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-            monero_lock_and_throw(SW_SECURITY_COMMITMENT_CONTROL);
+            monero_lock(SW_SECURITY_COMMITMENT_CONTROL);
+            return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
 #endif
         }
         // update commitment hash control
@@ -134,7 +139,8 @@ int monero_apdu_mlsag_prehash_update() {
                 // finalize and check destination hash_control
                 monero_sha256_outkeys_final(k);
                 if (memcmp(k, G_monero_vstate.OUTK, 32) != 0) {
-                    monero_lock_and_throw(SW_SECURITY_OUTKEYS_CHAIN_CONTROL);
+                    monero_lock(SW_SECURITY_OUTKEYS_CHAIN_CONTROL);
+                    return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
                 }
             }
             // finalize commitment hash control
@@ -189,7 +195,8 @@ int monero_apdu_mlsag_prehash_finalize() {
             monero_sha256_commitment_final(H);
             if (memcmp(H, G_monero_vstate.C, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-                monero_lock_and_throw(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
+                monero_lock(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
+                return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
 #endif
             }
         }
@@ -203,7 +210,8 @@ int monero_apdu_mlsag_prehash_finalize() {
         if (G_monero_vstate.io_protocol_version >= 3) {
             if (memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-                monero_lock_and_throw(SW_SECURITY_PREFIX_HASH);
+                monero_lock(SW_SECURITY_PREFIX_HASH);
+                return SW_SECURITY_PREFIX_HASH;
 #endif
             }
         }

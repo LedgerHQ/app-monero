@@ -45,13 +45,19 @@ int monero_apdu_clsag_prepare() {
     unsigned char z[32];
     unsigned char H[32];
     unsigned char W[32];
+    int err = 0;
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        monero_lock_and_throw(SW_SECURITY_MAX_SIGNATURE_REACHED);
+        monero_lock(SW_SECURITY_MAX_SIGNATURE_REACHED);
+        return SW_SECURITY_MAX_SIGNATURE_REACHED;
     }
 
-    monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
+    err = monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
+    if (err) {
+        return err;
+    }
+
     monero_io_fetch(z, 32);
     monero_io_fetch(H, 32);
     monero_io_discard(1);
@@ -137,6 +143,7 @@ int monero_apdu_clsag_sign() {
     unsigned char z[32];
     unsigned char mu_P[32];
     unsigned char mu_C[32];
+    int err = 0;
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(a, 32);
@@ -145,13 +152,21 @@ int monero_apdu_clsag_sign() {
         monero_io_fetch(mu_P, 32);
         monero_io_fetch(mu_C, 32);
     } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        monero_io_fetch_decrypt(a, 32, TYPE_ALPHA);
-        monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
+        err = monero_io_fetch_decrypt(a, 32, TYPE_ALPHA);
+        if (err) {
+            return err;
+        }
+
+        err = monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
+        if (err) {
+            return err;
+        }
         monero_io_fetch(z, 32);
         monero_io_fetch(mu_P, 32);
         monero_io_fetch(mu_C, 32);
     } else {
-        monero_lock_and_throw(SW_SECURITY_INTERNAL);
+        monero_lock(SW_SECURITY_INTERNAL);
+        return SW_SECURITY_INTERNAL;
     }
 
     monero_io_discard(1);

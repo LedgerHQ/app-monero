@@ -647,7 +647,7 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
 /**
  *
  */
-void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
                                  unsigned char* pub_view, unsigned char* pub_spend,
                                  unsigned char is_subbadress, unsigned char* paymanetID) {
     memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
@@ -673,10 +673,14 @@ void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
             break;
     }
 
-    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
                              paymanetID);
+    if (error) {
+        return error;
+    }
     ux_layout_bnnn_paging_reset();
     ux_flow_init(0, ux_flow_pubaddr, NULL);
+    return 0;
 }
 
 void ui_menu_pubaddr_display(unsigned int value) {

@@ -31,11 +31,15 @@ int monero_apdu_stealth() {
     unsigned char sec[32];
     unsigned char drv[33];
     unsigned char payID[8];
+    int err = 0;
 
     // fetch pub
     monero_io_fetch(pub, 32);
     // fetch sec
-    monero_io_fetch_decrypt_key(sec, sizeof(sec));
+    err = monero_io_fetch_decrypt_key(sec, sizeof(sec));
+    if (err) {
+        return err;
+    }
     // fetch paymentID
     monero_io_fetch(payID, 8);
 

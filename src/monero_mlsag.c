@@ -31,10 +31,12 @@ int monero_apdu_mlsag_prepare() {
     unsigned char xin[32];
     unsigned char alpha[32];
     unsigned char mul[32];
+    int err;
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        monero_lock_and_throw(SW_SECURITY_MAX_SIGNATURE_REACHED);
+        monero_lock(SW_SECURITY_MAX_SIGNATURE_REACHED);
+        return SW_SECURITY_MAX_SIGNATURE_REACHED;
     }
 
     if (G_monero_vstate.io_length > 1) {
@@ -42,7 +44,10 @@ int monero_apdu_mlsag_prepare() {
         if (G_monero_vstate.options & 0x40) {
             monero_io_fetch(xin, 32);
         } else {
-            monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
+            err = monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
+            if (err) {
+                return err;
+            }
         }
         options = 1;
     } else {
@@ -106,21 +111,30 @@ int monero_apdu_mlsag_sign() {
     unsigned char alpha[32];
     unsigned char ss[32];
     unsigned char ss2[32];
+    int err;
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin, 32);
         monero_io_fetch(alpha, 32);
     } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
-        monero_io_fetch_decrypt(alpha, 32, TYPE_ALPHA);
+        err = monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
+        if (err) {
+            return err;
+        }
+        err = monero_io_fetch_decrypt(alpha, 32, TYPE_ALPHA);
+        if (err) {
+            return err;
+        }
     } else {
-        monero_lock_and_throw(SW_SECURITY_INTERNAL);
+        monero_lock(SW_SECURITY_INTERNAL);
+        return SW_SECURITY_INTERNAL;
     }
     monero_io_discard(1);
 
     // check xin and alpha are not null
     if (cx_math_is_zero(xin, 32) || cx_math_is_zero(alpha, 32)) {
-        monero_lock_and_throw(SW_SECURITY_RANGE_VALUE);
+        monero_lock(SW_SECURITY_RANGE_VALUE);
+        return SW_SECURITY_RANGE_VALUE;
     }
 
     monero_reduce(ss, G_monero_vstate.c, sizeof(ss), sizeof(G_monero_vstate.c));
