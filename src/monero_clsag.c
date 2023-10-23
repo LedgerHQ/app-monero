@@ -49,7 +49,6 @@ int monero_apdu_clsag_prepare() {
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        monero_lock(SW_SECURITY_MAX_SIGNATURE_REACHED);
         return SW_SECURITY_MAX_SIGNATURE_REACHED;
     }
 
@@ -165,7 +164,6 @@ int monero_apdu_clsag_sign() {
         monero_io_fetch(mu_P, 32);
         monero_io_fetch(mu_C, 32);
     } else {
-        monero_lock(SW_SECURITY_INTERNAL);
         return SW_SECURITY_INTERNAL;
     }
 

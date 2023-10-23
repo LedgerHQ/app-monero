@@ -57,38 +57,10 @@ static void release_context(void) {
     }
 }
 
-/* -------------------------------------- LOCK--------------------------------------- */
-
-void ui_menu_pinlock_display() {
-    struct {
-        bolos_ux_t ux_id;
-        // length of parameters in the u union to be copied during the syscall
-        unsigned int len;
-        union {
-            struct {
-                unsigned int cancellable;
-            } validate_pin;
-        } u;
-
-    } ux_params;
-
-    os_global_pin_invalidate();
-    G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED_UNLOCKABLE;
-    ux_params.ux_id = BOLOS_UX_VALIDATE_PIN;
-    ux_params.len = sizeof(ux_params.u.validate_pin);
-    ux_params.u.validate_pin.cancellable = 0;
-    os_ux((bolos_ux_params_t*)&ux_params);
-    ui_menu_main_display();
-}
-
 /* -------------------------------- INFO UX --------------------------------- */
 
 static void ui_menu_info_action(void) {
-    if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
-        ui_menu_pinlock_display();
-    } else {
-        ui_menu_main_display();
-    }
+    ui_menu_main_display();
 }
 
 void ui_menu_show_tx_aborted(void) {

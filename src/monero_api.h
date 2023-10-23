@@ -29,7 +29,6 @@ void monero_lock(int sw);
 void monero_install(unsigned char netId);
 unsigned int monero_init(void);
 int monero_init_private_key(void);
-void monero_wipe_private_key(void);
 
 void monero_init_ux(void);
 int monero_dispatch(void);

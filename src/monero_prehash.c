@@ -127,7 +127,6 @@ int monero_apdu_mlsag_prehash_update() {
         }
         if (memcmp(C, aH, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-            monero_lock(SW_SECURITY_COMMITMENT_CONTROL);
             return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
 #endif
         }
@@ -139,7 +138,6 @@ int monero_apdu_mlsag_prehash_update() {
                 // finalize and check destination hash_control
                 monero_sha256_outkeys_final(k);
                 if (memcmp(k, G_monero_vstate.OUTK, 32) != 0) {
-                    monero_lock(SW_SECURITY_OUTKEYS_CHAIN_CONTROL);
                     return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
                 }
             }
@@ -195,7 +193,6 @@ int monero_apdu_mlsag_prehash_finalize() {
             monero_sha256_commitment_final(H);
             if (memcmp(H, G_monero_vstate.C, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-                monero_lock(SW_SECURITY_COMMITMENT_CHAIN_CONTROL);
                 return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
 #endif
             }
@@ -210,7 +207,6 @@ int monero_apdu_mlsag_prehash_finalize() {
         if (G_monero_vstate.io_protocol_version >= 3) {
             if (memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
-                monero_lock(SW_SECURITY_PREFIX_HASH);
                 return SW_SECURITY_PREFIX_HASH;
 #endif
             }

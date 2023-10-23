@@ -114,7 +114,6 @@ int monero_apdu_set_signature_mode() {
         case TRANSACTION_CREATE_FAKE:
             break;
         default:
-            monero_lock(SW_WRONG_DATA);
             return SW_WRONG_DATA;
     }
     G_monero_vstate.tx_sig_mode = sig_mode;

@@ -35,7 +35,6 @@ int monero_apdu_mlsag_prepare() {
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        monero_lock(SW_SECURITY_MAX_SIGNATURE_REACHED);
         return SW_SECURITY_MAX_SIGNATURE_REACHED;
     }
 
@@ -126,14 +125,12 @@ int monero_apdu_mlsag_sign() {
             return err;
         }
     } else {
-        monero_lock(SW_SECURITY_INTERNAL);
         return SW_SECURITY_INTERNAL;
     }
     monero_io_discard(1);
 
     // check xin and alpha are not null
     if (cx_math_is_zero(xin, 32) || cx_math_is_zero(alpha, 32)) {
-        monero_lock(SW_SECURITY_RANGE_VALUE);
         return SW_SECURITY_RANGE_VALUE;
     }
 

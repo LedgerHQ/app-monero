@@ -50,7 +50,6 @@ unsigned int monero_init() {
     }
 
     G_monero_vstate.protocol = 0xff;
-    G_monero_vstate.protocol_barrier = PROTOCOL_UNLOCKED;
 
     // load key
     unsigned error = monero_init_private_key();
@@ -67,15 +66,6 @@ unsigned int monero_init() {
 /* ----------------------------------------------------------------------- */
 /* --- init private keys                                               --- */
 /* ----------------------------------------------------------------------- */
-void monero_wipe_private_key() {
-    memset(G_monero_vstate.a, 0, 32);
-    memset(G_monero_vstate.b, 0, 32);
-    memset(G_monero_vstate.A, 0, 32);
-    memset(G_monero_vstate.B, 0, 32);
-    memset(&G_monero_vstate.spk, 0, sizeof(G_monero_vstate.spk));
-    G_monero_vstate.key_set = 0;
-}
-
 int monero_init_private_key(void) {
     unsigned int path[5];
     unsigned char seed[64];
@@ -239,14 +229,7 @@ int monero_apdu_reset() {
 /* ----------------------------------------------------------------------- */
 /* --- LOCK                                                           --- */
 /* ----------------------------------------------------------------------- */
-int monero_apdu_lock() {
-    monero_io_discard(0);
-    monero_lock(SW_SECURITY_LOCKED);
-    return SW_SECURITY_LOCKED;
-}
-
 void monero_lock(int sw) {
-    G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED;
     snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Security Err");
     snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%x", sw);
     ui_menu_show_security_error();

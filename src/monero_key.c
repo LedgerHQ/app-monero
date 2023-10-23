@@ -441,7 +441,6 @@ int monero_apdu_sc_add(/*unsigned char *r, unsigned char *s1, unsigned char *s2*
         //      hwdev.sc_secret_add(scalar_step2, scalar_step1,subaddr_sk);
         if ((memcmp(s1, G_monero_vstate.last_derive_secret_key, 32) != 0) ||
             (memcmp(s2, G_monero_vstate.last_get_subaddress_secret_key, 32) != 0)) {
-            monero_lock(SW_WRONG_DATA);
             return SW_WRONG_DATA;
         }
     }
