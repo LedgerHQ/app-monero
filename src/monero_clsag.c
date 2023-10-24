@@ -96,8 +96,7 @@ int monero_apdu_clsag_hash() {
     unsigned char c[32];
 
     if (G_monero_vstate.io_p2 == 1) {
-        if (monero_keccak_init_H()) 
-        {
+        if (monero_keccak_init_H()) {
             return SW_WRONG_DATA;
         }
     }
@@ -178,7 +177,8 @@ int monero_apdu_clsag_sign() {
     monero_reduce(z, z, sizeof(z), sizeof(z));
     monero_reduce(mu_P, mu_P, sizeof(mu_P), sizeof(mu_P));
     monero_reduce(mu_C, mu_C, sizeof(mu_C), sizeof(mu_C));
-    monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c), sizeof(G_monero_vstate.c));
+    monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
+                  sizeof(G_monero_vstate.c));
 
     // s0_p_mu_P = mu_P*p
     // s0_add_z_mu_C = mu_C*z + s0_p_mu_P

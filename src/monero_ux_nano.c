@@ -39,7 +39,6 @@
 void __attribute__((noreturn)) app_exit(void);
 void ui_menu_main_display();
 
-
 /* -------------------------------------- 25 WORDS --------------------------------------- */
 void ui_menu_words_display(unsigned int value);
 void ui_menu_words_clear(unsigned int value);
@@ -621,9 +620,9 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
 /**
  *
  */
-int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
-                                 unsigned char* pub_view, unsigned char* pub_spend,
-                                 unsigned char is_subbadress, unsigned char* paymanetID) {
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
+                                unsigned char* pub_spend, unsigned char is_subbadress,
+                                unsigned char* paymanetID) {
     memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
 
     switch (G_monero_vstate.disp_addr_mode) {
@@ -647,8 +646,8 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
             break;
     }
 
-    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
-                             paymanetID);
+    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend,
+                                         is_subbadress, paymanetID);
     if (error) {
         return error;
     }

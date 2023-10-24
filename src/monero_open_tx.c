@@ -67,7 +67,8 @@ int monero_apdu_open_tx_cont() {
 #endif
 
     monero_rng_mod_order(G_monero_vstate.r, sizeof(G_monero_vstate.r));
-    monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r, sizeof(G_monero_vstate.R), sizeof(G_monero_vstate.r));
+    monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r, sizeof(G_monero_vstate.R),
+                   sizeof(G_monero_vstate.r));
 
     monero_io_insert(G_monero_vstate.R, 32);
     monero_io_insert_encrypt(G_monero_vstate.r, 32, TYPE_SCALAR);

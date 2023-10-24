@@ -117,7 +117,8 @@ int monero_apdu_mlsag_prehash_update() {
         }
 
         // check C = aH+kG
-        monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k), sizeof(AKout));
+        monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
+                       sizeof(AKout));
         monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
         if (!cx_math_is_zero(v, 32)) {
             monero_ecmul_H(aH, v, sizeof(aH), sizeof(v));

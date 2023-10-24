@@ -381,14 +381,14 @@ void display_account(void) {
                                        &transactionContext.tagValueList);
 }
 
-int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
-                                 unsigned char* pub_view, unsigned char* pub_spend,
-                                 unsigned char is_subbadress, unsigned char* paymanetID) {
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
+                                unsigned char* pub_spend, unsigned char is_subbadress,
+                                unsigned char* paymanetID) {
     int error;
     memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
 
     error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
-                             paymanetID);
+                                     paymanetID);
     if (error) {
         return error;
     }

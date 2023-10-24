@@ -37,7 +37,7 @@ int monero_apdu_get_tx_proof() {
     unsigned char sig_r[32];
     unsigned char sep[32];
     int err = 0;
-#define k (G_monero_vstate.tmp + 256)
+#define k     (G_monero_vstate.tmp + 256)
 #define k_len (sizeof(G_monero_vstate.tmp) - 256)
 
     msg = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;

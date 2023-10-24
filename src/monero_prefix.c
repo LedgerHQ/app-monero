@@ -37,7 +37,7 @@ int monero_apdu_prefix_hash_init(void) {
                            G_monero_vstate.io_length - G_monero_vstate.io_offset);
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        error = monero_io_fetch_varint(&timelock); // DUmmy call TODO
+        error = monero_io_fetch_varint(&timelock);  // DUmmy call TODO
         if (error) {
             return error;
         }

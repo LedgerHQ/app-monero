@@ -82,8 +82,7 @@ int monero_apdu_mlsag_hash() {
     unsigned char msg[32];
     unsigned char c[32];
     if (G_monero_vstate.io_p2 == 1) {
-        if (monero_keccak_init_H()) 
-        {
+        if (monero_keccak_init_H()) {
             return SW_WRONG_DATA;
         }
         memcpy(msg, G_monero_vstate.mlsagH, 32);

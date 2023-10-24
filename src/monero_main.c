@@ -68,8 +68,7 @@ void app_main(void) {
         } else if (sw == SW_OK) {
             monero_io_insert_u16(sw);
             io_flags = 0;
-        }
-        else {
+        } else {
             send_error_and_kill_app(sw);
         }
     }

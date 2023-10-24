@@ -88,9 +88,11 @@ int monero_init_private_key(void) {
         case KEY_MODE_SEED:
 
             monero_keccak_F(seed, 32, G_monero_vstate.b);
-            monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b), sizeof(G_monero_vstate.b));
+            monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b),
+                          sizeof(G_monero_vstate.b));
             monero_keccak_F(G_monero_vstate.b, 32, G_monero_vstate.a);
-            monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a), sizeof(G_monero_vstate.a));
+            monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a),
+                          sizeof(G_monero_vstate.a));
             break;
 
         case KEY_MODE_EXTERNAL:
@@ -101,8 +103,10 @@ int monero_init_private_key(void) {
         default:
             return SW_SECURITY_LOAD_KEY;
     }
-    monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A), sizeof(G_monero_vstate.a));
-    monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B), sizeof(G_monero_vstate.b));
+    monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A),
+                   sizeof(G_monero_vstate.a));
+    monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B),
+                   sizeof(G_monero_vstate.b));
 
     // generate key protection
     int err = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a, G_monero_vstate.b);

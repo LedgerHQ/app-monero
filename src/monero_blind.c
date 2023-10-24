@@ -101,7 +101,8 @@ int monero_apdu_unblind() {
 
     monero_io_discard(1);
 
-    monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k), sizeof(AKout));
+    monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
+                   sizeof(AKout));
 
     // ret all
     monero_io_insert(v, 32);
