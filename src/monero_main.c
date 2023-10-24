@@ -38,6 +38,13 @@
 /* ----------------------------------------------------------------------- */
 void __attribute__((noreturn)) app_exit(void);
 
+void __attribute__((noreturn)) send_error_and_kill_app(int sw) {
+    monero_io_insert_u16(sw);
+    monero_io_do(IO_RETURN_AFTER_TX);
+    memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+    app_exit();
+}
+
 void app_main(void) {
     unsigned int io_flags;
     unsigned int error;
@@ -63,10 +70,7 @@ void app_main(void) {
             io_flags = 0;
         }
         else {
-            monero_io_insert_u16(sw);
-            monero_io_do(IO_RETURN_AFTER_TX);
-            memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
-            app_exit();
+            send_error_and_kill_app(sw);
         }
     }
 }

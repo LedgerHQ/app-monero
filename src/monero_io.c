@@ -66,7 +66,7 @@ void monero_io_clear(void) {
 
 void monero_io_hole(unsigned int sz) {
     if ((G_monero_vstate.io_length + sz) > MONERO_IO_BUFFER_LENGTH) {
-        THROW(ERROR_IO_FULL);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
     memmove(G_monero_vstate.io_buffer + G_monero_vstate.io_offset + sz,
             G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
@@ -76,7 +76,7 @@ void monero_io_hole(unsigned int sz) {
 
 void monero_io_insert(unsigned char const* buff, unsigned int len) {
     if (!buff) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
     monero_io_hole(len);
     memcpy(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, buff, len);
@@ -85,11 +85,11 @@ void monero_io_insert(unsigned char const* buff, unsigned int len) {
 
 void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
     if (!buffer) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
     // for now, only 32bytes block are allowed
     if (len != 32) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
 
     unsigned char hmac[32 + 1 + 4];
@@ -113,12 +113,12 @@ void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
 
 void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
     if (!buffer) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
 
     // for now, only 32bytes block are allowed
     if (len != 32) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
 
     monero_io_hole(len);
@@ -205,7 +205,7 @@ int monero_io_fetch_available(void) {
 }
 void monero_io_assert_available(int sz) {
     if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
-        THROW(SW_WRONG_LENGTH + (sz & 0xFF));
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
 }
 
@@ -217,7 +217,7 @@ void monero_io_skip(int len) {
 int monero_io_fetch(unsigned char* buffer, int len) {
     monero_io_assert_available(len);
     if (!buffer) {
-        THROW(SW_WRONG_DATA);
+        send_error_and_kill_app(ERROR_IO_FULL);
     }
     memcpy(buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len);
     G_monero_vstate.io_offset += len;

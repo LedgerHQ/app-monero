@@ -36,6 +36,7 @@
 #define ACCEPT 0xACCE
 #define REJECT ~ACCEPT
 
+void __attribute__((noreturn)) app_exit(void);
 void ui_menu_main_display();
 
 
@@ -663,6 +664,11 @@ void ui_menu_pubaddr_display(unsigned int value) {
     ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
 }
 
+static void exit(void) {
+    memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+    app_exit();
+}
+
 #undef ADDR_TYPE
 #undef ADDR_MAJOR
 #undef ADDR_MINOR
@@ -682,7 +688,7 @@ UX_STEP_CB(ux_menu_main_2_step, pb,
 
 UX_STEP_CB(ux_menu_main_3_step, pb, ui_menu_about_display(), {&C_icon_certificate, "About"});
 
-UX_STEP_CB(ux_menu_main_4_step, pb, os_sched_exit(0), {&C_icon_dashboard_x, "Quit app"});
+UX_STEP_CB(ux_menu_main_4_step, pb, exit(), {&C_icon_dashboard_x, "Quit app"});
 
 UX_FLOW(ux_flow_main, &ux_menu_main_1_step, &ux_menu_main_2_step, &ux_menu_main_3_step,
         &ux_menu_main_4_step);

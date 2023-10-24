@@ -37,6 +37,8 @@
 #define NB_PAGE_SETTING 3
 #define IS_TOUCHABLE    true
 
+void __attribute__((noreturn)) app_exit(void);
+
 /* ----------------------------------------------------------------------- */
 /* ---                         Stax  UI layout                         --- */
 /* ----------------------------------------------------------------------- */
@@ -83,7 +85,8 @@ static void update_account(void) {
 }
 
 static void exit(void) {
-    os_sched_exit(-1);
+    memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
+    app_exit();
 }
 
 static bool settings_navigation_cb(uint8_t page, nbgl_pageContent_t* content) {

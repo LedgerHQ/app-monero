@@ -21,7 +21,7 @@
 
 #include "monero_vars.h"
 
-void send_error_and_kill_app(int sw);
+void __attribute__((noreturn)) send_error_and_kill_app(int sw);
 int monero_apdu_reset(void);
 int monero_apdu_lock(void);
 void monero_lock(int sw);
