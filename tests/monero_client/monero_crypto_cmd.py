@@ -115,7 +115,7 @@ class MoneroCryptoCmd:
         ])
 
         if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(7)
+            instructions = get_nano_review_instructions(8)
         elif firmware.device.startswith("nano"):
             instructions = get_nano_review_instructions(4)
         else:
