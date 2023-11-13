@@ -204,6 +204,7 @@ int monero_apdu_display_address() {
     unsigned char payment_id[8];
     unsigned char C[32];
     unsigned char D[32];
+    int error;
 
     // fetch
     monero_io_fetch(index, 8);
@@ -218,7 +219,10 @@ int monero_apdu_display_address() {
 
     // retrieve pub keys
     if (minor | major) {
-        monero_get_subaddress(C, D, index, sizeof(C), sizeof(D), sizeof(index));
+        error = monero_get_subaddress(C, D, index, sizeof(C), sizeof(D), sizeof(index));
+        if (error) {
+            return error;
+        }
     } else {
         memcpy(C, G_monero_vstate.A, 32);
         memcpy(D, G_monero_vstate.B, 32);
@@ -261,6 +265,7 @@ int monero_apdu_put_key() {
     unsigned char raw[32];
     unsigned char pub[32];
     unsigned char sec[32];
+    int err;
 
     // option + priv/pub view key + priv/pub spend key + base58 address
     if (G_monero_vstate.io_length != (1 + 32 * 2 + 32 * 2 + 95)) {
@@ -270,7 +275,11 @@ int monero_apdu_put_key() {
     // view key
     monero_io_fetch(sec, 32);
     monero_io_fetch(pub, 32);
-    monero_ecmul_G(raw, sec, sizeof(raw), sizeof(sec));
+    err = monero_ecmul_G(raw, sec, sizeof(raw), sizeof(sec));
+    if (err) {
+        return err;
+    }
+
     if (memcmp(pub, raw, 32) != 0) {
         return SW_WRONG_DATA;
     }
@@ -279,7 +288,11 @@ int monero_apdu_put_key() {
     // spend key
     monero_io_fetch(sec, 32);
     monero_io_fetch(pub, 32);
-    monero_ecmul_G(raw, sec, sizeof(raw), sizeof(sec));
+    err = monero_ecmul_G(raw, sec, sizeof(raw), sizeof(sec));
+    if (err) {
+        return err;
+    }
+
     if (memcmp(pub, raw, 32) != 0) {
         return SW_WRONG_DATA;
     }
@@ -307,8 +320,12 @@ int monero_apdu_get_key() {
             // spend key
             monero_io_insert(G_monero_vstate.B, 32);
             // public base address
-            monero_base58_public_key((char *)G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                     G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+            int error = monero_base58_public_key(
+                (char *)G_monero_vstate.io_buffer + G_monero_vstate.io_offset, G_monero_vstate.A,
+                G_monero_vstate.B, 0, NULL);
+            if (error) {
+                return 0;
+            }
             monero_io_inserted(95);
             break;
 
@@ -377,7 +394,11 @@ int monero_apdu_verify_key() {
     monero_io_fetch(pub, 32);
     switch (G_monero_vstate.io_p1) {
         case 0:
-            monero_secret_key_to_public_key(computed_pub, priv, sizeof(computed_pub), sizeof(priv));
+            err = monero_secret_key_to_public_key(computed_pub, priv, sizeof(computed_pub),
+                                                  sizeof(priv));
+            if (err) {
+                return err;
+            }
             break;
         case 1:
             memcpy(computed_pub, G_monero_vstate.A, 32);
@@ -409,7 +430,10 @@ int monero_apdu_get_chacha8_prekey(/*char  *prekey*/) {
     memcpy(abt, G_monero_vstate.a, 32);
     memcpy(abt + 32, G_monero_vstate.b, 32);
     abt[64] = CHACHA8_KEY_TAIL;
-    monero_keccak_F(abt, 65, pre);
+    int error = monero_keccak_F(abt, 65, pre);
+    if (error) {
+        return error;
+    }
     monero_io_insert((unsigned char *)G_monero_vstate.keccakF.acc, 200);
     return SW_OK;
 }
@@ -444,7 +468,10 @@ int monero_apdu_sc_add(/*unsigned char *r, unsigned char *s1, unsigned char *s2*
             return SW_WRONG_DATA;
         }
     }
-    monero_addm(r, s1, s2, sizeof(r), sizeof(s1), sizeof(s2));
+    err = monero_addm(r, s1, s2, sizeof(r), sizeof(s1), sizeof(s2));
+    if (err) {
+        return err;
+    }
     monero_io_insert_encrypt(r, 32, TYPE_SCALAR);
     return SW_OK;
 }
@@ -466,7 +493,10 @@ int monero_apdu_scal_mul_key(/*const rct::key &pub, const rct::key &sec, rct::ke
     }
     monero_io_discard(0);
 
-    monero_ecmul_k(r, pub, sec, sizeof(r), sizeof(pub), sizeof(sec));
+    err = monero_ecmul_k(r, pub, sec, sizeof(r), sizeof(pub), sizeof(sec));
+    if (err) {
+        return err;
+    }
     monero_io_insert(r, 32);
     return SW_OK;
 }
@@ -485,7 +515,11 @@ int monero_apdu_scal_mul_base(/*const rct::key &sec, rct::key mulkey*/) {
     }
     monero_io_discard(0);
 
-    monero_ecmul_G(r, sec, sizeof(r), sizeof(sec));
+    err = monero_ecmul_G(r, sec, sizeof(r), sizeof(sec));
+    if (err) {
+        return err;
+    }
+
     monero_io_insert(r, 32);
     return SW_OK;
 }
@@ -498,7 +532,10 @@ int monero_apdu_generate_keypair(/*crypto::public_key &pub, crypto::secret_key &
     unsigned char pub[32];
 
     monero_io_discard(0);
-    monero_generate_keypair(pub, sec, sizeof(pub), sizeof(sec));
+    int error = monero_generate_keypair(pub, sec, sizeof(pub), sizeof(sec));
+    if (error) {
+        return error;
+    }
     monero_io_insert(pub, 32);
     monero_io_insert_encrypt(sec, 32, TYPE_SCALAR);
     return SW_OK;
@@ -518,7 +555,11 @@ int monero_apdu_secret_key_to_public_key(
     }
     monero_io_discard(0);
     // pub
-    monero_ecmul_G(pub, sec, sizeof(pub), sizeof(sec));
+    err = monero_ecmul_G(pub, sec, sizeof(pub), sizeof(sec));
+    if (err) {
+        return err;
+    }
+
     // pub key
     monero_io_insert(pub, 32);
     return SW_OK;
@@ -543,7 +584,10 @@ int monero_apdu_generate_key_derivation(/*const crypto::public_key &pub, const c
     monero_io_discard(0);
 
     // Derive  and keep
-    monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    if (err) {
+        return err;
+    }
 
     monero_io_insert_encrypt(drv, 32, TYPE_DERIVATION);
     return SW_OK;
@@ -567,7 +611,11 @@ int monero_apdu_derivation_to_scalar(
     monero_io_discard(0);
 
     // pub
-    monero_derivation_to_scalar(res, derivation, output_index, sizeof(res), sizeof(derivation));
+    err =
+        monero_derivation_to_scalar(res, derivation, output_index, sizeof(res), sizeof(derivation));
+    if (err) {
+        return err;
+    }
 
     // pub key
     monero_io_insert_encrypt(res, 32, TYPE_SCALAR);
@@ -657,7 +705,10 @@ int monero_apdu_generate_key_image(
     monero_io_discard(0);
 
     // pub
-    monero_generate_key_image(image, pub, sec, sizeof(image), sizeof(sec));
+    err = monero_generate_key_image(image, pub, sec, sizeof(image), sizeof(sec));
+    if (err) {
+        return err;
+    }
 
     // pub key
     monero_io_insert(image, 32);
@@ -711,8 +762,11 @@ int monero_apdu_derive_subaddress_public_key(/*const crypto::public_key &pub, co
     monero_io_discard(0);
 
     // pub
-    monero_derive_subaddress_public_key(sub_pub, pub, derivation, output_index, sizeof(sub_pub),
-                                        sizeof(pub), sizeof(derivation));
+    err = monero_derive_subaddress_public_key(sub_pub, pub, derivation, output_index,
+                                              sizeof(sub_pub), sizeof(pub), sizeof(derivation));
+    if (err) {
+        return err;
+    }
     // pub key
     monero_io_insert(sub_pub, 32);
     return SW_OK;
@@ -732,7 +786,10 @@ int monero_apdu_get_subaddress(
     monero_io_discard(0);
 
     // pub
-    monero_get_subaddress(C, D, index, sizeof(C), sizeof(D), sizeof(index));
+    int error = monero_get_subaddress(C, D, index, sizeof(C), sizeof(D), sizeof(index));
+    if (error) {
+        return error;
+    }
 
     // pub key
     monero_io_insert(C, 32);
@@ -753,7 +810,10 @@ int monero_apdu_get_subaddress_spend_public_key(
     monero_io_discard(1);
 
     // pub
-    monero_get_subaddress_spend_public_key(D, index, sizeof(D), sizeof(index));
+    int error = monero_get_subaddress_spend_public_key(D, index, sizeof(D), sizeof(index));
+    if (error) {
+        return error;
+    }
 
     // pub key
     monero_io_insert(D, 32);
@@ -777,8 +837,11 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
     monero_io_fetch(index, 8);
     monero_io_discard(0);
 
-    monero_get_subaddress_secret_key(sub_sec, sec, index, sizeof(sub_sec), sizeof(sec),
-                                     sizeof(index));
+    err = monero_get_subaddress_secret_key(sub_sec, sec, index, sizeof(sub_sec), sizeof(sec),
+                                           sizeof(index));
+    if (err) {
+        return err;
+    }
 
     memcpy(G_monero_vstate.last_get_subaddress_secret_key, sub_sec, 32);
     monero_io_insert_encrypt(sub_sec, 32, TYPE_SCALAR);
@@ -838,20 +901,35 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // update outkeys hash control
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (G_monero_vstate.io_protocol_version >= 2) {
-            monero_sha256_outkeys_update(Aout, 32);
-            monero_sha256_outkeys_update(Bout, 32);
-            monero_sha256_outkeys_update(&is_change, 1);
+            err = monero_sha256_outkeys_update(Aout, 32);
+            if (err) {
+                return err;
+            }
+            err = monero_sha256_outkeys_update(Bout, 32);
+            if (err) {
+                return err;
+            }
+            err = monero_sha256_outkeys_update(&is_change, 1);
+            if (err) {
+                return err;
+            }
         }
     }
 
     // make additional tx pubkey if necessary
     if (need_additional_txkeys) {
         if (is_subaddress) {
-            monero_ecmul_k(additional_txkey_pub, Bout, additional_txkey_sec,
-                           sizeof(additional_txkey_pub), 32, sizeof(additional_txkey_sec));
+            err = monero_ecmul_k(additional_txkey_pub, Bout, additional_txkey_sec,
+                                 sizeof(additional_txkey_pub), 32, sizeof(additional_txkey_sec));
+            if (err) {
+                return err;
+            }
         } else {
-            monero_ecmul_G(additional_txkey_pub, additional_txkey_sec, sizeof(additional_txkey_pub),
-                           sizeof(additional_txkey_sec));
+            err = monero_ecmul_G(additional_txkey_pub, additional_txkey_sec,
+                                 sizeof(additional_txkey_pub), sizeof(additional_txkey_sec));
+            if (err) {
+                return err;
+            }
         }
     } else {
         memset(additional_txkey_pub, 0, 32);
@@ -859,27 +937,42 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
     // derivation
     if (is_change) {
-        monero_generate_key_derivation(derivation, txkey_pub, G_monero_vstate.a, sizeof(derivation),
-                                       32, sizeof(G_monero_vstate.a));
+        err = monero_generate_key_derivation(derivation, txkey_pub, G_monero_vstate.a,
+                                             sizeof(derivation), 32, sizeof(G_monero_vstate.a));
+        if (err) {
+            return err;
+        }
     } else {
-        monero_generate_key_derivation(
+        err = monero_generate_key_derivation(
             derivation, Aout,
             (is_subaddress && need_additional_txkeys) ? additional_txkey_sec : tx_key,
             sizeof(derivation), 32, 32);
+        if (err) {
+            return err;
+        }
     }
 
     // compute amount key AKout (scalar1), version is always greater than 1
-    monero_derivation_to_scalar(amount_key, derivation, output_index, sizeof(amount_key),
-                                sizeof(derivation));
+    err = monero_derivation_to_scalar(amount_key, derivation, output_index, sizeof(amount_key),
+                                      sizeof(derivation));
+    if (err) {
+        return err;
+    }
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (G_monero_vstate.io_protocol_version >= 2) {
-            monero_sha256_outkeys_update(amount_key, 32);
+            err = monero_sha256_outkeys_update(amount_key, 32);
+            if (err) {
+                return err;
+            }
         }
     }
 
     // compute ephemeral output key
-    monero_derive_public_key(out_eph_public_key, derivation, output_index, Bout,
-                             sizeof(out_eph_public_key), sizeof(derivation), 32);
+    err = monero_derive_public_key(out_eph_public_key, derivation, output_index, Bout,
+                                   sizeof(out_eph_public_key), sizeof(derivation), 32);
+    if (err) {
+        return err;
+    }
 
     // compute view tag
     if (use_view_tags) {

@@ -30,16 +30,26 @@
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_init() {
+    int error = 0;
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (G_monero_vstate.io_p2 == 1) {
-            monero_sha256_outkeys_final(G_monero_vstate.OUTK);
+            error = monero_sha256_outkeys_final(G_monero_vstate.OUTK);
+            if (error) {
+                return error;
+            }
             monero_sha256_outkeys_init();
             monero_sha256_commitment_init();
-            monero_keccak_init_H();
+            error = monero_keccak_init_H();
+            if (error) {
+                return error;
+            }
         }
     }
-    monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                           G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    if (error) {
+        return error;
+    }
     if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) && (G_monero_vstate.io_p2 == 1)) {
         // skip type
         monero_io_fetch_u8();
@@ -96,33 +106,74 @@ int monero_apdu_mlsag_prehash_update() {
 
     // update MLSAG prehash
     if ((G_monero_vstate.options & 0x03) == 0x02) {
-        monero_keccak_update_H(v, 8);
+        err = monero_keccak_update_H(v, 8);
+        if (err) {
+            return err;
+        }
+
     } else {
-        monero_keccak_update_H(k, 32);
-        monero_keccak_update_H(v, 32);
+        err = monero_keccak_update_H(k, 32);
+        if (err) {
+            return err;
+        }
+
+        err = monero_keccak_update_H(v, 32);
+        if (err) {
+            return err;
+        }
     }
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (is_change == 0) {
             // encode dest adress
-            monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout, is_subaddress,
-                                     NULL);
+            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
+                                           is_subaddress, NULL);
+            if (err) {
+                return err;
+            }
         }
         // update destination hash control
         if (G_monero_vstate.io_protocol_version >= 2) {
-            monero_sha256_outkeys_update(Aout, 32);
-            monero_sha256_outkeys_update(Bout, 32);
-            monero_sha256_outkeys_update(&is_change, 1);
-            monero_sha256_outkeys_update(AKout, 32);
+            err = monero_sha256_outkeys_update(Aout, 32);
+            if (err) {
+                return err;
+            }
+            err = monero_sha256_outkeys_update(Bout, 32);
+            if (err) {
+                return err;
+            }
+            err = monero_sha256_outkeys_update(&is_change, 1);
+            if (err) {
+                return err;
+            }
+            err = monero_sha256_outkeys_update(AKout, 32);
+            if (err) {
+                return err;
+            }
         }
 
         // check C = aH+kG
-        monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
-                       sizeof(AKout));
-        monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
+        err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
+                             sizeof(AKout));
+        if (err) {
+            return err;
+        }
+
+        err = monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
+        if (err) {
+            return err;
+        }
+
         if (!cx_math_is_zero(v, 32)) {
-            monero_ecmul_H(aH, v, sizeof(aH), sizeof(v));
-            monero_ecadd(aH, kG, aH, sizeof(aH), sizeof(kG), sizeof(aH));
+            err = monero_ecmul_H(aH, v, sizeof(aH), sizeof(v));
+            if (err) {
+                return err;
+            }
+
+            err = monero_ecadd(aH, kG, aH, sizeof(aH), sizeof(kG), sizeof(aH));
+            if (err) {
+                return err;
+            }
         } else {
             memcpy(aH, kG, 32);
         }
@@ -132,18 +183,27 @@ int monero_apdu_mlsag_prehash_update() {
 #endif
         }
         // update commitment hash control
-        monero_sha256_commitment_update(C, 32);
+        err = monero_sha256_commitment_update(C, 32);
+        if (err) {
+            return err;
+        }
 
         if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
             if (G_monero_vstate.io_protocol_version >= 2) {
                 // finalize and check destination hash_control
-                monero_sha256_outkeys_final(k);
+                err = monero_sha256_outkeys_final(k);
+                if (err) {
+                    return err;
+                }
                 if (memcmp(k, G_monero_vstate.OUTK, 32) != 0) {
                     return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
                 }
             }
             // finalize commitment hash control
-            monero_sha256_commitment_final(NULL);
+            err = monero_sha256_commitment_final(NULL);
+            if (err) {
+                return err;
+            }
             monero_sha256_commitment_init();
         }
 
@@ -181,17 +241,28 @@ int monero_apdu_mlsag_prehash_finalize() {
     unsigned char message[32];
     unsigned char proof[32];
     unsigned char H[32];
+    int error;
 
     if (G_monero_vstate.options & IN_OPTION_MORE_COMMAND) {
         // accumulate
         monero_io_fetch(H, 32);
         monero_io_discard(1);
-        monero_keccak_update_H(H, 32);
-        monero_sha256_commitment_update(H, 32);
+        error = monero_keccak_update_H(H, 32);
+        if (error) {
+            return error;
+        }
+
+        error = monero_sha256_commitment_update(H, 32);
+        if (error) {
+            return error;
+        }
     } else {
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-            monero_sha256_commitment_final(H);
+            error = monero_sha256_commitment_final(H);
+            if (error) {
+                return error;
+            }
             if (memcmp(H, G_monero_vstate.C, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
                 return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
@@ -199,12 +270,19 @@ int monero_apdu_mlsag_prehash_finalize() {
             }
         }
         // compute last H
-        monero_keccak_final_H(H);
+        error = monero_keccak_final_H(H);
+        if (error) {
+            return error;
+        }
         // compute last prehash
         monero_io_fetch(message, 32);
         monero_io_fetch(proof, 32);
         monero_io_discard(1);
-        monero_keccak_init_H();
+        error = monero_keccak_init_H();
+        if (error) {
+            return error;
+        }
+
         if (G_monero_vstate.io_protocol_version >= 3) {
             if (memcmp(message, G_monero_vstate.prefixH, 32) != 0) {
 #ifndef BYPASS_COMMITMENT_FOR_TESTS
@@ -212,10 +290,25 @@ int monero_apdu_mlsag_prehash_finalize() {
 #endif
             }
         }
-        monero_keccak_update_H(message, 32);
-        monero_keccak_update_H(H, 32);
-        monero_keccak_update_H(proof, 32);
-        monero_keccak_final_H(G_monero_vstate.mlsagH);
+        error = monero_keccak_update_H(message, 32);
+        if (error) {
+            return error;
+        }
+
+        error = monero_keccak_update_H(H, 32);
+        if (error) {
+            return error;
+        }
+
+        error = monero_keccak_update_H(proof, 32);
+        if (error) {
+            return error;
+        }
+
+        error = monero_keccak_final_H(G_monero_vstate.mlsagH);
+        if (error) {
+            return error;
+        }
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
 

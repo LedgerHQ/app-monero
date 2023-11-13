@@ -364,7 +364,6 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
 }
 
 int monero_io_fetch_varint(uint64_t* out_v64) {
-    // COUOCU
     if (!out_v64) {
         return SW_WRONG_DATA;
     }

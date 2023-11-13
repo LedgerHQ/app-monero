@@ -46,11 +46,17 @@ int monero_apdu_stealth() {
     monero_io_discard(0);
 
     // Compute Dout
-    monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    if (err) {
+        return err;
+    }
 
     // compute mask
     drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;
-    monero_keccak_F(drv, 33, sec);
+    err = monero_keccak_F(drv, 33, sec);
+    if (err) {
+        return err;
+    }
 
     // stealth!
     for (i = 0; i < 8; i++) {

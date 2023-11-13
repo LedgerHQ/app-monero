@@ -62,20 +62,38 @@ int monero_apdu_clsag_prepare() {
     monero_io_discard(1);
 
     // a
-    monero_rng_mod_order(a, sizeof(a));
+    err = monero_rng_mod_order(a, sizeof(a));
+    if (err) {
+        return err;
+    }
+
     monero_io_insert_encrypt(a, 32, TYPE_ALPHA);
     // a.G
-    monero_ecmul_G(W, a, sizeof(W), sizeof(a));
+    err = monero_ecmul_G(W, a, sizeof(W), sizeof(a));
+    if (err) {
+        return err;
+    }
+
     monero_io_insert(W, 32);
     // a.H
-    monero_ecmul_k(W, H, a, sizeof(W), sizeof(H), sizeof(a));
+    err = monero_ecmul_k(W, H, a, sizeof(W), sizeof(H), sizeof(a));
+    if (err) {
+        return err;
+    }
+
     monero_io_insert(W, 32);
     // I = p.H
-    monero_ecmul_k(W, H, p, sizeof(W), sizeof(H), sizeof(p));
+    err = monero_ecmul_k(W, H, p, sizeof(W), sizeof(H), sizeof(p));
+    if (err) {
+        return err;
+    }
     monero_io_insert(W, 32);
 
     // D = z.H
-    monero_ecmul_k(W, H, z, sizeof(W), sizeof(H), sizeof(z));
+    err = monero_ecmul_k(W, H, z, sizeof(W), sizeof(H), sizeof(z));
+    if (err) {
+        return err;
+    }
     monero_io_insert(W, 32);
 
     return SW_OK;
@@ -94,6 +112,7 @@ int monero_apdu_clsag_prepare() {
 int monero_apdu_clsag_hash() {
     unsigned char msg[32];
     unsigned char c[32];
+    int err;
 
     if (G_monero_vstate.io_p2 == 1) {
         if (monero_keccak_init_H()) {
@@ -104,10 +123,21 @@ int monero_apdu_clsag_hash() {
     monero_io_fetch(msg, 32);
     monero_io_discard(1);
 
-    monero_keccak_update_H(msg, 32);
+    err = monero_keccak_update_H(msg, 32);
+    if (err) {
+        return err;
+    }
+
     if ((G_monero_vstate.options & 0x80) == 0) {
-        monero_keccak_final_H(c);
-        monero_reduce(c, c, sizeof(c), sizeof(c));
+        err = monero_keccak_final_H(c);
+        if (err) {
+            return err;
+        }
+
+        err = monero_reduce(c, c, sizeof(c), sizeof(c));
+        if (err) {
+            return err;
+        }
         monero_io_insert(c, 32);
         memcpy(G_monero_vstate.c, c, 32);
     }
@@ -168,17 +198,51 @@ int monero_apdu_clsag_sign() {
 
     monero_io_discard(1);
 
-    monero_check_scalar_not_null(a);
-    monero_check_scalar_not_null(p);
-    monero_check_scalar_not_null(z);
+    err = monero_check_scalar_not_null(a);
+    if (err) {
+        return err;
+    }
 
-    monero_reduce(a, a, sizeof(a), sizeof(a));
-    monero_reduce(p, p, sizeof(p), sizeof(p));
-    monero_reduce(z, z, sizeof(z), sizeof(z));
-    monero_reduce(mu_P, mu_P, sizeof(mu_P), sizeof(mu_P));
-    monero_reduce(mu_C, mu_C, sizeof(mu_C), sizeof(mu_C));
-    monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
-                  sizeof(G_monero_vstate.c));
+    err = monero_check_scalar_not_null(p);
+    if (err) {
+        return err;
+    }
+
+    err = monero_check_scalar_not_null(z);
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(a, a, sizeof(a), sizeof(a));
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(p, p, sizeof(p), sizeof(p));
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(z, z, sizeof(z), sizeof(z));
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(mu_P, mu_P, sizeof(mu_P), sizeof(mu_P));
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(mu_C, mu_C, sizeof(mu_C), sizeof(mu_C));
+    if (err) {
+        return err;
+    }
+
+    err = monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
+                        sizeof(G_monero_vstate.c));
+    if (err) {
+        return err;
+    }
 
     // s0_p_mu_P = mu_P*p
     // s0_add_z_mu_C = mu_C*z + s0_p_mu_P
@@ -187,15 +251,31 @@ int monero_apdu_clsag_sign() {
     //   = a - c*(mu_C*z + mu_P*p)
 
     // s = p*mu_P
-    monero_multm(s, p, mu_P, sizeof(s), sizeof(p), sizeof(mu_P));
+    err = monero_multm(s, p, mu_P, sizeof(s), sizeof(p), sizeof(mu_P));
+    if (err) {
+        return err;
+    }
     // mu_P = mu_C*z
-    monero_multm(mu_P, mu_C, z, sizeof(mu_P), sizeof(mu_C), sizeof(z));
+    err = monero_multm(mu_P, mu_C, z, sizeof(mu_P), sizeof(mu_C), sizeof(z));
+    if (err) {
+        return err;
+    }
     // s = p*mu_P + mu_C*z
-    monero_addm(s, s, mu_P, sizeof(s), sizeof(s), sizeof(mu_P));
+    err = monero_addm(s, s, mu_P, sizeof(s), sizeof(s), sizeof(mu_P));
+    if (err) {
+        return err;
+    }
     // mu_P = c * (p*mu_P + mu_C*z)
-    monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P), sizeof(G_monero_vstate.c), sizeof(s));
+    err = monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P), sizeof(G_monero_vstate.c),
+                       sizeof(s));
+    if (err) {
+        return err;
+    }
     // s = a - c*(p*mu_P + mu_C*z)
-    monero_subm(s, a, mu_P, sizeof(s), sizeof(a), sizeof(mu_P));
+    err = monero_subm(s, a, mu_P, sizeof(s), sizeof(a), sizeof(mu_P));
+    if (err) {
+        return err;
+    }
 
     monero_io_insert(s, 32);
 

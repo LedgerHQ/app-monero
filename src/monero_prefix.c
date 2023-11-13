@@ -33,8 +33,11 @@ int monero_apdu_prefix_hash_init(void) {
     uint64_t timelock;
     int error = 0;
 
-    monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                           G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    if (error) {
+        return error;
+    }
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         error = monero_io_fetch_varint(&timelock);  // DUmmy call TODO
@@ -72,11 +75,19 @@ int monero_apdu_prefix_hash_init(void) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_prefix_hash_update(void) {
-    monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                           G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    int error;
+    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    if (error) {
+        return error;
+    }
+
     monero_io_discard(0);
     if ((G_monero_vstate.options & 0x80) == 0x00) {
-        monero_keccak_final_H(G_monero_vstate.prefixH);
+        error = monero_keccak_final_H(G_monero_vstate.prefixH);
+        if (error) {
+            return error;
+        }
         monero_io_insert(G_monero_vstate.prefixH, 32);
     }
 

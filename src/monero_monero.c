@@ -170,7 +170,10 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
         memcpy(data + offset, paymanetID, 8);
         offset += 8;
     }
-    monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
+    error = monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
+    if (error) {
+        return error;
+    }
     memcpy(data + offset, G_monero_vstate.mlsagH, 4);
     offset += 4;
 

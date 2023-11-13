@@ -57,7 +57,10 @@ unsigned int monero_init() {
         return error;
     }
     // ux conf
-    monero_init_ux();
+    error = monero_init_ux();
+    if (error) {
+        return error;
+    }
     // Let's go!
     G_monero_vstate.state = STATE_IDLE;
     return 0;
@@ -70,6 +73,7 @@ int monero_init_private_key(void) {
     unsigned int path[5];
     unsigned char seed[64];
     unsigned char chain[32];
+    int error;
 
     // generate account keys
 
@@ -87,12 +91,27 @@ int monero_init_private_key(void) {
     switch (N_monero_pstate->key_mode) {
         case KEY_MODE_SEED:
 
-            monero_keccak_F(seed, 32, G_monero_vstate.b);
-            monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b),
-                          sizeof(G_monero_vstate.b));
-            monero_keccak_F(G_monero_vstate.b, 32, G_monero_vstate.a);
-            monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a),
-                          sizeof(G_monero_vstate.a));
+            error = monero_keccak_F(seed, 32, G_monero_vstate.b);
+            if (error) {
+                return error;
+            }
+
+            error = monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b),
+                                  sizeof(G_monero_vstate.b));
+            if (error) {
+                return error;
+            }
+
+            error = monero_keccak_F(G_monero_vstate.b, 32, G_monero_vstate.a);
+            if (error) {
+                return error;
+            }
+
+            error = monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a),
+                                  sizeof(G_monero_vstate.a));
+            if (error) {
+                return error;
+            }
             break;
 
         case KEY_MODE_EXTERNAL:
@@ -103,24 +122,37 @@ int monero_init_private_key(void) {
         default:
             return SW_SECURITY_LOAD_KEY;
     }
-    monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A),
-                   sizeof(G_monero_vstate.a));
-    monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B),
-                   sizeof(G_monero_vstate.b));
+    error = monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A),
+                           sizeof(G_monero_vstate.a));
+    if (error) {
+        return error;
+    }
+    error = monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B),
+                           sizeof(G_monero_vstate.b));
+    if (error) {
+        return error;
+    }
 
     // generate key protection
-    int err = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a, G_monero_vstate.b);
+    error = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a, G_monero_vstate.b);
+    if (error) {
+        return error;
+    }
 
     G_monero_vstate.key_set = 1;
-    return err;
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---  Set up ui/ux                                                   --- */
 /* ----------------------------------------------------------------------- */
-void monero_init_ux() {
-    monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A, G_monero_vstate.B, 0,
-                             NULL);
+int monero_init_ux() {
+    int error = monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
+                                         G_monero_vstate.B, 0, NULL);
+    if (error) {
+        return error;
+    }
+
     memset(G_monero_vstate.ux_wallet_public_short_address, '.',
            sizeof(G_monero_vstate.ux_wallet_public_short_address));
 
@@ -152,6 +184,7 @@ void monero_init_ux() {
     G_monero_vstate.ux_wallet_public_short_address[12] = 0;
 
 #endif
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
