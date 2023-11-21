@@ -8,7 +8,7 @@ def check_accepted_version(monero, valid_version: bytes):
     major, minor, patch = monero.reset_and_get_version(
         monero_client_version=valid_version
     )  # type: int, int, int
-    assert (major, minor, patch) == (1, 8, 2)  # version of the Monero app
+    assert (major, minor, patch) == (1, 9, 0)  # version of the Monero app
 
 
 def check_refused_version(monero, invalid_version: bytes):
