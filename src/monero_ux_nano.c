@@ -16,7 +16,7 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#if defined(UI_NANO_X) || defined(UI_NANO_SX)
+#ifdef HAVE_BAGL
 
 #include "os.h"
 #include "cx.h"
