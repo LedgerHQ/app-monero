@@ -653,7 +653,10 @@ void ui_menu_pubaddr_display(unsigned int value) {
     G_monero_vstate.disp_addr_mode = 0;
     G_monero_vstate.disp_addr_M = 0;
     G_monero_vstate.disp_addr_m = 0;
-    ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+    int error = ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+    if (error) {
+        app_exit();
+    }
 }
 
 static void exit(void) {

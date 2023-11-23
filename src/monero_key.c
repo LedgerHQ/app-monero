@@ -202,7 +202,7 @@ int monero_apdu_display_address() {
     unsigned char payment_id[8];
     unsigned char C[32];
     unsigned char D[32];
-    int error;
+    int error = 0;
 
     // fetch
     monero_io_fetch(index, 8);
@@ -240,9 +240,9 @@ int monero_apdu_display_address() {
         }
     }
 
-    ui_menu_any_pubaddr_display(0, C, D, (minor | major) ? 1 : 0,
-                                (G_monero_vstate.io_p1 == 1) ? payment_id : NULL);
-    return 0;
+    error = ui_menu_any_pubaddr_display(0, C, D, (minor | major) ? 1 : 0,
+                                        (G_monero_vstate.io_p1 == 1) ? payment_id : NULL);
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
