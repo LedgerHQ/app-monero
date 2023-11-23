@@ -23,7 +23,6 @@
 
 void __attribute__((noreturn)) send_error_and_kill_app(int sw);
 int monero_apdu_reset(void);
-int monero_apdu_lock(void);
 
 void monero_install(unsigned char netId);
 unsigned int monero_init(void);

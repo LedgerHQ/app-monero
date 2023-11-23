@@ -660,7 +660,6 @@ void ui_menu_pubaddr_display(unsigned int value) {
 }
 
 static void exit(void) {
-    memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
     app_exit();
 }
 

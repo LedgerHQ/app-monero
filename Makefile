@@ -81,7 +81,6 @@ DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
 
 # Enabling debug PRINTF
-#DEBUG = 0
 ifneq ($(DEBUG),0)
   # Debug options
   DEFINES += DEBUG_HWDEVICE

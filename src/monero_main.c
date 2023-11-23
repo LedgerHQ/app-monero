@@ -37,6 +37,7 @@
 void __attribute__((noreturn)) app_exit(void);
 
 void __attribute__((noreturn)) send_error_and_kill_app(int sw) {
+    monero_io_discard(1);
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
     memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
