@@ -250,12 +250,3 @@ int monero_apdu_reset() {
     monero_io_insert_u8(MONERO_VERSION_MICRO);
     return SW_OK;
 }
-
-/* ----------------------------------------------------------------------- */
-/* --- LOCK                                                           --- */
-/* ----------------------------------------------------------------------- */
-void monero_lock(int sw) {
-    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Security Err");
-    snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "%x", sw);
-    ui_menu_show_security_error();
-}

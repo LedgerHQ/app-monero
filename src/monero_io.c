@@ -151,14 +151,6 @@ void monero_io_insert_u32(unsigned int v32) {
     G_monero_vstate.io_offset += 4;
 }
 
-void monero_io_insert_u24(unsigned int v24) {
-    monero_io_hole(3);
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] = (unsigned char)(v24 >> 16) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] = (unsigned char)(v24 >> 8) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 2] = (unsigned char)(v24 >> 0) & 0xFF;
-    G_monero_vstate.io_offset += 3;
-}
-
 void monero_io_insert_u16(unsigned int v16) {
     monero_io_hole(2);
     G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] = (unsigned char)(v16 >> 8) & 0xFF;
@@ -384,16 +376,6 @@ unsigned int monero_io_fetch_u32(void) {
            (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 3] << 0));
     G_monero_vstate.io_offset += 4;
     return v32;
-}
-
-unsigned int monero_io_fetch_u24(void) {
-    unsigned int v24;
-    monero_io_assert_available(3);
-    v24 = ((G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] << 16) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] << 8) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 2] << 0));
-    G_monero_vstate.io_offset += 3;
-    return v24;
 }
 
 unsigned int monero_io_fetch_u16(void) {

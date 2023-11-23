@@ -59,16 +59,12 @@ static void release_context(void) {
 
 /* -------------------------------- INFO UX --------------------------------- */
 
-static void ui_menu_info_action(void) {
-    ui_menu_main_display();
-}
-
 void ui_menu_show_tx_aborted(void) {
-    nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_info_action);
+    nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_main_display);
 }
 
 void ui_menu_show_security_error(void) {
-    nbgl_useCaseStatus("Security Error", false, ui_menu_info_action);
+    nbgl_useCaseStatus("Security Error", false, ui_menu_main_display);
 }
 
 /* -------------------------------- OPEN TX UX --------------------------------- */

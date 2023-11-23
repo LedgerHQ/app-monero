@@ -24,7 +24,6 @@
 void __attribute__((noreturn)) send_error_and_kill_app(int sw);
 int monero_apdu_reset(void);
 int monero_apdu_lock(void);
-void monero_lock(int sw);
 
 void monero_install(unsigned char netId);
 unsigned int monero_init(void);
@@ -372,7 +371,6 @@ void monero_io_insert_encrypt(unsigned char *buffer, size_t len, int type);
 void monero_io_insert_hmac_for(unsigned char *buffer, int len, int type);
 
 void monero_io_insert_u32(unsigned int v32);
-void monero_io_insert_u24(unsigned int v24);
 void monero_io_insert_u16(unsigned int v16);
 void monero_io_insert_u8(unsigned int v8);
 void monero_io_insert_t(unsigned int T);
@@ -383,7 +381,6 @@ int monero_io_fetch_available(void);
 void monero_io_fetch_buffer(unsigned char *buffer, unsigned int len);
 int monero_io_fetch_varint(uint64_t *out_v64);
 unsigned int monero_io_fetch_u32(void);
-unsigned int monero_io_fetch_u24(void);
 unsigned int monero_io_fetch_u16(void);
 unsigned int monero_io_fetch_u8(void);
 int monero_io_fetch_t(unsigned int *T);

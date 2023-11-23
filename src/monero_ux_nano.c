@@ -79,20 +79,13 @@ void settings_show_25_words(void) {
     ui_menu_words_display(0);
 }
 /* -------------------------------- INFO UX --------------------------------- */
-unsigned int ui_menu_info_action(unsigned int value);
-
-UX_STEP_CB(ux_menu_info_1_step, nn, ui_menu_info_action(0),
+UX_STEP_CB(ux_menu_info_1_step, nn, (void)ui_menu_main_display(),
            {
                G_monero_vstate.ux_info1,
                G_monero_vstate.ux_info2,
            });
 
 UX_FLOW(ux_flow_info, &ux_menu_info_1_step);
-
-unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
-    ui_menu_main_display();
-    return 0;
-}
 
 static void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
                                   const char* line2) {
