@@ -14,7 +14,7 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#if defined(UI_STAX)
+#ifdef HAVE_NBGL
 
 #include "os.h"
 #include "ux.h"

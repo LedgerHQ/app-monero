@@ -45,7 +45,7 @@ void ui_menu_words_clear(unsigned int value);
 void ui_menu_words_back(unsigned int value);
 
 UX_STEP_NOCB(ux_menu_words_1_step,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
              bnnn_paging,
 #else
              bn_paging,
@@ -255,7 +255,7 @@ void ui_menu_validation_action(unsigned int value);
 UX_STEP_NOCB(ux_menu_validation_1_step, bn, {"Amount", G_monero_vstate.ux_amount});
 
 UX_STEP_NOCB(ux_menu_validation_2_step,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
              bnnn_paging,
 #else
              bn_paging,
@@ -535,7 +535,7 @@ void settings_submenu_selector(unsigned int idx) {
 #define STR(x)  #x
 #define XSTR(x) STR(x)
 
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
 UX_STEP_NOCB(ux_menu_about_1_step, bnnn,
              {
                  "Monero",
@@ -565,7 +565,7 @@ UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(),
            });
 
 UX_FLOW(ux_flow_about,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
         &ux_menu_about_1_step,
 #else
         &ux_menu_about_1a_step, &ux_menu_about_1b_step,

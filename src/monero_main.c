@@ -29,9 +29,7 @@
 #include "glyphs.h"
 #include "io.h"
 
-#ifdef HAVE_UX_FLOW
 #include "ux.h"
-#endif
 
 /* ----------------------------------------------------------------------- */
 /* ---                            Application Entry                    --- */

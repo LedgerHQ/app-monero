@@ -155,7 +155,6 @@ int monero_apdu_manage_seedwords(void) {
                 monero_nvm_write((void *)N_monero_pstate->words[24],
                                  (void *)N_monero_pstate->words[w_start], WORDS_MAX_LENGTH);
 
-#ifdef HAVE_UX_FLOW
                 // transform to list ready to display
                 unsigned char word[21];
                 w_start = 0;
@@ -167,7 +166,6 @@ int monero_apdu_manage_seedwords(void) {
                     monero_nvm_write((char *)N_monero_pstate->words_list + w_start, word, w_end);
                     w_start += w_end;
                 }
-#endif
             }
 
             break;

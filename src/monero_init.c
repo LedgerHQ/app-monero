@@ -156,9 +156,7 @@ int monero_init_ux() {
     memset(G_monero_vstate.ux_wallet_public_short_address, '.',
            sizeof(G_monero_vstate.ux_wallet_public_short_address));
 
-#ifdef HAVE_UX_FLOW
-
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
     snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name),
              "XMR / %d", N_monero_pstate->account_id);
     memcpy(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address, 5);
@@ -174,16 +172,6 @@ int monero_init_ux() {
     G_monero_vstate.ux_wallet_public_short_address[10] = 0;
 #endif
 
-#else
-
-    snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name),
-             "XMR / %d", N_monero_pstate->account_id);
-    memcpy(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address, 5);
-    memcpy(G_monero_vstate.ux_wallet_public_short_address + 7, G_monero_vstate.ux_address + 95 - 5,
-           5);
-    G_monero_vstate.ux_wallet_public_short_address[12] = 0;
-
-#endif
     return 0;
 }
 
