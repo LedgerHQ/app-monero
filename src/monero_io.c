@@ -21,6 +21,8 @@
 #include "monero_types.h"
 #include "monero_api.h"
 #include "monero_vars.h"
+#include "os_utils.h"
+#include "read.h"
 
 #if defined(IODUMMYCRYPT)
 #warning IODUMMYCRYPT activated
@@ -144,17 +146,13 @@ void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
 
 void monero_io_insert_u32(unsigned int v32) {
     monero_io_hole(4);
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] = (unsigned char)(v32 >> 24) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] = (unsigned char)(v32 >> 16) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 2] = (unsigned char)(v32 >> 8) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 3] = (unsigned char)(v32 >> 0) & 0xFF;
+    U4BE_ENCODE(G_monero_vstate.io_buffer, G_monero_vstate.io_offset, v32);
     G_monero_vstate.io_offset += 4;
 }
 
 void monero_io_insert_u16(unsigned int v16) {
     monero_io_hole(2);
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] = (unsigned char)(v16 >> 8) & 0xFF;
-    G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] = (unsigned char)(v16 >> 0) & 0xFF;
+    U2BE_ENCODE(G_monero_vstate.io_buffer, G_monero_vstate.io_offset, v16);
     G_monero_vstate.io_offset += 2;
 }
 
@@ -370,10 +368,7 @@ int monero_io_fetch_varint(uint64_t* out_v64) {
 unsigned int monero_io_fetch_u32(void) {
     unsigned int v32;
     monero_io_assert_available(4);
-    v32 = ((G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] << 24) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] << 16) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 2] << 8) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 3] << 0));
+    v32 = read_u32_be(G_monero_vstate.io_buffer, G_monero_vstate.io_offset);
     G_monero_vstate.io_offset += 4;
     return v32;
 }
@@ -381,8 +376,7 @@ unsigned int monero_io_fetch_u32(void) {
 unsigned int monero_io_fetch_u16(void) {
     unsigned int v16;
     monero_io_assert_available(2);
-    v16 = ((G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 0] << 8) |
-           (G_monero_vstate.io_buffer[G_monero_vstate.io_offset + 1] << 0));
+    v16 = read_u16_be(G_monero_vstate.io_buffer, G_monero_vstate.io_offset);
     G_monero_vstate.io_offset += 2;
     return v16;
 }
