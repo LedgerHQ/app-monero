@@ -31,22 +31,32 @@ int monero_apdu_stealth() {
     unsigned char sec[32];
     unsigned char drv[33];
     unsigned char payID[8];
+    int err = 0;
 
     // fetch pub
     monero_io_fetch(pub, 32);
     // fetch sec
-    monero_io_fetch_decrypt_key(sec);
+    err = monero_io_fetch_decrypt_key(sec, sizeof(sec));
+    if (err) {
+        return err;
+    }
     // fetch paymentID
     monero_io_fetch(payID, 8);
 
     monero_io_discard(0);
 
     // Compute Dout
-    monero_generate_key_derivation(drv, pub, sec);
+    err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    if (err) {
+        return err;
+    }
 
     // compute mask
     drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;
-    monero_keccak_F(drv, 33, sec);
+    err = monero_keccak_F(drv, 33, sec);
+    if (err) {
+        return err;
+    }
 
     // stealth!
     for (i = 0; i < 8; i++) {

@@ -122,6 +122,7 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
     unsigned char data[72 + 8];
     unsigned int offset;
     unsigned int prefix;
+    int error = 0;
 
     switch (N_monero_pstate->network_id) {
         case TESTNET:
@@ -157,7 +158,10 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
             str_b58[0] = 0;
             return 0;
     }
-    offset = monero_encode_varint(data, 8, prefix);
+    error = monero_encode_varint(data, 8, prefix, &offset);
+    if (error) {
+        return error;
+    }
 
     memcpy(data + offset, spend, 32);
     memcpy(data + offset + 32, view, 32);
@@ -166,7 +170,10 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
         memcpy(data + offset, paymanetID, 8);
         offset += 8;
     }
-    monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
+    error = monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
+    if (error) {
+        return error;
+    }
     memcpy(data + offset, G_monero_vstate.mlsagH, 4);
     offset += 4;
 

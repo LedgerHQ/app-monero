@@ -14,7 +14,7 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#if defined(UI_STAX)
+#ifdef HAVE_NBGL
 
 #include "os.h"
 #include "ux.h"
@@ -37,6 +37,8 @@
 #define NB_PAGE_SETTING 3
 #define IS_TOUCHABLE    true
 
+void __attribute__((noreturn)) app_exit(void);
+
 /* ----------------------------------------------------------------------- */
 /* ---                         Stax  UI layout                         --- */
 /* ----------------------------------------------------------------------- */
@@ -48,9 +50,6 @@ typedef struct {
 } TransactionContext_t;
 
 static TransactionContext_t transactionContext;
-
-ux_state_t G_ux;
-bolos_ux_params_t G_ux_params;
 
 enum {
     ACCOUNT_TOKEN = FIRST_USER_TOKEN,
@@ -83,10 +82,6 @@ static void update_account(void) {
     G_monero_vstate.disp_addr_mode = 0;
     G_monero_vstate.disp_addr_M = 0;
     G_monero_vstate.disp_addr_m = 0;
-}
-
-static void exit(void) {
-    os_sched_exit(-1);
 }
 
 static bool settings_navigation_cb(uint8_t page, nbgl_pageContent_t* content) {
@@ -254,7 +249,7 @@ void ui_menu_main_display(void) {
                              NULL);
 
     nbgl_useCaseHomeExt("Monero", &C_Monero_64px, NULL, true, transactionContext.buffer,
-                        display_account, display_settings_menu, exit);
+                        display_account, display_settings_menu, app_exit);
 }
 
 /* --- INIT --- */

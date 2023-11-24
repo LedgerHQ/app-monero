@@ -16,7 +16,7 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#if defined(UI_NANO_X) || defined(UI_NANO_SX)
+#ifdef HAVE_BAGL
 
 #include "os.h"
 #include "cx.h"
@@ -36,31 +36,8 @@
 #define ACCEPT 0xACCE
 #define REJECT ~ACCEPT
 
+void __attribute__((noreturn)) app_exit(void);
 void ui_menu_main_display();
-
-/* -------------------------------------- LOCK--------------------------------------- */
-
-void ui_menu_pinlock_display() {
-    struct {
-        bolos_ux_t ux_id;
-        // length of parameters in the u union to be copied during the syscall
-        unsigned int len;
-        union {
-            struct {
-                unsigned int cancellable;
-            } validate_pin;
-        } u;
-
-    } ux_params;
-
-    os_global_pin_invalidate();
-    G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED_UNLOCKABLE;
-    ux_params.ux_id = BOLOS_UX_VALIDATE_PIN;
-    ux_params.len = sizeof(ux_params.u.validate_pin);
-    ux_params.u.validate_pin.cancellable = 0;
-    os_ux((bolos_ux_params_t*)&ux_params);
-    ui_menu_main_display();
-}
 
 /* -------------------------------------- 25 WORDS --------------------------------------- */
 void ui_menu_words_display(unsigned int value);
@@ -68,7 +45,7 @@ void ui_menu_words_clear(unsigned int value);
 void ui_menu_words_back(unsigned int value);
 
 UX_STEP_NOCB(ux_menu_words_1_step,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
              bnnn_paging,
 #else
              bn_paging,
@@ -102,24 +79,13 @@ void settings_show_25_words(void) {
     ui_menu_words_display(0);
 }
 /* -------------------------------- INFO UX --------------------------------- */
-unsigned int ui_menu_info_action(unsigned int value);
-
-UX_STEP_CB(ux_menu_info_1_step, nn, ui_menu_info_action(0),
+UX_STEP_CB(ux_menu_info_1_step, nn, (void)ui_menu_main_display(),
            {
                G_monero_vstate.ux_info1,
                G_monero_vstate.ux_info2,
            });
 
 UX_FLOW(ux_flow_info, &ux_menu_info_1_step);
-
-unsigned int ui_menu_info_action(unsigned int value __attribute__((unused))) {
-    if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
-        ui_menu_pinlock_display();
-    } else {
-        ui_menu_main_display();
-    }
-    return 0;
-}
 
 static void ui_menu_info_display2(unsigned int value __attribute__((unused)), const char* line1,
                                   const char* line2) {
@@ -282,7 +248,7 @@ void ui_menu_validation_action(unsigned int value);
 UX_STEP_NOCB(ux_menu_validation_1_step, bn, {"Amount", G_monero_vstate.ux_amount});
 
 UX_STEP_NOCB(ux_menu_validation_2_step,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
              bnnn_paging,
 #else
              bn_paging,
@@ -562,7 +528,7 @@ void settings_submenu_selector(unsigned int idx) {
 #define STR(x)  #x
 #define XSTR(x) STR(x)
 
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
 UX_STEP_NOCB(ux_menu_about_1_step, bnnn,
              {
                  "Monero",
@@ -592,7 +558,7 @@ UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(),
            });
 
 UX_FLOW(ux_flow_about,
-#ifdef UI_NANO_X
+#ifndef TARGET_NANOS
         &ux_menu_about_1_step,
 #else
         &ux_menu_about_1a_step, &ux_menu_about_1b_step,
@@ -647,9 +613,9 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
 /**
  *
  */
-void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
-                                 unsigned char* pub_view, unsigned char* pub_spend,
-                                 unsigned char is_subbadress, unsigned char* paymanetID) {
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
+                                unsigned char* pub_spend, unsigned char is_subbadress,
+                                unsigned char* paymanetID) {
     memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
 
     switch (G_monero_vstate.disp_addr_mode) {
@@ -673,17 +639,24 @@ void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
             break;
     }
 
-    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
-                             paymanetID);
+    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend,
+                                         is_subbadress, paymanetID);
+    if (error) {
+        return error;
+    }
     ux_layout_bnnn_paging_reset();
     ux_flow_init(0, ux_flow_pubaddr, NULL);
+    return 0;
 }
 
 void ui_menu_pubaddr_display(unsigned int value) {
     G_monero_vstate.disp_addr_mode = 0;
     G_monero_vstate.disp_addr_M = 0;
     G_monero_vstate.disp_addr_m = 0;
-    ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+    int error = ui_menu_any_pubaddr_display(value, G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
+    if (error) {
+        app_exit();
+    }
 }
 
 #undef ADDR_TYPE
@@ -705,7 +678,7 @@ UX_STEP_CB(ux_menu_main_2_step, pb,
 
 UX_STEP_CB(ux_menu_main_3_step, pb, ui_menu_about_display(), {&C_icon_certificate, "About"});
 
-UX_STEP_CB(ux_menu_main_4_step, pb, os_sched_exit(0), {&C_icon_dashboard_x, "Quit app"});
+UX_STEP_CB(ux_menu_main_4_step, pb, app_exit(), {&C_icon_dashboard_x, "Quit app"});
 
 UX_FLOW(ux_flow_main, &ux_menu_main_1_step, &ux_menu_main_2_step, &ux_menu_main_3_step,
         &ux_menu_main_4_step);

@@ -14,7 +14,7 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#if defined(UI_STAX)
+#ifdef HAVE_NBGL
 
 #include "os.h"
 #include "ux.h"
@@ -57,46 +57,14 @@ static void release_context(void) {
     }
 }
 
-/* -------------------------------------- LOCK--------------------------------------- */
-
-void ui_menu_pinlock_display() {
-    struct {
-        bolos_ux_t ux_id;
-        // length of parameters in the u union to be copied during the syscall
-        unsigned int len;
-        union {
-            struct {
-                unsigned int cancellable;
-            } validate_pin;
-        } u;
-
-    } ux_params;
-
-    os_global_pin_invalidate();
-    G_monero_vstate.protocol_barrier = PROTOCOL_LOCKED_UNLOCKABLE;
-    ux_params.ux_id = BOLOS_UX_VALIDATE_PIN;
-    ux_params.len = sizeof(ux_params.u.validate_pin);
-    ux_params.u.validate_pin.cancellable = 0;
-    os_ux((bolos_ux_params_t*)&ux_params);
-    ui_menu_main_display();
-}
-
 /* -------------------------------- INFO UX --------------------------------- */
 
-static void ui_menu_info_action(void) {
-    if (G_monero_vstate.protocol_barrier == PROTOCOL_LOCKED) {
-        ui_menu_pinlock_display();
-    } else {
-        ui_menu_main_display();
-    }
-}
-
 void ui_menu_show_tx_aborted(void) {
-    nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_info_action);
+    nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_main_display);
 }
 
 void ui_menu_show_security_error(void) {
-    nbgl_useCaseStatus("Security Error", false, ui_menu_info_action);
+    nbgl_useCaseStatus("Security Error", false, ui_menu_main_display);
 }
 
 /* -------------------------------- OPEN TX UX --------------------------------- */
@@ -409,16 +377,21 @@ void display_account(void) {
                                        &transactionContext.tagValueList);
 }
 
-void ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
-                                 unsigned char* pub_view, unsigned char* pub_spend,
-                                 unsigned char is_subbadress, unsigned char* paymanetID) {
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
+                                unsigned char* pub_spend, unsigned char is_subbadress,
+                                unsigned char* paymanetID) {
+    int error;
     memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
 
-    monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
-                             paymanetID);
+    error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+                                     paymanetID);
+    if (error) {
+        return error;
+    }
 
     nbgl_useCaseReviewStart(&C_Monero_64px, "Review Address", "", "Cancel", display_account,
                             ui_menu_pubaddr_action_cancelled);
+    return 0;
 }
 
 /* -------------------------------- EXPORT VIEW KEY UX --------------------------------- */

@@ -213,7 +213,7 @@ class MoneroCmd(MoneroCryptoCmd):
         ])
 
         if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(2)
+            instructions = get_nano_review_instructions(1)
         elif firmware.device.startswith("nano"):
             instructions = get_nano_review_instructions(1)
         else:
@@ -368,7 +368,7 @@ class MoneroCmd(MoneroCryptoCmd):
         payload: bytes = struct.pack("B", txntype) + encode_varint(txnfee)
 
         if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(2)
+            instructions = get_nano_review_instructions(1)
         elif firmware.device.startswith("nano"):
             instructions = get_nano_review_instructions(1)
         else:
