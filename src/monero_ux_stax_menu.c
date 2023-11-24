@@ -84,10 +84,6 @@ static void update_account(void) {
     G_monero_vstate.disp_addr_m = 0;
 }
 
-static void exit(void) {
-    app_exit();
-}
-
 static bool settings_navigation_cb(uint8_t page, nbgl_pageContent_t* content) {
     if (page == 0) {
         content->type = BARS_LIST;
@@ -253,7 +249,7 @@ void ui_menu_main_display(void) {
                              NULL);
 
     nbgl_useCaseHomeExt("Monero", &C_Monero_64px, NULL, true, transactionContext.buffer,
-                        display_account, display_settings_menu, exit);
+                        display_account, display_settings_menu, app_exit);
 }
 
 /* --- INIT --- */
