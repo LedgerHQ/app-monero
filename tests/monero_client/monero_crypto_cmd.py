@@ -11,7 +11,7 @@ from ragger.navigator import NavInsID, NavIns
 from .utils.utils import get_nano_review_instructions
 
 PROTOCOL_VERSION: int = 3
-TESTS_ROOT_DIR = Path(__file__).parent
+TESTS_ROOT_DIR = Path(__file__).parent.parent
 
 
 class MoneroCryptoCmd:
