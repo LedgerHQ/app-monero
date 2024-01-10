@@ -31,4 +31,3 @@ jobs:
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@v1
     with:
       download_app_binaries_artifact: "compiled_app_binaries"
-      test_dir: tests
