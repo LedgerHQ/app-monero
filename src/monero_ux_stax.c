@@ -23,7 +23,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#include "monero_ux_msg.h"
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "glyphs.h"

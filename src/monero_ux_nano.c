@@ -24,7 +24,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#include "monero_ux_msg.h"
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "glyphs.h"
@@ -127,10 +126,8 @@ UX_FLOW(ux_flow_opentx, &ux_menu_opentx_1_step, &ux_menu_opentx_2_step, &ux_menu
 
 unsigned int ui_menu_opentx_action(unsigned int value) {
     unsigned int sw = SW_OK;
-    unsigned char x[32];
 
     monero_io_discard(0);
-    explicit_bzero(x, 32);
 
     if (value == ACCEPT) {
         sw = monero_apdu_open_tx_cont();
@@ -145,17 +142,6 @@ unsigned int ui_menu_opentx_action(unsigned int value) {
     return 0;
 }
 
-#if 0
-void ui_menu_opentx_display(unsigned int value) {
-  if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-    ux_flow_init(0, ux_flow_opentx,NULL);
-  } else {
-    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Prepare new");
-    snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "TX / %d", G_monero_vstate.tx_cnt);
-    ui_menu_info_display(0);
-  }
-}
-#else
 void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
     uint32_t i;
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
@@ -169,7 +155,6 @@ void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
     G_monero_vstate.ux_info2[i] = 0;
     ui_menu_info_display(0);
 }
-#endif
 
 /* ----------------- FEE/CHANGE/TIMELOCK VALIDATION ----------------- */
 

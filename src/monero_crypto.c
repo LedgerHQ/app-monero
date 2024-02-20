@@ -343,32 +343,15 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
     int error = 0;
 #define MOD              (unsigned char *)C_ED25519_FIELD, 32
 #define fe_isnegative(f) (f[31] & 1)
-#if 0
-    unsigned char u[32], v[32], w[32], x[32], y[32], z[32];
-    unsigned char rX[32], rY[32], rZ[32];
-    union {
-        struct {
-            unsigned char _uv7[32];
-            unsigned char  _v3[32];
-        };
-        unsigned char _Pxy[65];
-
-    } uv;
-
-#define uv7 uv._uv7
-#define v3  uv._v3
-
-#define Pxy uv._Pxy
-#else
-#define u  (G_monero_vstate.io_buffer + 0 * 32)
-#define v  (G_monero_vstate.io_buffer + 1 * 32)
-#define w  (G_monero_vstate.io_buffer + 2 * 32)
-#define x  (G_monero_vstate.io_buffer + 3 * 32)
-#define y  (G_monero_vstate.io_buffer + 4 * 32)
-#define z  (G_monero_vstate.io_buffer + 5 * 32)
-#define rX (G_monero_vstate.io_buffer + 6 * 32)
-#define rY (G_monero_vstate.io_buffer + 7 * 32)
-#define rZ (G_monero_vstate.io_buffer + 8 * 32)
+#define u                (G_monero_vstate.io_buffer + 0 * 32)
+#define v                (G_monero_vstate.io_buffer + 1 * 32)
+#define w                (G_monero_vstate.io_buffer + 2 * 32)
+#define x                (G_monero_vstate.io_buffer + 3 * 32)
+#define y                (G_monero_vstate.io_buffer + 4 * 32)
+#define z                (G_monero_vstate.io_buffer + 5 * 32)
+#define rX               (G_monero_vstate.io_buffer + 6 * 32)
+#define rY               (G_monero_vstate.io_buffer + 7 * 32)
+#define rZ               (G_monero_vstate.io_buffer + 8 * 32)
 
     union {
         unsigned char _Pxy[PXY_SIZE];
@@ -386,7 +369,6 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
 
 #if MONERO_IO_BUFFER_LENGTH < (9 * 32)
 #error MONERO_IO_BUFFER_LENGTH is too small
-#endif
 #endif
 
     unsigned char sign;
