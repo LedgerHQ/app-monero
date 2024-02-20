@@ -113,7 +113,7 @@ int monero_vamount2str(unsigned char *binary, char *str, unsigned int str_len);
 /** binary little endian unsigned  int amount to str */
 int monero_bamount2str(unsigned char *binary, char *str, size_t binary_len, unsigned int str_len);
 /** uint64  amount to str */
-int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len);
+unsigned int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len);
 
 /** uint64  amount to str */
 unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len);

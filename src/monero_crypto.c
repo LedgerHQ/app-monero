@@ -1284,7 +1284,6 @@ int monero_rng_mod_order(unsigned char *r, size_t r_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
 unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len;
@@ -1312,8 +1311,7 @@ unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
-int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
+unsigned int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     // max uint64 is 18446744073709551616, aka 20 char, plus dot
     char stramount[22];
     unsigned int offset, len;
