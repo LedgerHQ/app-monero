@@ -38,6 +38,7 @@ int monero_apdu_stealth() {
     // fetch sec
     err = monero_io_fetch_decrypt_key(sec, sizeof(sec));
     if (err) {
+        explicit_bzero(sec, sizeof(sec));
         return err;
     }
     // fetch paymentID
@@ -48,6 +49,7 @@ int monero_apdu_stealth() {
     // Compute Dout
     err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
     if (err) {
+        explicit_bzero(sec, sizeof(sec));
         return err;
     }
 
@@ -55,6 +57,7 @@ int monero_apdu_stealth() {
     drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;
     err = monero_keccak_F(drv, 33, sec);
     if (err) {
+        explicit_bzero(sec, sizeof(sec));
         return err;
     }
 
@@ -64,6 +67,8 @@ int monero_apdu_stealth() {
     }
 
     monero_io_insert(payID, 8);
+
+    explicit_bzero(sec, sizeof(sec));
 
     return SW_OK;
 }
