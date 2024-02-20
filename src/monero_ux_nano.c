@@ -606,21 +606,21 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
     switch (G_monero_vstate.disp_addr_mode) {
         case 0:
         case DISP_MAIN:
-            memcpy(ADDR_TYPE, "Main", 4);
-            memcpy(ADDR_MAJOR, "Major: 0", 8);
-            memcpy(ADDR_MINOR, "minor: 0", 8);
+            memcpy(ADDR_TYPE, "Main", sizeof("Main"));
+            memcpy(ADDR_MAJOR, "Major: 0", sizeof("Major: 0"));
+            memcpy(ADDR_MINOR, "minor: 0", sizeof("minor: 0"));
             break;
 
         case DISP_SUB:
-            memcpy(ADDR_TYPE, "Sub", 3);
+            memcpy(ADDR_TYPE, "Sub", sizeof("Sub"));
             snprintf(ADDR_MAJOR, 16, "Major: %d", G_monero_vstate.disp_addr_M);
             snprintf(ADDR_MINOR, 16, "minor: %d", G_monero_vstate.disp_addr_m);
             break;
 
         case DISP_INTEGRATED:
-            memcpy(ADDR_TYPE, "Integrated", 10);
-            memcpy(ADDR_IDSTR, "Payment ID", 10);
-            memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            memcpy(ADDR_TYPE, "Integrated", sizeof("Integrated"));
+            memcpy(ADDR_IDSTR, "Payment ID", sizeof("Payment ID"));
+            strncpy(ADDR_ID, G_monero_vstate.payment_id, 16);
             break;
     }
 
