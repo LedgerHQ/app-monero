@@ -41,7 +41,7 @@ int monero_apdu_blind() {
     monero_io_discard(1);
 
     if ((G_monero_vstate.options & 0x03) == 2) {
-        memset(k, 0, 32);
+        explicit_bzero(k, 32);
 
         err = monero_ecdhHash(AKout, AKout, sizeof(AKout));
         if (err) {

@@ -381,7 +381,7 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
                                 unsigned char* pub_spend, unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
     int error;
-    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
     error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
                                      paymanetID);
@@ -401,7 +401,7 @@ static void ui_menu_export_viewkey_action(bool value) {
     unsigned char x[32];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
+    explicit_bzero(x, 32);
     sw = SW_OK;
 
     if (value) {

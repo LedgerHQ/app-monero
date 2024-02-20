@@ -130,7 +130,7 @@ unsigned int ui_menu_opentx_action(unsigned int value) {
     unsigned char x[32];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
+    explicit_bzero(x, 32);
 
     if (value == ACCEPT) {
         sw = monero_apdu_open_tx_cont();
@@ -308,7 +308,7 @@ unsigned int ui_menu_export_viewkey_action(unsigned int value) {
     unsigned char x[32];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
+    explicit_bzero(x, 32);
     sw = SW_OK;
 
     if (value == ACCEPT) {
@@ -616,7 +616,7 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
 int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
                                 unsigned char* pub_spend, unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
-    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
     switch (G_monero_vstate.disp_addr_mode) {
         case 0:

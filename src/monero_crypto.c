@@ -407,7 +407,7 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
     error |= cx_math_multm_no_throw(v, u, u, MOD); /* 2 * u^2 */
     error |= cx_math_addm_no_throw(v, v, v, MOD);
 
-    memset(w, 0, 32);
+    explicit_bzero(w, 32);
     w[31] = 1;                                                             /* w = 1 */
     error |= cx_math_addm_no_throw(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
     error |= cx_math_multm_no_throw(x, w, w, MOD);                         /* w^2 */
@@ -1246,7 +1246,7 @@ int monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_le
     if (error) {
         return error;
     }
-    memset(rb, 0, 32);
+    explicit_bzero(rb, 32);
     rb[31] = 8;
     error = cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     if (error) {
@@ -1311,7 +1311,7 @@ unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
     }
-    memset(str, 0, str_len);
+    explicit_bzero(str, str_len);
 
     offset = 22;
     while (val) {
@@ -1340,7 +1340,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
     }
-    memset(str, 0, str_len);
+    explicit_bzero(str, str_len);
 
     memset(stramount, '0', sizeof(stramount));
     stramount[21] = 0;

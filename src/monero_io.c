@@ -59,7 +59,7 @@ void monero_io_discard(int clear) {
 }
 
 void monero_io_clear(void) {
-    memset(G_monero_vstate.io_buffer, 0, MONERO_IO_BUFFER_LENGTH);
+    explicit_bzero(G_monero_vstate.io_buffer, MONERO_IO_BUFFER_LENGTH);
 }
 
 /* ----------------------------------------------------------------------- */

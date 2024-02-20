@@ -240,7 +240,7 @@ static void display_settings_menu(void) {
 void ui_menu_main_display(void) {
     update_account();
 
-    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
     snprintf(transactionContext.buffer, sizeof(transactionContext.buffer), "Show %s",
              G_monero_vstate.ux_wallet_account_name);

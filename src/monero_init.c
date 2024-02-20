@@ -38,7 +38,7 @@ const unsigned char C_FAKE_SEC_SPEND_KEY[32] = {
 /* --- Boot                                                            --- */
 /* ----------------------------------------------------------------------- */
 unsigned int monero_init() {
-    memset(&G_monero_vstate, 0, sizeof(monero_v_state_t));
+    explicit_bzero(&G_monero_vstate, sizeof(monero_v_state_t));
 
     // first init ?
     if (memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {

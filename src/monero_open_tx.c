@@ -27,8 +27,8 @@
 /* ----------------------------------------------------------------------- */
 int monero_reset_tx(int reset_tx_cnt) {
     int error;
-    memset(G_monero_vstate.r, 0, 32);
-    memset(G_monero_vstate.R, 0, 32);
+    explicit_bzero(G_monero_vstate.r, 32);
+    explicit_bzero(G_monero_vstate.R, 32);
     cx_rng(G_monero_vstate.hmac_key, 32);
 
     error = monero_keccak_init_H();
