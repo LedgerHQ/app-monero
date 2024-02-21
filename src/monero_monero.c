@@ -163,8 +163,8 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
         return error;
     }
 
-    memcpy(data + offset, spend, 32);
-    memcpy(data + offset + 32, view, 32);
+    memcpy(data + offset, spend, KEY_SIZE);
+    memcpy(data + offset + KEY_SIZE, view, KEY_SIZE);
     offset += 64;
     if (paymanetID) {
         memcpy(data + offset, paymanetID, 8);

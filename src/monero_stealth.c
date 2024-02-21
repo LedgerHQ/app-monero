@@ -27,14 +27,14 @@
 /* ----------------------------------------------------------------------- */
 int monero_apdu_stealth() {
     int i;
-    unsigned char pub[32];
-    unsigned char sec[32];
+    unsigned char pub[KEY_SIZE];
+    unsigned char sec[KEY_SIZE];
     unsigned char drv[33];
     unsigned char payID[8];
     int err = 0;
 
     // fetch pub
-    monero_io_fetch(pub, 32);
+    monero_io_fetch(pub, KEY_SIZE);
     // fetch sec
     err = monero_io_fetch_decrypt_key(sec, sizeof(sec));
     if (err) {
@@ -54,7 +54,7 @@ int monero_apdu_stealth() {
     }
 
     // compute mask
-    drv[32] = ENCRYPTED_PAYMENT_ID_TAIL;
+    drv[KEY_SIZE] = ENCRYPTED_PAYMENT_ID_TAIL;
     err = monero_keccak_F(drv, 33, sec);
     if (err) {
         explicit_bzero(sec, sizeof(sec));

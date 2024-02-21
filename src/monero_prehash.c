@@ -74,7 +74,7 @@ int monero_apdu_mlsag_prehash_update() {
     unsigned char *Aout;
     unsigned char *Bout;
     unsigned char is_change;
-    unsigned char AKout[32];
+    unsigned char AKout[KEY_SIZE];
     unsigned char C[32];
     unsigned char v[32];
     unsigned char k[32];
@@ -94,7 +94,7 @@ int monero_apdu_mlsag_prehash_update() {
     monero_io_skip(32);
     Bout = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
     monero_io_skip(32);
-    err = monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    err = monero_io_fetch_decrypt(AKout, KEY_SIZE, TYPE_AMOUNT_KEY);
     if (err) {
         return err;
     }
@@ -134,11 +134,11 @@ int monero_apdu_mlsag_prehash_update() {
         }
         // update destination hash control
         if (G_monero_vstate.io_protocol_version >= 2) {
-            err = monero_sha256_outkeys_update(Aout, 32);
+            err = monero_sha256_outkeys_update(Aout, KEY_SIZE);
             if (err) {
                 return err;
             }
-            err = monero_sha256_outkeys_update(Bout, 32);
+            err = monero_sha256_outkeys_update(Bout, KEY_SIZE);
             if (err) {
                 return err;
             }
@@ -146,7 +146,7 @@ int monero_apdu_mlsag_prehash_update() {
             if (err) {
                 return err;
             }
-            err = monero_sha256_outkeys_update(AKout, 32);
+            err = monero_sha256_outkeys_update(AKout, KEY_SIZE);
             if (err) {
                 return err;
             }
@@ -195,7 +195,7 @@ int monero_apdu_mlsag_prehash_update() {
                 if (err) {
                     return err;
                 }
-                if (memcmp(k, G_monero_vstate.OUTK, 32) != 0) {
+                if (memcmp(k, G_monero_vstate.OUTK, KEY_SIZE) != 0) {
                     return SW_SECURITY_COMMITMENT_CHAIN_CONTROL;
                 }
             }

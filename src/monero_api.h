@@ -134,8 +134,8 @@ void display_account(void);
 /* ----------------------------------------------------------------------- */
 /* ---                          KEYS & ADDRESS                        ---- */
 /* ----------------------------------------------------------------------- */
-extern const unsigned char C_FAKE_SEC_VIEW_KEY[32];
-extern const unsigned char C_FAKE_SEC_SPEND_KEY[32];
+extern const unsigned char C_FAKE_SEC_VIEW_KEY[KEY_SIZE];
+extern const unsigned char C_FAKE_SEC_SPEND_KEY[KEY_SIZE];
 
 int is_fake_view_key(unsigned char *s);
 int is_fake_spend_key(unsigned char *s);

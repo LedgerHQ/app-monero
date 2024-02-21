@@ -59,7 +59,7 @@ unsigned char const C_EIGHT[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a, unsigned char *b) {
-    unsigned char h1[32];
+    unsigned char h1[KEY_SIZE];
     int error;
 
     error = monero_keccak_init_H();
@@ -67,17 +67,17 @@ int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
         return error;
     }
 
-    error = monero_keccak_update_H(seed32, 32);
+    error = monero_keccak_update_H(seed32, KEY_SIZE);
     if (error) {
         return error;
     }
 
-    error = monero_keccak_update_H(a, 32);
+    error = monero_keccak_update_H(a, KEY_SIZE);
     if (error) {
         return error;
     }
 
-    error = monero_keccak_update_H(b, 32);
+    error = monero_keccak_update_H(b, KEY_SIZE);
     if (error) {
         return error;
     }
@@ -87,7 +87,7 @@ int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
         return error;
     }
 
-    error = monero_keccak_H(h1, 32, h1);
+    error = monero_keccak_H(h1, KEY_SIZE, h1);
     if (error) {
         return error;
     }
