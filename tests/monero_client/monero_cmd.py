@@ -35,6 +35,7 @@ TESTS_ROOT_DIR = Path(__file__).parent.parent
 
 class MoneroCmd(MoneroCryptoCmd):
     def __init__(self, debug, backend) -> None:
+        self.backend = backend
         MoneroCryptoCmd.__init__(self, backend, debug)
 
     def reset_and_get_version(self,
@@ -79,6 +80,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
+        # No screen change expected
+
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
 
@@ -105,6 +108,9 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=account)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # Wait for internal backend screen to be up to date before continuing
+        self.backend.wait_for_screen_change()
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -146,6 +152,9 @@ class MoneroCmd(MoneroCryptoCmd):
                          option=0)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # Wait for internal backend screen to be up to date before continuing
+        self.backend.wait_for_screen_change()
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -189,6 +198,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
         sw, response = self.device.recv()  # type: int, bytes
 
+        # No screen change expected
+
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
 
@@ -230,9 +241,11 @@ class MoneroCmd(MoneroCryptoCmd):
 
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_hash_init",
-                                           instructions, screen_change_after_last_instruction=False)
+                                           instructions)
 
         sw, response = self.device.async_response()  # type: int, bytes
+
+        # Screen change already waited in navigate_and_compare() above
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
@@ -250,6 +263,8 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=payload)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # No screen change expected
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=2 (update)")
@@ -278,6 +293,8 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=payload)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # No screen change expected
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -310,6 +327,8 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=payload)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # No screen change expected
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -344,6 +363,8 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=payload)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # No screen change expected
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -386,11 +407,13 @@ class MoneroCmd(MoneroCryptoCmd):
             if firmware.device.startswith("nano"):
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_prehash_init",
-                                               instructions, screen_change_after_last_instruction=False)
+                                               instructions)
             else:
                 pass
 
         sw, response = self.device.async_response()  # type: int, bytes
+
+        # Screen change already waited in navigate_and_compare() above
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
@@ -452,9 +475,11 @@ class MoneroCmd(MoneroCryptoCmd):
             backend.wait_for_text_not_on_screen("Processing")
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_prehash_update",
-                                           instructions, screen_change_after_last_instruction=False, screen_change_before_first_instruction=False)
+                                           instructions, screen_change_before_first_instruction=False)
 
         sw, response = self.device.async_response()  # type: int, bytes
+
+        # Screen change already waited in navigate_and_compare() above
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=2 (update)")
@@ -497,6 +522,8 @@ class MoneroCmd(MoneroCryptoCmd):
                          payload=payload)
 
         sw, response = self.device.recv()  # type: int, bytes
+
+        # No screen change expected
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=3 (finalize)")
