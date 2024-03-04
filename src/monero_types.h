@@ -46,6 +46,8 @@
 #define TESTNET_CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX 54
 #define TESTNET_CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX         63
 
+#define KEY_SIZE 32
+
 enum network_type {
 #ifndef MONERO_ALPHA
     MAINNET = 0,
@@ -71,9 +73,9 @@ struct monero_nv_state_s {
     unsigned int account_id;
 
     /* spend key */
-    unsigned char b[32];
+    unsigned char b[KEY_SIZE];
     /* view key */
-    unsigned char a[32];
+    unsigned char a[KEY_SIZE];
 
 /*words*/
 #define WORDS_MAX_LENGTH 20
@@ -139,8 +141,8 @@ struct monero_v_state_s {
     unsigned int tx_sign_cnt;
 
     /* sc_add control */
-    unsigned char last_derive_secret_key[32];
-    unsigned char last_get_subaddress_secret_key[32];
+    unsigned char last_derive_secret_key[KEY_SIZE];
+    unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -152,11 +154,11 @@ struct monero_v_state_s {
 
     /* SPK */
     cx_aes_key_t spk;
-    unsigned char hmac_key[32];
+    unsigned char hmac_key[KEY_SIZE];
 
     /* Tx key */
-    unsigned char R[32];
-    unsigned char r[32];
+    unsigned char R[KEY_SIZE];
+    unsigned char r[KEY_SIZE];
 
     /* prefix/mlsag hash */
     cx_sha3_t keccakF;
@@ -167,7 +169,7 @@ struct monero_v_state_s {
 
     /* -- track tx-in/out and commitment -- */
     cx_sha256_t sha256_out_keys;
-    unsigned char OUTK[32];
+    unsigned char OUTK[KEY_SIZE];
 
     cx_sha256_t sha256_commitment;
     unsigned char C[32];

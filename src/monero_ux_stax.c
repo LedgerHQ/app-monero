@@ -23,7 +23,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#include "monero_ux_msg.h"
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "glyphs.h"
@@ -381,7 +380,7 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
                                 unsigned char* pub_spend, unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
     int error;
-    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
     error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
                                      paymanetID);
@@ -398,17 +397,17 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
 
 static void ui_menu_export_viewkey_action(bool value) {
     unsigned int sw;
-    unsigned char x[32];
+    unsigned char x[KEY_SIZE];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
+    explicit_bzero(x, sizeof(x));
     sw = SW_OK;
 
     if (value) {
-        monero_io_insert(G_monero_vstate.a, 32);
+        monero_io_insert(G_monero_vstate.a, KEY_SIZE);
         G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
     } else {
-        monero_io_insert(x, 32);
+        monero_io_insert(x, KEY_SIZE);
         G_monero_vstate.export_view_key = 0;
     }
     monero_io_insert_u16(sw);

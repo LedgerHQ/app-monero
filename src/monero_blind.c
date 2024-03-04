@@ -28,10 +28,10 @@
 int monero_apdu_blind() {
     unsigned char v[32];
     unsigned char k[32];
-    unsigned char AKout[32];
+    unsigned char AKout[KEY_SIZE];
     int err = 0;
 
-    err = monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    err = monero_io_fetch_decrypt(AKout, KEY_SIZE, TYPE_AMOUNT_KEY);
     if (err) {
         return err;
     }
@@ -41,7 +41,7 @@ int monero_apdu_blind() {
     monero_io_discard(1);
 
     if ((G_monero_vstate.options & 0x03) == 2) {
-        memset(k, 0, 32);
+        explicit_bzero(k, 32);
 
         err = monero_ecdhHash(AKout, AKout, sizeof(AKout));
         if (err) {
@@ -132,10 +132,10 @@ int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout,
 int monero_apdu_unblind() {
     unsigned char v[32];
     unsigned char k[32];
-    unsigned char AKout[32];
+    unsigned char AKout[KEY_SIZE];
     int err = 0;
 
-    err = monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    err = monero_io_fetch_decrypt(AKout, KEY_SIZE, TYPE_AMOUNT_KEY);
     if (err) {
         return err;
     }
@@ -162,10 +162,10 @@ int monero_apdu_unblind() {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_gen_commitment_mask() {
     unsigned char k[32];
-    unsigned char AKout[32];
+    unsigned char AKout[KEY_SIZE];
     int err = 0;
 
-    err = monero_io_fetch_decrypt(AKout, 32, TYPE_AMOUNT_KEY);
+    err = monero_io_fetch_decrypt(AKout, KEY_SIZE, TYPE_AMOUNT_KEY);
     if (err) {
         return err;
     }

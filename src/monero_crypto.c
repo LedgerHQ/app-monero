@@ -59,7 +59,7 @@ unsigned char const C_EIGHT[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a, unsigned char *b) {
-    unsigned char h1[32];
+    unsigned char h1[KEY_SIZE];
     int error;
 
     error = monero_keccak_init_H();
@@ -67,17 +67,17 @@ int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
         return error;
     }
 
-    error = monero_keccak_update_H(seed32, 32);
+    error = monero_keccak_update_H(seed32, KEY_SIZE);
     if (error) {
         return error;
     }
 
-    error = monero_keccak_update_H(a, 32);
+    error = monero_keccak_update_H(a, KEY_SIZE);
     if (error) {
         return error;
     }
 
-    error = monero_keccak_update_H(b, 32);
+    error = monero_keccak_update_H(b, KEY_SIZE);
     if (error) {
         return error;
     }
@@ -87,7 +87,7 @@ int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
         return error;
     }
 
-    error = monero_keccak_H(h1, 32, h1);
+    error = monero_keccak_H(h1, KEY_SIZE, h1);
     if (error) {
         return error;
     }
@@ -343,32 +343,15 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
     int error = 0;
 #define MOD              (unsigned char *)C_ED25519_FIELD, 32
 #define fe_isnegative(f) (f[31] & 1)
-#if 0
-    unsigned char u[32], v[32], w[32], x[32], y[32], z[32];
-    unsigned char rX[32], rY[32], rZ[32];
-    union {
-        struct {
-            unsigned char _uv7[32];
-            unsigned char  _v3[32];
-        };
-        unsigned char _Pxy[65];
-
-    } uv;
-
-#define uv7 uv._uv7
-#define v3  uv._v3
-
-#define Pxy uv._Pxy
-#else
-#define u  (G_monero_vstate.io_buffer + 0 * 32)
-#define v  (G_monero_vstate.io_buffer + 1 * 32)
-#define w  (G_monero_vstate.io_buffer + 2 * 32)
-#define x  (G_monero_vstate.io_buffer + 3 * 32)
-#define y  (G_monero_vstate.io_buffer + 4 * 32)
-#define z  (G_monero_vstate.io_buffer + 5 * 32)
-#define rX (G_monero_vstate.io_buffer + 6 * 32)
-#define rY (G_monero_vstate.io_buffer + 7 * 32)
-#define rZ (G_monero_vstate.io_buffer + 8 * 32)
+#define u                (G_monero_vstate.io_buffer + 0 * 32)
+#define v                (G_monero_vstate.io_buffer + 1 * 32)
+#define w                (G_monero_vstate.io_buffer + 2 * 32)
+#define x                (G_monero_vstate.io_buffer + 3 * 32)
+#define y                (G_monero_vstate.io_buffer + 4 * 32)
+#define z                (G_monero_vstate.io_buffer + 5 * 32)
+#define rX               (G_monero_vstate.io_buffer + 6 * 32)
+#define rY               (G_monero_vstate.io_buffer + 7 * 32)
+#define rZ               (G_monero_vstate.io_buffer + 8 * 32)
 
     union {
         unsigned char _Pxy[PXY_SIZE];
@@ -386,7 +369,6 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
 
 #if MONERO_IO_BUFFER_LENGTH < (9 * 32)
 #error MONERO_IO_BUFFER_LENGTH is too small
-#endif
 #endif
 
     unsigned char sign;
@@ -407,7 +389,7 @@ int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t g
     error |= cx_math_multm_no_throw(v, u, u, MOD); /* 2 * u^2 */
     error |= cx_math_addm_no_throw(v, v, v, MOD);
 
-    memset(w, 0, 32);
+    explicit_bzero(w, 32);
     w[31] = 1;                                                             /* w = 1 */
     error |= cx_math_addm_no_throw(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
     error |= cx_math_multm_no_throw(x, w, w, MOD);                         /* w^2 */
@@ -1246,7 +1228,7 @@ int monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_le
     if (error) {
         return error;
     }
-    memset(rb, 0, 32);
+    explicit_bzero(rb, 32);
     rb[31] = 8;
     error = cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
     if (error) {
@@ -1302,7 +1284,6 @@ int monero_rng_mod_order(unsigned char *r, size_t r_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
 unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len;
@@ -1311,7 +1292,7 @@ unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
     }
-    memset(str, 0, str_len);
+    explicit_bzero(str, str_len);
 
     offset = 22;
     while (val) {
@@ -1330,8 +1311,7 @@ unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
-int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
+unsigned int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     // max uint64 is 18446744073709551616, aka 20 char, plus dot
     char stramount[22];
     unsigned int offset, len;
@@ -1340,7 +1320,7 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
     }
-    memset(str, 0, str_len);
+    explicit_bzero(str, str_len);
 
     memset(stramount, '0', sizeof(stramount));
     stramount[21] = 0;

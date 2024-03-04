@@ -27,9 +27,9 @@
 /* ----------------------------------------------------------------------- */
 int monero_reset_tx(int reset_tx_cnt) {
     int error;
-    memset(G_monero_vstate.r, 0, 32);
-    memset(G_monero_vstate.R, 0, 32);
-    cx_rng(G_monero_vstate.hmac_key, 32);
+    explicit_bzero(G_monero_vstate.r, sizeof(G_monero_vstate.r));
+    explicit_bzero(G_monero_vstate.R, sizeof(G_monero_vstate.R));
+    cx_rng(G_monero_vstate.hmac_key, KEY_SIZE);
 
     error = monero_keccak_init_H();
     if (error) {
@@ -71,9 +71,9 @@ int monero_apdu_open_tx_cont() {
     G_monero_vstate.tx_in_progress = 1;
 
 #ifdef DEBUG_HWDEVICE
-    memset(G_monero_vstate.hmac_key, 0xab, 32);
+    memset(G_monero_vstate.hmac_key, 0xab, sizeof(G_monero_vstate.hmac_key));
 #else
-    cx_rng(G_monero_vstate.hmac_key, 32);
+    cx_rng(G_monero_vstate.hmac_key, KEY_SIZE);
 #endif
 
     error = monero_rng_mod_order(G_monero_vstate.r, sizeof(G_monero_vstate.r));
@@ -87,12 +87,12 @@ int monero_apdu_open_tx_cont() {
         return error;
     }
 
-    monero_io_insert(G_monero_vstate.R, 32);
-    monero_io_insert_encrypt(G_monero_vstate.r, 32, TYPE_SCALAR);
-    monero_io_insert(C_FAKE_SEC_VIEW_KEY, 32);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, 32, TYPE_SCALAR);
-    monero_io_insert(C_FAKE_SEC_SPEND_KEY, 32);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, 32, TYPE_SCALAR);
+    monero_io_insert(G_monero_vstate.R, KEY_SIZE);
+    monero_io_insert_encrypt(G_monero_vstate.r, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert(C_FAKE_SEC_VIEW_KEY, KEY_SIZE);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert(C_FAKE_SEC_SPEND_KEY, KEY_SIZE);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
     return SW_OK;
 }
 

@@ -27,10 +27,10 @@
 /* ----------------------*/
 const unsigned char C_MAGIC[8] = {'M', 'O', 'N', 'E', 'R', 'O', 'H', 'W'};
 
-const unsigned char C_FAKE_SEC_VIEW_KEY[32] = {
+const unsigned char C_FAKE_SEC_VIEW_KEY[KEY_SIZE] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-const unsigned char C_FAKE_SEC_SPEND_KEY[32] = {
+const unsigned char C_FAKE_SEC_SPEND_KEY[KEY_SIZE] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -38,7 +38,7 @@ const unsigned char C_FAKE_SEC_SPEND_KEY[32] = {
 /* --- Boot                                                            --- */
 /* ----------------------------------------------------------------------- */
 unsigned int monero_init() {
-    memset(&G_monero_vstate, 0, sizeof(monero_v_state_t));
+    explicit_bzero(&G_monero_vstate, sizeof(monero_v_state_t));
 
     // first init ?
     if (memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
@@ -72,7 +72,7 @@ unsigned int monero_init() {
 int monero_init_private_key(void) {
     unsigned int path[5];
     unsigned char seed[64];
-    unsigned char chain[32];
+    unsigned char chain[KEY_SIZE];
     int error;
 
     // generate account keys
@@ -91,7 +91,7 @@ int monero_init_private_key(void) {
     switch (N_monero_pstate->key_mode) {
         case KEY_MODE_SEED:
 
-            error = monero_keccak_F(seed, 32, G_monero_vstate.b);
+            error = monero_keccak_F(seed, KEY_SIZE, G_monero_vstate.b);
             if (error) {
                 return error;
             }
@@ -102,7 +102,7 @@ int monero_init_private_key(void) {
                 return error;
             }
 
-            error = monero_keccak_F(G_monero_vstate.b, 32, G_monero_vstate.a);
+            error = monero_keccak_F(G_monero_vstate.b, KEY_SIZE, G_monero_vstate.a);
             if (error) {
                 return error;
             }
@@ -115,8 +115,8 @@ int monero_init_private_key(void) {
             break;
 
         case KEY_MODE_EXTERNAL:
-            memcpy(G_monero_vstate.a, (void*)N_monero_pstate->a, 32);
-            memcpy(G_monero_vstate.b, (void*)N_monero_pstate->b, 32);
+            memcpy(G_monero_vstate.a, (void*)N_monero_pstate->a, KEY_SIZE);
+            memcpy(G_monero_vstate.b, (void*)N_monero_pstate->b, KEY_SIZE);
             break;
 
         default:

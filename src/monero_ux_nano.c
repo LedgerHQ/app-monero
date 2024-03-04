@@ -24,7 +24,6 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#include "monero_ux_msg.h"
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "glyphs.h"
@@ -127,10 +126,8 @@ UX_FLOW(ux_flow_opentx, &ux_menu_opentx_1_step, &ux_menu_opentx_2_step, &ux_menu
 
 unsigned int ui_menu_opentx_action(unsigned int value) {
     unsigned int sw = SW_OK;
-    unsigned char x[32];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
 
     if (value == ACCEPT) {
         sw = monero_apdu_open_tx_cont();
@@ -145,17 +142,6 @@ unsigned int ui_menu_opentx_action(unsigned int value) {
     return 0;
 }
 
-#if 0
-void ui_menu_opentx_display(unsigned int value) {
-  if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-    ux_flow_init(0, ux_flow_opentx,NULL);
-  } else {
-    snprintf(G_monero_vstate.ux_info1, sizeof(G_monero_vstate.ux_info1), "Prepare new");
-    snprintf(G_monero_vstate.ux_info2, sizeof(G_monero_vstate.ux_info2), "TX / %d", G_monero_vstate.tx_cnt);
-    ui_menu_info_display(0);
-  }
-}
-#else
 void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
     uint32_t i;
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
@@ -169,7 +155,6 @@ void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
     G_monero_vstate.ux_info2[i] = 0;
     ui_menu_info_display(0);
 }
-#endif
 
 /* ----------------- FEE/CHANGE/TIMELOCK VALIDATION ----------------- */
 
@@ -305,17 +290,17 @@ void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
 
 unsigned int ui_menu_export_viewkey_action(unsigned int value) {
     unsigned int sw;
-    unsigned char x[32];
+    unsigned char x[KEY_SIZE];
 
     monero_io_discard(0);
-    memset(x, 0, 32);
+    explicit_bzero(x, sizeof(x));
     sw = SW_OK;
 
     if (value == ACCEPT) {
-        monero_io_insert(G_monero_vstate.a, 32);
+        monero_io_insert(G_monero_vstate.a, KEY_SIZE);
         G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
     } else {
-        monero_io_insert(x, 32);
+        monero_io_insert(x, KEY_SIZE);
         G_monero_vstate.export_view_key = 0;
     }
     monero_io_insert_u16(sw);
@@ -616,26 +601,26 @@ void ui_menu_pubaddr_action(unsigned int value __attribute__((unused))) {
 int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
                                 unsigned char* pub_spend, unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
-    memset(G_monero_vstate.ux_address, 0, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
     switch (G_monero_vstate.disp_addr_mode) {
         case 0:
         case DISP_MAIN:
-            memcpy(ADDR_TYPE, "Main", 4);
-            memcpy(ADDR_MAJOR, "Major: 0", 8);
-            memcpy(ADDR_MINOR, "minor: 0", 8);
+            memcpy(ADDR_TYPE, "Main", sizeof("Main"));
+            memcpy(ADDR_MAJOR, "Major: 0", sizeof("Major: 0"));
+            memcpy(ADDR_MINOR, "minor: 0", sizeof("minor: 0"));
             break;
 
         case DISP_SUB:
-            memcpy(ADDR_TYPE, "Sub", 3);
+            memcpy(ADDR_TYPE, "Sub", sizeof("Sub"));
             snprintf(ADDR_MAJOR, 16, "Major: %d", G_monero_vstate.disp_addr_M);
             snprintf(ADDR_MINOR, 16, "minor: %d", G_monero_vstate.disp_addr_m);
             break;
 
         case DISP_INTEGRATED:
-            memcpy(ADDR_TYPE, "Integrated", 10);
-            memcpy(ADDR_IDSTR, "Payment ID", 10);
-            memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            memcpy(ADDR_TYPE, "Integrated", sizeof("Integrated"));
+            memcpy(ADDR_IDSTR, "Payment ID", sizeof("Payment ID"));
+            strncpy(ADDR_ID, G_monero_vstate.payment_id, 16);
             break;
     }
 

@@ -68,8 +68,6 @@ DEFINES   += SPEC_VERSION=$(SPECVERSION)
 #DEFINES += MONERO_BETA
 
 
-#DEFINES += IOCRYPT
-
 ############
 # Platform #
 ############
