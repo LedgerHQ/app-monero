@@ -463,6 +463,7 @@ class MoneroCmd(MoneroCryptoCmd):
                 NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
             ]
 
+        backend.wait_for_text_on_screen("Processing")
         with self.device.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=2,
@@ -471,11 +472,9 @@ class MoneroCmd(MoneroCryptoCmd):
                                         0x02 if is_short else 0),
                                     payload=payload):
 
-            backend.wait_for_text_on_screen("Processing")
-            backend.wait_for_text_not_on_screen("Processing")
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_prehash_update",
-                                           instructions, screen_change_before_first_instruction=False)
+                                           instructions)
 
         sw, response = self.device.async_response()  # type: int, bytes
 
