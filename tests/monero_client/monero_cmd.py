@@ -474,7 +474,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_prehash_update",
-                                           instructions)
+                                           instructions, 
+                                           screen_change_after_last_instruction=False)
 
         sw, response = self.device.async_response()  # type: int, bytes
 
