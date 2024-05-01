@@ -1,6 +1,6 @@
 # Monero Ledger App
 
-Monero wallet application for Ledger Nano S and Nano X.
+Monero wallet application for all Ledger devices.
 
 ## Install
 
