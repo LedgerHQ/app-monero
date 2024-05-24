@@ -22,8 +22,8 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-const monero_nv_state_t N_state_pic;
-#else
+#if defined(TARGET_NANOS)
 monero_nv_state_t N_state_pic;
+#else
+const monero_nv_state_t N_state_pic;
 #endif

@@ -160,13 +160,13 @@ void ui_menu_change_validation_display_last(unsigned int value __attribute__((un
     transactionContext.tagValueList.nbPairs++;
 
     transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Approve";
+    transactionContext.infoLongPress.longPressText = "Hold to sign";
     transactionContext.infoLongPress.longPressToken = 0;
     transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Hold to confirm";
+    transactionContext.infoLongPress.text = "Sign transaction";
 
     nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Cancel", ui_menu_validation_action);
+                             "Reject transaction", ui_menu_validation_action);
 }
 
 static void timelock_callback(void) {
@@ -234,7 +234,7 @@ static void continue_display(int token, unsigned char index) {
                                       .navWithTap.backButton = false,
                                       .navWithTap.nextPageText = NEXT_PAGE_TEXT,
                                       .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Cancel",
+                                      .navWithTap.quitText = "Reject transaction",
                                       .quitToken = QUIT_TOKEN,
                                       .tuneId = TUNE_TAP_CASUAL};
 
@@ -255,13 +255,13 @@ static void continue_display_last(int token, unsigned char index) {
 
     fill_amount_and_destination();
     transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Approve";
+    transactionContext.infoLongPress.longPressText = "Hold to sign";
     transactionContext.infoLongPress.longPressToken = 0;
     transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Hold to confirm";
+    transactionContext.infoLongPress.text = "Sign transaction";
 
     nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Cancel", ui_menu_validation_action);
+                             "Reject transaction", ui_menu_validation_action);
 }
 
 static void display_previous_infos(bool last) {
@@ -274,7 +274,7 @@ static void display_previous_infos(bool last) {
                                       .navWithTap.backButton = false,
                                       .navWithTap.nextPageText = NEXT_PAGE_TEXT,
                                       .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Cancel",
+                                      .navWithTap.quitText = "Reject transaction",
                                       .quitToken = QUIT_TOKEN,
                                       .tuneId = TUNE_TAP_CASUAL};
 
@@ -380,7 +380,8 @@ void display_account(void) {
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
     nbgl_useCaseAddressReview(G_monero_vstate.ux_address, &transactionContext.tagValueList,
-                              &C_Monero_64px, "Review Address", NULL, ui_menu_pubaddr_action);
+                              &C_Monero_64px, "Verify Monero\naddress", NULL,
+                              ui_menu_pubaddr_action);
 }
 
 int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
