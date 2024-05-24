@@ -22,6 +22,8 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
+#define PXY_SIZE 65
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -56,59 +58,87 @@ unsigned char const C_EIGHT[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
-                       unsigned char *b) {
-    unsigned char h1[32];
+int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a, unsigned char *b) {
+    unsigned char h1[KEY_SIZE];
+    int error;
 
-    monero_keccak_init_H();
-    monero_keccak_update_H(seed32, 32);
-    monero_keccak_update_H(a, 32);
-    monero_keccak_update_H(b, 32);
-    monero_keccak_final_H(h1);
-
-    monero_keccak_H(h1, 32, h1);
-
-    cx_aes_init_key(h1, 16, sk);
-}
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
-void monero_aes_generate(cx_aes_key_t *sk) {
-    unsigned char h1[16];
-    cx_rng(h1, 16);
-    cx_aes_init_key(h1, 16, sk);
-}
-
-/* ----------------------------------------------------------------------- */
-/* --- assert: max_len>0                                               --- */
-/* ----------------------------------------------------------------------- */
-unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, uint64_t value) {
-    unsigned int len;
-    len = 0;
-    while (value >= 0x80) {
-        if (len == (max_len - 1)) {
-            THROW(SW_WRONG_DATA_RANGE);
-        }
-        varint[len] = (value & 0x7F) | 0x80;
-        value = value >> 7;
-        len++;
+    error = monero_keccak_init_H();
+    if (error) {
+        return error;
     }
-    varint[len] = value;
-    return len + 1;
+
+    error = monero_keccak_update_H(seed32, KEY_SIZE);
+    if (error) {
+        return error;
+    }
+
+    error = monero_keccak_update_H(a, KEY_SIZE);
+    if (error) {
+        return error;
+    }
+
+    error = monero_keccak_update_H(b, KEY_SIZE);
+    if (error) {
+        return error;
+    }
+
+    error = monero_keccak_final_H(h1);
+    if (error) {
+        return error;
+    }
+
+    error = monero_keccak_H(h1, KEY_SIZE, h1);
+    if (error) {
+        return error;
+    }
+
+    error = cx_aes_init_key_no_throw(h1, 16, sk);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* --- assert: max_len>0                                               --- */
 /* ----------------------------------------------------------------------- */
-unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, uint64_t *value) {
+unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, uint64_t value,
+                                  unsigned int *out_len) {
+    if (!varint || !out_len) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA;
+    }
+
+    *out_len = 0;
+    while (value >= 0x80) {
+        if (*out_len == (max_len - 1)) {
+            return SW_WRONG_DATA_RANGE;
+        }
+        varint[*out_len] = (value & 0x7F) | 0x80;
+        value = value >> 7;
+        *out_len = *out_len + 1;
+    }
+    varint[*out_len] = value;
+    *out_len = *out_len + 1;
+    return 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* --- assert: max_len>0                                               --- */
+/* ----------------------------------------------------------------------- */
+unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, uint64_t *value,
+                                  unsigned int *out_len) {
     uint64_t v;
     size_t len;
     v = 0;
     len = 0;
+    if (!varint || !out_len) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA;
+    }
     while ((varint[len]) & 0x80) {
         if (len == (max_len - 1)) {
-            THROW(SW_WRONG_DATA_RANGE);
+            return SW_WRONG_DATA_RANGE;
         }
         v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
         len++;
@@ -116,20 +146,30 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, u
 
     v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
     *value = v;
-    return len + 1;
+    *out_len = len + 1;
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_reverse32(unsigned char *rscal, unsigned char *scal) {
+int monero_reverse32(unsigned char *rscal, unsigned char *scal, size_t rscal_len, size_t scal_len) {
     unsigned char x;
     unsigned int i;
+    if (!rscal || !scal) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA;
+    }
+    if (rscal_len < 32 || scal_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
     for (i = 0; i < 16; i++) {
         x = scal[i];
         rscal[i] = scal[31 - i];
         rscal[31 - i] = x;
     }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -139,22 +179,34 @@ void monero_hash_init_sha256(cx_hash_t *hasher) {
     cx_sha256_init((cx_sha256_t *)hasher);
 }
 
-void monero_hash_init_keccak(cx_hash_t *hasher) {
-    cx_keccak_init((cx_sha3_t *)hasher, 256);
+int monero_hash_init_keccak(cx_hash_t *hasher) {
+    int error = cx_keccak_init_no_throw((cx_sha3_t *)hasher, 256);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_update(cx_hash_t *hasher, const unsigned char *buf, unsigned int len) {
-    cx_hash(hasher, 0, buf, len, NULL, 0);
+int monero_hash_update(cx_hash_t *hasher, const unsigned char *buf, unsigned int len) {
+    int error = cx_hash_no_throw(hasher, 0, buf, len, NULL, 0);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
-    return cx_hash(hasher, CX_LAST, NULL, 0, out, 32);
+    int error = cx_hash_no_throw(hasher, CX_LAST, NULL, 0, out, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -162,12 +214,20 @@ int monero_hash_final(cx_hash_t *hasher, unsigned char *out) {
 /* ----------------------------------------------------------------------- */
 int monero_hash(unsigned int algo, cx_hash_t *hasher, const unsigned char *buf, unsigned int len,
                 unsigned char *out) {
+    int err = 0;
     if (algo == CX_SHA256) {
         cx_sha256_init((cx_sha256_t *)hasher);
     } else {
-        cx_keccak_init((cx_sha3_t *)hasher, 256);
+        err = cx_keccak_init_no_throw((cx_sha3_t *)hasher, 256);
+        if (err) {
+            return SW_SECURITY_INTERNAL;
+        }
     }
-    return cx_hash(hasher, CX_LAST, buf, len, out, 32);
+    err = cx_hash_no_throw(hasher, CX_LAST, buf, len, out, 32);
+    if (err) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -278,38 +338,23 @@ const unsigned char C_fe_qm5div8[] = {
     0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};
 
-void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
+int monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes, size_t ge_len,
+                               size_t bytes_len) {
+    int error = 0;
 #define MOD              (unsigned char *)C_ED25519_FIELD, 32
 #define fe_isnegative(f) (f[31] & 1)
-#if 0
-    unsigned char u[32], v[32], w[32], x[32], y[32], z[32];
-    unsigned char rX[32], rY[32], rZ[32];
-    union {
-        struct {
-            unsigned char _uv7[32];
-            unsigned char  _v3[32];
-        };
-        unsigned char _Pxy[65];
-
-    } uv;
-
-#define uv7 uv._uv7
-#define v3  uv._v3
-
-#define Pxy uv._Pxy
-#else
-#define u  (G_monero_vstate.io_buffer + 0 * 32)
-#define v  (G_monero_vstate.io_buffer + 1 * 32)
-#define w  (G_monero_vstate.io_buffer + 2 * 32)
-#define x  (G_monero_vstate.io_buffer + 3 * 32)
-#define y  (G_monero_vstate.io_buffer + 4 * 32)
-#define z  (G_monero_vstate.io_buffer + 5 * 32)
-#define rX (G_monero_vstate.io_buffer + 6 * 32)
-#define rY (G_monero_vstate.io_buffer + 7 * 32)
-#define rZ (G_monero_vstate.io_buffer + 8 * 32)
+#define u                (G_monero_vstate.io_buffer + 0 * 32)
+#define v                (G_monero_vstate.io_buffer + 1 * 32)
+#define w                (G_monero_vstate.io_buffer + 2 * 32)
+#define x                (G_monero_vstate.io_buffer + 3 * 32)
+#define y                (G_monero_vstate.io_buffer + 4 * 32)
+#define z                (G_monero_vstate.io_buffer + 5 * 32)
+#define rX               (G_monero_vstate.io_buffer + 6 * 32)
+#define rY               (G_monero_vstate.io_buffer + 7 * 32)
+#define rZ               (G_monero_vstate.io_buffer + 8 * 32)
 
     union {
-        unsigned char _Pxy[65];
+        unsigned char _Pxy[PXY_SIZE];
         struct {
             unsigned char _uv7[32];
             unsigned char _v3[32];
@@ -325,68 +370,76 @@ void monero_ge_fromfe_frombytes(unsigned char *ge, unsigned char *bytes) {
 #if MONERO_IO_BUFFER_LENGTH < (9 * 32)
 #error MONERO_IO_BUFFER_LENGTH is too small
 #endif
-#endif
 
     unsigned char sign;
+    if (!ge) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA;
+    }
 
+    if (ge_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
     // cx works in BE
-    monero_reverse32(u, bytes);
-    cx_math_modm(u, 32, (unsigned char *)C_ED25519_FIELD, 32);
+    error |= monero_reverse32(u, bytes, 32, bytes_len);
+    error |= cx_math_modm_no_throw(u, 32, (unsigned char *)C_ED25519_FIELD, 32);
 
     // go on
-    cx_math_multm(v, u, u, MOD); /* 2 * u^2 */
-    cx_math_addm(v, v, v, MOD);
+    error |= cx_math_multm_no_throw(v, u, u, MOD); /* 2 * u^2 */
+    error |= cx_math_addm_no_throw(v, v, v, MOD);
 
-    memset(w, 0, 32);
-    w[31] = 1;                                           /* w = 1 */
-    cx_math_addm(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
-    cx_math_multm(x, w, w, MOD);                         /* w^2 */
-    cx_math_multm(y, (unsigned char *)C_fe_ma2, v, MOD); /* -2 * A^2 * u^2 */
-    cx_math_addm(x, x, y, MOD);                          /* x = w^2 - 2 * A^2 * u^2 */
+    explicit_bzero(w, 32);
+    w[31] = 1;                                                             /* w = 1 */
+    error |= cx_math_addm_no_throw(w, v, w, MOD);                          /* w = 2 * u^2 + 1 */
+    error |= cx_math_multm_no_throw(x, w, w, MOD);                         /* w^2 */
+    error |= cx_math_multm_no_throw(y, (unsigned char *)C_fe_ma2, v, MOD); /* -2 * A^2 * u^2 */
+    error |= cx_math_addm_no_throw(x, x, y, MOD); /* x = w^2 - 2 * A^2 * u^2 */
 
 // inline fe_divpowm1(r->X, w, x);     // (w / x)^(m + 1) => fe_divpowm1(r,u,v)
 #define _u w
 #define _v x
-    cx_math_multm(v3, _v, _v, MOD);
-    cx_math_multm(v3, v3, _v, MOD); /* v3 = v^3 */
-    cx_math_multm(uv7, v3, v3, MOD);
-    cx_math_multm(uv7, uv7, _v, MOD);
-    cx_math_multm(uv7, uv7, _u, MOD);                               /* uv7 = uv^7 */
-    cx_math_powm(uv7, uv7, (unsigned char *)C_fe_qm5div8, 32, MOD); /* (uv^7)^((q-5)/8)*/
-    cx_math_multm(uv7, uv7, v3, MOD);
-    cx_math_multm(rX, uv7, w, MOD); /* u^(m+1)v^(-(m+1)) */
+    error |= cx_math_multm_no_throw(v3, _v, _v, MOD);
+    error |= cx_math_multm_no_throw(v3, v3, _v, MOD); /* v3 = v^3 */
+    error |= cx_math_multm_no_throw(uv7, v3, v3, MOD);
+    error |= cx_math_multm_no_throw(uv7, uv7, _v, MOD);
+    error |= cx_math_multm_no_throw(uv7, uv7, _u, MOD); /* uv7 = uv^7 */
+    error |= cx_math_powm_no_throw(uv7, uv7, (unsigned char *)C_fe_qm5div8, 32,
+                                   MOD); /* (uv^7)^((q-5)/8)*/
+    error |= cx_math_multm_no_throw(uv7, uv7, v3, MOD);
+    error |= cx_math_multm_no_throw(rX, uv7, w, MOD); /* u^(m+1)v^(-(m+1)) */
 #undef _u
 #undef _v
 
-    cx_math_multm(y, rX, rX, MOD);
-    cx_math_multm(x, y, x, MOD);
-    cx_math_subm(y, w, x, MOD);
+    error |= cx_math_multm_no_throw(y, rX, rX, MOD);
+    error |= cx_math_multm_no_throw(x, y, x, MOD);
+    error |= cx_math_subm_no_throw(y, w, x, MOD);
     memcpy(z, C_fe_ma, 32);
 
     if (!cx_math_is_zero(y, 32)) {
-        cx_math_addm(y, w, x, MOD);
+        error |= cx_math_addm_no_throw(y, w, x, MOD);
         if (!cx_math_is_zero(y, 32)) {
             goto negative;
         } else {
-            cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb1, MOD);
+            error |= cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb1, MOD);
         }
     } else {
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb2, MOD);
+        error |= cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb2, MOD);
     }
-    cx_math_multm(rX, rX, u, MOD);  // u * sqrt(2 * A * (A + 2) * w / x)
-    cx_math_multm(z, z, v, MOD);    // -2 * A * u^2
+    error |= cx_math_multm_no_throw(rX, rX, u, MOD);  // u * sqrt(2 * A * (A + 2) * w / x)
+    error |= cx_math_multm_no_throw(z, z, v, MOD);    // -2 * A * u^2
     sign = 0;
 
     goto setsign;
 
 negative:
-    cx_math_multm(x, x, (unsigned char *)C_fe_sqrtm1, MOD);
-    cx_math_subm(y, w, x, MOD);
+    error |= cx_math_multm_no_throw(x, x, (unsigned char *)C_fe_sqrtm1, MOD);
+    error |= cx_math_subm_no_throw(y, w, x, MOD);
     if (!cx_math_is_zero(y, 32)) {
-        cx_math_addm(y, w, x, MOD);
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb3, MOD);
+        error |= cx_math_addm_no_throw(y, w, x, MOD);
+        error |= cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb3, MOD);
     } else {
-        cx_math_multm(rX, rX, (unsigned char *)C_fe_fffb4, MOD);
+        error |= cx_math_multm_no_throw(rX, rX, (unsigned char *)C_fe_fffb4, MOD);
     }
     // r->X = sqrt(A * (A + 2) * w / x)
     // z = -A
@@ -394,19 +447,24 @@ negative:
 
 setsign:
     if (fe_isnegative(rX) != sign) {
-        cx_math_sub(rX, (unsigned char *)C_ED25519_FIELD, rX, 32);
+        error |= cx_math_sub(rX, (unsigned char *)C_ED25519_FIELD, rX, 32);
     }
-    cx_math_addm(rZ, z, w, MOD);
-    cx_math_subm(rY, z, w, MOD);
-    cx_math_multm(rX, rX, rZ, MOD);
+    error |= cx_math_addm_no_throw(rZ, z, w, MOD);
+    error |= cx_math_subm_no_throw(rY, z, w, MOD);
+    error |= cx_math_multm_no_throw(rX, rX, rZ, MOD);
 
     // back to monero y-affine
-    cx_math_invprimem(u, rZ, MOD);
+    error |= cx_math_invprimem_no_throw(u, rZ, MOD);
     Pxy[0] = 0x04;
-    cx_math_multm(&Pxy[1], rX, u, MOD);
-    cx_math_multm(&Pxy[1 + 32], rY, u, MOD);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_math_multm_no_throw(&Pxy[1], rX, u, MOD);
+    error |= cx_math_multm_no_throw(&Pxy[1 + 32], rY, u, MOD);
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(ge, &Pxy[1], 32);
+
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 
 #undef u
 #undef v
@@ -431,109 +489,203 @@ setsign:
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int raw_len) {
-    monero_keccak_F(raw, raw_len, scalar);
-    monero_reduce(scalar, scalar);
+int monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, size_t scalar_len,
+                          unsigned int raw_len) {
+    int error;
+
+    error = monero_keccak_F(raw, raw_len, scalar);
+    if (error) {
+        return error;
+    }
+
+    error = monero_reduce(scalar, scalar, scalar_len, scalar_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub) {
-    monero_keccak_F(ec_pub, 32, ec);
-    monero_ge_fromfe_frombytes(ec, ec);
-    monero_ecmul_8(ec, ec);
+int monero_hash_to_ec(unsigned char *ec, unsigned char *ec_pub, size_t ec_len) {
+    int error;
+    error = monero_keccak_F(ec_pub, 32, ec);
+    if (error) {
+        return error;
+    }
+
+    error = monero_ge_fromfe_frombytes(ec, ec, ec_len, ec_len);
+    if (error) {
+        return error;
+    }
+
+    error = monero_ecmul_8(ec, ec, ec_len, ec_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv) {
-    monero_rng_mod_order(ec_priv);
-    monero_ecmul_G(ec_pub, ec_priv);
+int monero_generate_keypair(unsigned char *ec_pub, unsigned char *ec_priv, size_t ec_pub_len,
+                            size_t ec_priv_len) {
+    int error;
+    error = monero_rng_mod_order(ec_priv, ec_priv_len);
+    if (error) {
+        return error;
+    }
+
+    error = monero_ecmul_G(ec_pub, ec_priv, ec_pub_len, ec_priv_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
-void monero_generate_key_derivation(unsigned char *drv_data, unsigned char *P,
-                                    unsigned char *scalar) {
-    monero_ecmul_8k(drv_data, P, scalar);
+int monero_generate_key_derivation(unsigned char *drv_data, unsigned char *P, unsigned char *scalar,
+                                   size_t drv_data_len, size_t P_len, size_t scalar_len) {
+    return monero_ecmul_8k(drv_data, P, scalar, drv_data_len, P_len, scalar_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---  ok                                                             --- */
 /* ----------------------------------------------------------------------- */
-void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
-                                 unsigned int out_idx) {
+int monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
+                                unsigned int out_idx, size_t scalar_len, size_t drv_data_len) {
     unsigned char varint[32 + 8];
     unsigned int len_varint;
+    int error = 0;
+
+    if (drv_data_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     memcpy(varint, drv_data, 32);
-    len_varint = monero_encode_varint(varint + 32, 8, out_idx);
+    error = monero_encode_varint(varint + 32, 8, out_idx, &len_varint);
+    if (error) {
+        return error;
+    }
     len_varint += 32;
-    monero_keccak_F(varint, len_varint, varint);
-    monero_reduce(scalar, varint);
+
+    error = monero_keccak_F(varint, len_varint, varint);
+    if (error) {
+        return error;
+    }
+
+    error = monero_reduce(scalar, varint, scalar_len, sizeof(varint));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
-                              unsigned char *ec_priv) {
+int monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
+                             unsigned char *ec_priv, size_t x_len, size_t drv_data_len,
+                             size_t ec_priv_len) {
+    unsigned char tmp[32];
+    int error;
+
+    // derivation to scalar
+    error = monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
+    if (error) {
+        return error;
+    }
+
+    // generate
+    error = monero_addm(x, tmp, ec_priv, x_len, sizeof(tmp), ec_priv_len);
+    if (error) {
+        return error;
+    }
+    return 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_derive_public_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
+                             unsigned char *ec_pub, size_t x_len, size_t drv_data_len,
+                             size_t ec_pub_len) {
     unsigned char tmp[32];
 
     // derivation to scalar
-    monero_derivation_to_scalar(tmp, drv_data, out_idx);
-
+    int error = monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
+    if (error) {
+        return error;
+    }
     // generate
-    monero_addm(x, tmp, ec_priv);
+    error = monero_ecmul_G(tmp, tmp, sizeof(tmp), sizeof(tmp));
+    if (error) {
+        return error;
+    }
+
+    error = monero_ecadd(x, tmp, ec_pub, x_len, sizeof(tmp), ec_pub_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_public_key(unsigned char *x, unsigned char *drv_data, unsigned int out_idx,
-                              unsigned char *ec_pub) {
-    unsigned char tmp[32];
-
-    // derivation to scalar
-    monero_derivation_to_scalar(tmp, drv_data, out_idx);
-    // generate
-    monero_ecmul_G(tmp, tmp);
-    monero_ecadd(x, tmp, ec_pub);
+int monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv,
+                                    size_t ec_pub_len, size_t ec_priv_len) {
+    return monero_ecmul_G(ec_pub, ec_priv, ec_pub_len, ec_priv_len);
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv) {
-    monero_ecmul_G(ec_pub, ec_priv);
-}
-
-/* ----------------------------------------------------------------------- */
-/* ---                                                                 --- */
-/* ----------------------------------------------------------------------- */
-void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char *x) {
+int monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned char *x,
+                              size_t img_len, size_t x_len) {
     unsigned char I[32];
-    monero_hash_to_ec(I, P);
-    monero_ecmul_k(img, I, x);
+    int error;
+    error = monero_hash_to_ec(I, P, sizeof(I));
+    if (error) {
+        return error;
+    }
+
+    error = monero_ecmul_k(img, I, x, img_len, sizeof(I), x_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_data[static 32],
-                            unsigned int out_idx) {
+int monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_data[static 32],
+                           unsigned int out_idx) {
     unsigned char varint[8 + 32 + 8];
     unsigned int len_varint;
+    int error = 0;
 
     memcpy(varint, "view_tag", 8);
     memcpy(varint + 8, drv_data, 32);
-    len_varint = monero_encode_varint(varint + 8 + 32, 8, out_idx);
+    error = monero_encode_varint(varint + 8 + 32, 8, out_idx, &len_varint);
+    if (error) {
+        return error;
+    }
     len_varint += 8 + 32;
-    monero_keccak_F(varint, len_varint, varint);
+
+    error = monero_keccak_F(varint, len_varint, varint);
+    if (error) {
+        return error;
+    }
+
     *view_tag = varint[0];
+    return 0;
 }
 
 /* ======================================================================= */
@@ -543,35 +695,70 @@ void monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_dat
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
-void monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub,
-                                         unsigned char *drv_data, unsigned int index) {
+int monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub,
+                                        unsigned char *drv_data, unsigned int index, size_t x_len,
+                                        size_t pub_len, size_t drv_data_len) {
     unsigned char scalarG[32];
+    int error;
 
-    monero_derivation_to_scalar(scalarG, drv_data, index);
-    monero_ecmul_G(scalarG, scalarG);
-    monero_ecsub(x, pub, scalarG);
+    error = monero_derivation_to_scalar(scalarG, drv_data, index, sizeof(scalarG), drv_data_len);
+    if (error) {
+        return error;
+    }
+    error = monero_ecmul_G(scalarG, scalarG, sizeof(scalarG), sizeof(scalarG));
+    if (error) {
+        return error;
+    }
+    error = monero_ecsub(x, pub, scalarG, x_len, pub_len, sizeof(scalarG));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
-void monero_get_subaddress_spend_public_key(unsigned char *x, unsigned char *index) {
+int monero_get_subaddress_spend_public_key(unsigned char *x, unsigned char *index, size_t x_len,
+                                           size_t index_len) {
+    int error;
     // m = Hs(a || index_major || index_minor)
-    monero_get_subaddress_secret_key(x, G_monero_vstate.a, index);
+    error = monero_get_subaddress_secret_key(x, G_monero_vstate.a, index, x_len,
+                                             sizeof(G_monero_vstate.a), index_len);
+    if (error) {
+        return error;
+    }
+
     // M = m*G
-    monero_secret_key_to_public_key(x, x);
+    error = monero_secret_key_to_public_key(x, x, x_len, x_len);
+    if (error) {
+        return error;
+    }
+
     // D = B + M
-    monero_ecadd(x, x, G_monero_vstate.B);
+    error = monero_ecadd(x, x, G_monero_vstate.B, x_len, x_len, sizeof(G_monero_vstate.B));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index) {
+int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *index, size_t C_len,
+                          size_t D_len, size_t index_len) {
     // retrieve D
-    monero_get_subaddress_spend_public_key(D, index);
+    int error = monero_get_subaddress_spend_public_key(D, index, D_len, index_len);
+    if (error) {
+        return error;
+    }
     // C = a*D
-    monero_ecmul_k(C, D, G_monero_vstate.a);
+    error = monero_ecmul_k(C, D, G_monero_vstate.a, C_len, D_len, sizeof(G_monero_vstate.a));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -579,16 +766,36 @@ void monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *in
 /* ----------------------------------------------------------------------- */
 static const char C_sub_address_prefix[] = {'S', 'u', 'b', 'A', 'd', 'd', 'r', 0};
 
-void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
-                                      unsigned char *index) {
+int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
+                                     size_t sub_s_len, size_t s_len, size_t index_len) {
     unsigned char in[sizeof(C_sub_address_prefix) + 32 + 8];
+    int error;
+
+    if (!s || s_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!index || index_len < 8) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     memcpy(in, C_sub_address_prefix, sizeof(C_sub_address_prefix));
     memcpy(in + sizeof(C_sub_address_prefix), s, 32);
     memcpy(in + sizeof(C_sub_address_prefix) + 32, index, 8);
     // hash_to_scalar with more that 32bytes:
-    monero_keccak_F(in, sizeof(in), sub_s);
-    monero_reduce(sub_s, sub_s);
+
+    error = monero_keccak_F(in, sizeof(in), sub_s);
+    if (error) {
+        return error;
+    }
+
+    error = monero_reduce(sub_s, sub_s, sub_s_len, sub_s_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ======================================================================= */
@@ -598,139 +805,267 @@ void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_check_scalar_range_1N(unsigned char *s) {
+unsigned int monero_check_scalar_range_1N(unsigned char *s, size_t s_len) {
     unsigned char x[32];
-    monero_reverse32(x, s);
-    if (cx_math_is_zero(x, 32) || cx_math_cmp(x, C_ED25519_ORDER, 32) >= 0) {
-        THROW(SW_WRONG_DATA_RANGE);
+    int diff;
+    int error = monero_reverse32(x, s, sizeof(x), s_len);
+    if (error) {
+        return error;
     }
+    if (cx_math_cmp_no_throw(x, C_ED25519_ORDER, 32, &diff)) {
+        return SW_SECURITY_INTERNAL;
+    }
+    if (cx_math_is_zero(x, 32) || diff >= 0) {
+        return SW_WRONG_DATA_RANGE;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_check_scalar_not_null(unsigned char *s) {
+unsigned int monero_check_scalar_not_null(unsigned char *s) {
     if (cx_math_is_zero(s, 32)) {
-        THROW(SW_WRONG_DATA_RANGE);
+        return SW_WRONG_DATA_RANGE;
     }
+    return 0;
 }
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_G(unsigned char *W, unsigned char *scalar32) {
-    unsigned char Pxy[65];
+int monero_ecmul_G(unsigned char *W, unsigned char *scalar32, size_t W_len, size_t scalar32_len) {
+    unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
-    monero_reverse32(s, scalar32);
-    memcpy(Pxy, C_ED25519_G, 65);
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    int error;
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
+    if (error) {
+        return error;
+    }
+    memcpy(Pxy, C_ED25519_G, PXY_SIZE);
+    error = cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    error = cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
     memcpy(W, &Pxy[1], 32);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_H(unsigned char *W, unsigned char *scalar32) {
-    unsigned char Pxy[65];
+int monero_ecmul_H(unsigned char *W, unsigned char *scalar32, size_t W_len, size_t scalar32_len) {
+    unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
 
-    monero_reverse32(s, scalar32);
+    int error = 0;
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+    error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
+    if (error) {
+        return error;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], C_ED25519_Hy, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
 
     memcpy(W, &Pxy[1], 32);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
-    unsigned char Pxy[65];
+int monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32, size_t W_len,
+                   size_t P_len, size_t scalar32_len) {
+    unsigned char Pxy[PXY_SIZE];
     unsigned char s[32];
+    int error = 0;
 
-    monero_reverse32(s, scalar32);
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+    error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
+    if (error) {
+        return error;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
-    cx_ecfp_scalar_mult(CX_CURVE_Ed25519, Pxy, sizeof(Pxy), s, 32);
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
 
     memcpy(W, &Pxy[1], 32);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32) {
+int monero_ecmul_8k(unsigned char *W, unsigned char *P, unsigned char *scalar32, size_t W_len,
+                    size_t P_len, size_t scalar32_len) {
     unsigned char s[32];
-    monero_multm_8(s, scalar32);
-    monero_ecmul_k(W, P, s);
+    int error = 0;
+    error = monero_multm_8(s, scalar32, sizeof(s), scalar32_len);
+    if (error) {
+        return error;
+    }
+
+    error = monero_ecmul_k(W, P, s, W_len, P_len, sizeof(s));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecmul_8(unsigned char *W, unsigned char *P) {
-    unsigned char Pxy[65];
+int monero_ecmul_8(unsigned char *W, unsigned char *P, size_t W_len, size_t P_len) {
+    unsigned char Pxy[PXY_SIZE];
+    int error = 0;
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Pxy, sizeof(Pxy));
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    error |= cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    error |= cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Pxy);
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
     memcpy(W, &Pxy[1], 32);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q) {
-    unsigned char Pxy[65];
-    unsigned char Qxy[65];
+int monero_ecadd(unsigned char *W, unsigned char *P, unsigned char *Q, size_t W_len, size_t P_len,
+                 size_t Q_len) {
+    unsigned char Pxy[PXY_SIZE];
+    unsigned char Qxy[PXY_SIZE];
+    int error = 0;
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!Q || Q_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     memcpy(&Qxy[1], Q, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
+    error |= cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
 
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
+
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
-    unsigned char Pxy[65];
-    unsigned char Qxy[65];
+int monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q, size_t W_len, size_t P_len,
+                 size_t Q_len) {
+    unsigned char Pxy[PXY_SIZE];
+    unsigned char Qxy[PXY_SIZE];
+    int error = 0;
+
+    if (!W || W_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    if (!Q || Q_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     Pxy[0] = 0x02;
     memcpy(&Pxy[1], P, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     Qxy[0] = 0x02;
     memcpy(&Qxy[1], Q, 32);
-    cx_edwards_decompress_point(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
+    error |= cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Qxy, sizeof(Qxy));
 
-    cx_math_sub(Qxy + 1, (unsigned char *)C_ED25519_FIELD, Qxy + 1, 32);
-    cx_ecfp_add_point(CX_CURVE_Ed25519, Pxy, Pxy, Qxy, sizeof(Pxy));
+    error |= cx_math_sub(Qxy + 1, (unsigned char *)C_ED25519_FIELD, Qxy + 1, 32);
+    error |= cx_ecfp_add_point_no_throw(CX_CURVE_Ed25519, Pxy, Pxy, Qxy);
 
-    cx_edwards_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
+    error |= cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     memcpy(W, &Pxy[1], 32);
+
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -747,11 +1082,19 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
         return hash;
     }
 */
-void monero_ecdhHash(unsigned char *x, unsigned char *k) {
+int monero_ecdhHash(unsigned char *x, unsigned char *k, size_t k_len) {
     unsigned char data[38];
+    int error;
+
+    if (!k || k_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA;
+    }
+
     memcpy(data, "amount", 6);
     memcpy(data + 6, k, 32);
-    monero_keccak_F(data, 38, x);
+    error = monero_keccak_F(data, 38, x);
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -768,94 +1111,188 @@ void monero_ecdhHash(unsigned char *x, unsigned char *k) {
         return scalar;
     }
 */
-void monero_genCommitmentMask(unsigned char *c, unsigned char *sk) {
+int monero_genCommitmentMask(unsigned char *c, unsigned char *sk, size_t c_len, size_t sk_len) {
     unsigned char data[15 + 32];
+    int error;
+
+    if (!sk || sk_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
     memcpy(data, "commitment_mask", 15);
     memcpy(data + 15, sk, 32);
-    monero_hash_to_scalar(c, data, 15 + 32);
+    error = monero_hash_to_scalar(c, data, c_len, 15 + 32);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_addm(unsigned char *r, unsigned char *a, unsigned char *b) {
+int monero_addm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len,
+                size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
+    int error;
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
-    cx_math_addm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    error = monero_reverse32(ra, a, sizeof(ra), a_len);
+    if (error) {
+        return error;
+    }
+    error = monero_reverse32(rb, b, sizeof(rb), b_len);
+    if (error) {
+        return error;
+    }
+    error = cx_math_addm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+
+    error = monero_reverse32(r, r, r_len, r_len);
+    if (error) {
+        return error;
+    }
+
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_subm(unsigned char *r, unsigned char *a, unsigned char *b) {
+int monero_subm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len,
+                size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
+    int error;
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
-    cx_math_subm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    error = monero_reverse32(ra, a, sizeof(ra), a_len);
+    if (error) {
+        return error;
+    }
+    error = monero_reverse32(rb, b, sizeof(rb), b_len);
+    if (error) {
+        return error;
+    }
+    error = cx_math_subm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+
+    error = monero_reverse32(r, r, r_len, r_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_multm(unsigned char *r, unsigned char *a, unsigned char *b) {
+int monero_multm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_len, size_t a_len,
+                 size_t b_len) {
     unsigned char ra[32];
     unsigned char rb[32];
+    int error;
 
-    monero_reverse32(ra, a);
-    monero_reverse32(rb, b);
-    cx_math_multm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    error = monero_reverse32(ra, a, sizeof(ra), a_len);
+    if (error) {
+        return error;
+    }
+    error = monero_reverse32(rb, b, sizeof(rb), b_len);
+    if (error) {
+        return error;
+    }
+    error = cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+
+    error = monero_reverse32(r, r, r_len, r_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_multm_8(unsigned char *r, unsigned char *a) {
+int monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len) {
     unsigned char ra[32];
     unsigned char rb[32];
+    int error;
 
-    monero_reverse32(ra, a);
-    memset(rb, 0, 32);
+    error = monero_reverse32(ra, a, sizeof(ra), a_len);
+    if (error) {
+        return error;
+    }
+    explicit_bzero(rb, 32);
     rb[31] = 8;
-    cx_math_multm(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, r);
+    error = cx_math_multm_no_throw(r, ra, rb, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    error = monero_reverse32(r, r, r_len, r_len);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_reduce(unsigned char *r, unsigned char *a) {
+int monero_reduce(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len) {
     unsigned char ra[32];
-    monero_reverse32(ra, a);
-    cx_math_modm(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, ra);
+    int error;
+
+    error = monero_reverse32(ra, a, sizeof(ra), a_len);
+    if (error) {
+        return error;
+    }
+    error = cx_math_modm_no_throw(ra, 32, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    error = monero_reverse32(r, ra, r_len, sizeof(ra));
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_rng_mod_order(unsigned char *r) {
+int monero_rng_mod_order(unsigned char *r, size_t r_len) {
     unsigned char rnd[32 + 8];
+    int error;
     cx_rng(rnd, 32 + 8);
-    cx_math_modm(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
-    monero_reverse32(r, rnd + 8);
+    error = cx_math_modm_no_throw(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
+    if (error) {
+        return SW_SECURITY_INTERNAL;
+    }
+    error = monero_reverse32(r, rnd + 8, r_len, 32);
+    if (error) {
+        return error;
+    }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
-void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
+unsigned int monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     char stramount[22];
     unsigned int offset, len;
 
-    memset(str, 0, str_len);
+    if (!str) {
+        PRINTF("%d \n\n", __LINE__);
+        return SW_WRONG_DATA;
+    }
+    explicit_bzero(str, str_len);
 
     offset = 22;
     while (val) {
@@ -865,28 +1302,32 @@ void monero_uint642str(uint64_t val, char *str, unsigned int str_len) {
     }
     len = sizeof(stramount) - offset;
     if (len > str_len) {
-        THROW(SW_WRONG_DATA_RANGE);
+        return SW_WRONG_DATA_RANGE;
     }
     memcpy(str, stramount + offset, len);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-/* return 0 if ok, 1 if missing decimal */
-int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
+unsigned int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
     // max uint64 is 18446744073709551616, aka 20 char, plus dot
     char stramount[22];
-    unsigned int offset, len, ov;
+    unsigned int offset, len;
 
-    memset(str, 0, str_len);
+    if (!str) {
+        PRINTF("%d \n\n", __LINE__);
+        return SW_WRONG_DATA;
+    }
+    explicit_bzero(str, str_len);
 
     memset(stramount, '0', sizeof(stramount));
     stramount[21] = 0;
     // special case
     if (xmr == 0) {
         str[0] = '0';
-        return 1;
+        return 0;
     }
 
     // uint64 units to str
@@ -917,21 +1358,23 @@ int monero_amount2str(uint64_t xmr, char *str, unsigned int str_len) {
         len--;
     }
     len = len - offset + 1;
-    ov = 0;
     if (len > (str_len - 1)) {
         len = str_len - 1;
-        ov = 1;
     }
     memcpy(str, stramount + offset, len);
-    return ov;
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-uint64_t monero_bamount2uint64(unsigned char *binary) {
+uint64_t monero_bamount2uint64(unsigned char *binary, size_t binary_len) {
     uint64_t xmr;
     int i;
+    if (!binary || binary_len < 8) {
+        PRINTF("%d \n\n", __LINE__);
+        return 0;
+    }
     xmr = 0;
     for (i = 7; i >= 0; i--) {
         xmr = xmr * 256 + binary[i];
@@ -942,8 +1385,8 @@ uint64_t monero_bamount2uint64(unsigned char *binary) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_bamount2str(unsigned char *binary, char *str, unsigned int str_len) {
-    return monero_amount2str(monero_bamount2uint64(binary), str, str_len);
+int monero_bamount2str(unsigned char *binary, char *str, size_t binary_len, unsigned int str_len) {
+    return monero_amount2str(monero_bamount2uint64(binary, binary_len), str, str_len);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -951,6 +1394,10 @@ int monero_bamount2str(unsigned char *binary, char *str, unsigned int str_len) {
 /* ----------------------------------------------------------------------- */
 int monero_vamount2str(unsigned char *binary, char *str, unsigned int str_len) {
     uint64_t amount;
-    monero_decode_varint(binary, 8, &amount);
+    unsigned int out_len;
+    unsigned int error = monero_decode_varint(binary, 8, &amount, &out_len);
+    if (error) {
+        return error;
+    }
     return monero_amount2str(amount, str, str_len);
 }
