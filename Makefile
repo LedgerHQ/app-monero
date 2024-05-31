@@ -27,8 +27,8 @@ include $(BOLOS_SDK)/Makefile.defines
 APPNAME = "Monero"
 
 # Application version
-APPVERSION_M = 1
-APPVERSION_N = 9
+APPVERSION_M = 2
+APPVERSION_N = 0
 APPVERSION_P = 0
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
@@ -43,6 +43,7 @@ ICON_NANOS = icons/app_monero_16px.gif
 ICON_NANOX = icons/app_monero_14px.gif
 ICON_NANOSP = icons/app_monero_14px.gif
 ICON_STAX = icons/app_monero_32px.gif
+ICON_FLEX = icons/app_monero_40px.gif
 
 # Application allowed derivation curves.
 CURVE_APP_LOAD_PARAMS = secp256k1

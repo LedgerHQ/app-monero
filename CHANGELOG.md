@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.0 - 2024-05-01
+
+- Support of Flex device
+
 ## 1.7.6 - 2021-03-30
 
 - Support of Monero client version `0.17.2.*`
