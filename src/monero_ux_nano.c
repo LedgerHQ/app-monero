@@ -181,7 +181,7 @@ UX_STEP_NOCB(ux_menu_validation_timelock_1_step, bn,
 UX_STEP_CB(ux_menu_validation_cf_2_step, pb, ui_menu_amount_validation_action(ACCEPT),
            {
                &C_icon_validate_14,
-               "Accept",
+               "Sign transaction",
            });
 
 UX_STEP_CB(ux_menu_validation_cf_3_step, pb, ui_menu_amount_validation_action(REJECT),
@@ -241,7 +241,7 @@ UX_STEP_NOCB(ux_menu_validation_2_step,
              {"Destination", G_monero_vstate.ux_address});
 
 UX_STEP_CB(ux_menu_validation_3_step, pb, ui_menu_validation_action(ACCEPT),
-           {&C_icon_validate_14, "Accept"});
+           {&C_icon_validate_14, "Sign transaction"});
 
 UX_STEP_CB(ux_menu_validation_4_step, pb, ui_menu_validation_action(REJECT),
            {&C_icon_crossmark, "Reject"});

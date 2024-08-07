@@ -120,14 +120,13 @@ class MoneroCryptoCmd:
             instructions = get_nano_review_instructions(4)
         else:
             instructions = [
-                NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM),
-                NavIns(NavInsID.TOUCH, (200, 410)),
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.TOUCH, (200, 350 if firmware.device.startswith("flex") else 410)),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
-                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_TAP),
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
                 NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
             ]
-
         with self.device.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=0,

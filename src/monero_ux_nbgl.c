@@ -59,7 +59,7 @@ static void release_context(void) {
 /* -------------------------------- INFO UX --------------------------------- */
 
 void ui_menu_show_tx_aborted(void) {
-    nbgl_useCaseStatus("Transaction\ncancelled", false, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_menu_main_display);
 }
 
 void ui_menu_show_security_error(void) {
@@ -103,7 +103,7 @@ unsigned int ui_menu_transaction_start(void) {
 }
 
 unsigned int ui_menu_transaction_signed(void) {
-    nbgl_useCaseStatus("TRANSACTION\nSIGNED", true, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_SIGNED, ui_menu_main_display);
     return 0;
 }
 
@@ -160,13 +160,13 @@ void ui_menu_change_validation_display_last(unsigned int value __attribute__((un
     transactionContext.tagValueList.nbPairs++;
 
     transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Approve";
+    transactionContext.infoLongPress.longPressText = "Hold to sign";
     transactionContext.infoLongPress.longPressToken = 0;
     transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Hold to confirm";
+    transactionContext.infoLongPress.text = "Sign transaction";
 
     nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Cancel", ui_menu_validation_action);
+                             "Reject transaction", ui_menu_validation_action);
 }
 
 static void timelock_callback(void) {
@@ -193,6 +193,13 @@ void ui_menu_timelock_validation_display(unsigned int value __attribute__((unuse
 }
 
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
+
+#ifdef TARGET_FLEX
+#define NEXT_PAGE_TEXT ("Swipe to continue")
+#else
+#define NEXT_PAGE_TEXT ("Tap to continue")
+#endif
+
 static void fill_amount_and_destination(void) {
     transactionContext.tagValuePair[0].item = "Amount";
     transactionContext.tagValuePair[0].value = G_monero_vstate.ux_amount;
@@ -225,9 +232,9 @@ static void continue_display(int token, unsigned char index) {
                                       .navType = NAV_WITH_TAP,
                                       .progressIndicator = true,
                                       .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = "Tap to continue",
+                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
                                       .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Cancel",
+                                      .navWithTap.quitText = "Reject transaction",
                                       .quitToken = QUIT_TOKEN,
                                       .tuneId = TUNE_TAP_CASUAL};
 
@@ -248,13 +255,13 @@ static void continue_display_last(int token, unsigned char index) {
 
     fill_amount_and_destination();
     transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Approve";
+    transactionContext.infoLongPress.longPressText = "Hold to sign";
     transactionContext.infoLongPress.longPressToken = 0;
     transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Hold to confirm";
+    transactionContext.infoLongPress.text = "Sign transaction";
 
     nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Cancel", ui_menu_validation_action);
+                             "Reject transaction", ui_menu_validation_action);
 }
 
 static void display_previous_infos(bool last) {
@@ -265,9 +272,9 @@ static void display_previous_infos(bool last) {
                                       .navType = NAV_WITH_TAP,
                                       .progressIndicator = true,
                                       .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = "Tap to continue",
+                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
                                       .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Cancel",
+                                      .navWithTap.quitText = "Reject transaction",
                                       .quitToken = QUIT_TOKEN,
                                       .tuneId = TUNE_TAP_CASUAL};
 
@@ -315,7 +322,7 @@ static void ui_menu_pubaddr_action_cancelled(void) {
         monero_io_do(IO_RETURN_AFTER_TX);
     }
     G_monero_vstate.disp_addr_mode = 0;
-    nbgl_useCaseStatus("Address display\ncancelled", false, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED, ui_menu_main_display);
 }
 
 void ui_menu_pubaddr_action(bool confirm) {
@@ -325,7 +332,7 @@ void ui_menu_pubaddr_action(bool confirm) {
             monero_io_do(IO_RETURN_AFTER_TX);
         }
         G_monero_vstate.disp_addr_mode = 0;
-        nbgl_useCaseStatus("ADDRESS\nVERIFIED", true, ui_menu_main_display);
+        nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED, ui_menu_main_display);
     } else {
         ui_menu_pubaddr_action_cancelled();
     }
@@ -372,8 +379,9 @@ void display_account(void) {
 
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
-    nbgl_useCaseAddressConfirmationExt(G_monero_vstate.ux_address, ui_menu_pubaddr_action,
-                                       &transactionContext.tagValueList);
+    nbgl_useCaseAddressReview(G_monero_vstate.ux_address, &transactionContext.tagValueList,
+                              &C_Monero_64px, "Verify Monero\naddress", NULL,
+                              ui_menu_pubaddr_action);
 }
 
 int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
@@ -388,8 +396,8 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
         return error;
     }
 
-    nbgl_useCaseReviewStart(&C_Monero_64px, "Review Address", "", "Cancel", display_account,
-                            ui_menu_pubaddr_action_cancelled);
+    display_account();
+
     return 0;
 }
 

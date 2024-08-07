@@ -25,7 +25,7 @@ from .monero_types import InsType, Type, SigType
 from .crypto.hmac import hmac_sha256
 from .exception.device_error import DeviceError
 from .utils.varint import encode_varint
-from .utils.utils import get_nano_review_instructions, get_stax_review_instructions
+from .utils.utils import get_nano_review_instructions
 from pathlib import Path
 from ragger.navigator import NavInsID, NavIns
 
@@ -229,16 +229,14 @@ class MoneroCmd(MoneroCryptoCmd):
             instructions = get_nano_review_instructions(1)
         else:
             instructions = [
-                NavIns(NavInsID.USE_CASE_REVIEW_TAP)
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT)
             ]
-
         with self.device.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=1,
                                     p2=0,
                                     option=0,
                                     payload=payload):
-
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_hash_init",
                                            instructions)
@@ -458,7 +456,8 @@ class MoneroCmd(MoneroCryptoCmd):
             instructions = get_nano_review_instructions(3)
         else:
             instructions = [
-                NavIns(NavInsID.USE_CASE_REVIEW_TAP),
+
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.USE_CASE_REVIEW_TAP),
                 NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
             ]
@@ -474,8 +473,8 @@ class MoneroCmd(MoneroCryptoCmd):
 
             navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                            test_name + "_prehash_update",
-                                           instructions, 
-                                           screen_change_after_last_instruction=False)
+                                           instructions,
+                                           screen_change_after_last_instruction=False, timeout=10000)
 
         sw, response = self.device.async_response()  # type: int, bytes
 

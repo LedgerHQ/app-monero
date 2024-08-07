@@ -56,6 +56,9 @@ int monero_apdu_mlsag_prehash_init() {
         // fee str
         monero_vamount2str(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
                            G_monero_vstate.ux_amount, 15);
+
+        snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
+                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
         // ask user
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
@@ -212,6 +215,8 @@ int monero_apdu_mlsag_prehash_update() {
         amount = monero_bamount2uint64(v, sizeof(v));
         if (amount) {
             monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
+            snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
+                     sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
 
             if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
                 if (!is_change) {

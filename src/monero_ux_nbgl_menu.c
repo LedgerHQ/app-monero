@@ -56,14 +56,16 @@ enum {
     RESET_TOKEN,
     ACCOUNT_CHOICE,
     ACCOUNT_CHOICE_2,
+    ACCOUNT_CHOICE_3,
     NETWORK_CHOICE
 };
 
 enum { MAIN_NET, STAGE_NET, TEST_NET, MAX_NET };
 
+#define SETTING_INFO_NB 4
 static const char* const infoTypes[] = {"Spec", "Version", "Developer", "Copyright"};
 static const char* const infoContents[] = {XSTR(SPEC_VERSION), APPVERSION, "Ledger",
-                                           "(c) 2022 Ledger"};
+                                           "(c) 2024 Ledger"};
 
 static const char* const barTexts[] = {"Select Account", "Select Network", "Reset"};
 static const uint8_t tokens[] = {ACCOUNT_TOKEN, NETWORK_TOKEN, RESET_TOKEN};
@@ -83,32 +85,9 @@ static void update_account(void) {
     G_monero_vstate.disp_addr_m = 0;
 }
 
-static bool settings_navigation_cb(uint8_t page, nbgl_pageContent_t* content) {
-    if (page == 0) {
-        content->type = BARS_LIST;
-        content->barsList.barTexts = barTexts;
-        content->barsList.tokens = tokens;
-        content->barsList.nbBars = 3;
-        content->barsList.tuneId = TUNE_TAP_CASUAL;
-    } else if (page == 1) {
-        content->type = INFOS_LIST;
-        content->infosList.nbInfos = 3;
-        content->infosList.infoTypes = infoTypes;
-        content->infosList.infoContents = infoContents;
-    } else if (page == 2) {
-        content->type = INFOS_LIST;
-        content->infosList.nbInfos = 1;
-        content->infosList.infoTypes = infoTypes + 3;
-        content->infosList.infoContents = infoContents + 3;
-    } else {
-        return false;
-    }
-    return true;
-}
-
 static bool account_settings_navigation_cb(uint8_t page, nbgl_pageContent_t* content) {
     content->type = CHOICES_LIST;
-    content->choicesList.nbChoices = 5;
+    content->choicesList.nbChoices = 4;
     content->choicesList.localized = false;
     content->choicesList.tuneId = TUNE_TAP_CASUAL;
 
@@ -117,13 +96,22 @@ static bool account_settings_navigation_cb(uint8_t page, nbgl_pageContent_t* con
         content->choicesList.names = accountNames;
         content->choicesList.token = ACCOUNT_CHOICE;
     } else if (page == 1) {
-        if (N_monero_pstate->account_id > 4) {
-            content->choicesList.initChoice = N_monero_pstate->account_id - 5;
+        if (N_monero_pstate->account_id > 3) {
+            content->choicesList.initChoice = N_monero_pstate->account_id - 4;
         } else {
-            content->choicesList.initChoice = 5;
+            content->choicesList.initChoice = 4;
         }
-        content->choicesList.names = accountNames + 5;
+        content->choicesList.names = accountNames + 4;
         content->choicesList.token = ACCOUNT_CHOICE_2;
+    } else if (page == 2) {
+        content->choicesList.nbChoices = 2;
+        if (N_monero_pstate->account_id > 7) {
+            content->choicesList.initChoice = N_monero_pstate->account_id - 8;
+        } else {
+            content->choicesList.initChoice = 8;
+        }
+        content->choicesList.names = accountNames + 8;
+        content->choicesList.token = ACCOUNT_CHOICE_3;
     } else {
         return false;
     }
@@ -164,12 +152,11 @@ static void resetCallback(void) {
 }
 
 static void account_settings_control_cb(int token, uint8_t index) {
-    UNUSED(index);
     switch (token) {
+        case ACCOUNT_CHOICE_3:
         case ACCOUNT_CHOICE_2:
-            index = index + 5;
-            __attribute__((fallthrough));
         case ACCOUNT_CHOICE:
+            index = (token - ACCOUNT_CHOICE) * 4 + index;
             if (index <= 9) {
                 monero_nvm_write((void*)&N_monero_pstate->account_id, &index, sizeof(uint8_t));
                 monero_init();
@@ -209,11 +196,12 @@ static void network_settings_control_cb(int token, uint8_t index) {
     }
 }
 
-static void settings_control_cb(int token, uint8_t index) {
+static void settings_control_cb(int token, uint8_t index, int page) {
     UNUSED(index);
+    UNUSED(page);
     switch (token) {
         case ACCOUNT_TOKEN:
-            nbgl_useCaseSettings("Select account", 0, 2, IS_TOUCHABLE, display_settings_menu,
+            nbgl_useCaseSettings("Select account", 0, 3, IS_TOUCHABLE, display_settings_menu,
                                  account_settings_navigation_cb, account_settings_control_cb);
             break;
         case NETWORK_TOKEN:
@@ -231,12 +219,29 @@ static void settings_control_cb(int token, uint8_t index) {
     }
 }
 
-static void display_settings_menu(void) {
-    nbgl_useCaseSettings("Monero settings", PAGE_START, NB_PAGE_SETTING, IS_TOUCHABLE,
-                         ui_menu_main_display, settings_navigation_cb, settings_control_cb);
-}
+// info menu definition
+static const nbgl_contentInfoList_t infoList = {
+    .nbInfos = SETTING_INFO_NB,
+    .infoTypes = infoTypes,
+    .infoContents = infoContents,
+};
 
-void ui_menu_main_display(void) {
+// settings menu definition
+#define SETTING_CONTENTS_NB 1
+static const nbgl_content_t contents[SETTING_CONTENTS_NB] = {
+    {.type = BARS_LIST,
+     .content.barsList.barTexts = barTexts,
+     .content.barsList.tokens = tokens,
+     .content.barsList.nbBars = 3,
+     .content.barsList.tuneId = TUNE_TAP_CASUAL,
+     .contentActionCallback = settings_control_cb}};
+
+static const nbgl_genericContents_t settingContents = {.callbackCallNeeded = false,
+                                                       .contentsList = contents,
+                                                       .nbContents = SETTING_CONTENTS_NB};
+static nbgl_homeAction_t homeAction;
+
+static void display_home_and_settings(bool displayHome) {
     update_account();
 
     explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
@@ -247,8 +252,22 @@ void ui_menu_main_display(void) {
     monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A, G_monero_vstate.B, 0,
                              NULL);
 
-    nbgl_useCaseHomeExt("Monero", &C_Monero_64px, NULL, true, transactionContext.buffer,
-                        display_account, display_settings_menu, app_exit);
+    homeAction.callback = display_account;
+    homeAction.icon = NULL;
+    homeAction.text = transactionContext.buffer;
+
+    nbgl_useCaseHomeAndSettings(APPNAME, &C_Monero_64px, NULL, displayHome ? INIT_HOME_PAGE : 0,
+                                &settingContents, &infoList, &homeAction, app_exit);
+}
+
+static void display_settings_menu(void) {
+    // display settings page
+    display_home_and_settings(false);
+}
+
+void ui_menu_main_display(void) {
+    // display home page
+    display_home_and_settings(true);
 }
 
 /* --- INIT --- */

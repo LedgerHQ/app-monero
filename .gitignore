@@ -23,3 +23,9 @@ build/
 dist/
 *.manifest
 *.spec
+
+# Temporary directory with snapshots taken during test runs
+tests/snapshots-tmp/
+
+# Virtual env for sideload (macOS and Windows)
+ledger/
