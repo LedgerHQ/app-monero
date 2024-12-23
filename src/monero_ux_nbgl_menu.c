@@ -34,7 +34,6 @@
 
 #define PAGE_START      0
 #define NB_PAGE_SETTING 3
-#define IS_TOUCHABLE    true
 
 void __attribute__((noreturn)) app_exit(void);
 
@@ -201,12 +200,14 @@ static void settings_control_cb(int token, uint8_t index, int page) {
     UNUSED(page);
     switch (token) {
         case ACCOUNT_TOKEN:
-            nbgl_useCaseSettings("Select account", 0, 3, IS_TOUCHABLE, display_settings_menu,
-                                 account_settings_navigation_cb, account_settings_control_cb);
+            nbgl_useCaseNavigableContent("Select account", 0, 3, display_settings_menu,
+                                         account_settings_navigation_cb,
+                                         account_settings_control_cb);
             break;
         case NETWORK_TOKEN:
-            nbgl_useCaseSettings("Select network", 0, 2, IS_TOUCHABLE, display_settings_menu,
-                                 network_settings_navigation_cb, network_settings_control_cb);
+            nbgl_useCaseNavigableContent("Select network", 0, 2, display_settings_menu,
+                                         network_settings_navigation_cb,
+                                         network_settings_control_cb);
             break;
         case RESET_TOKEN:
             nbgl_useCaseConfirm("Reset account\ninformations ?", "", "Yes, Reset", "Go back",
