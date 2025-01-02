@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.1 - 2025-01-02
+
+- Update to Ledger SDK API_LEVEL_22, deprecated API replacement
+
 ## 2.0.0 - 2024-05-01
 
 - Support of Flex device
