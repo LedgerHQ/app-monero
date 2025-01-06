@@ -47,14 +47,6 @@ typedef struct {
 } TransactionContext_t;
 
 static TransactionContext_t transactionContext;
-static nbgl_page_t* pageContext;
-
-static void release_context(void) {
-    if (pageContext != NULL) {
-        nbgl_pageRelease(pageContext);
-        pageContext = NULL;
-    }
-}
 
 /* -------------------------------- INFO UX --------------------------------- */
 
@@ -90,16 +82,13 @@ static void ui_menu_validation_action(bool value) {
         transactionContext.tagValueList.nbPairs = 0;
         ui_menu_validation_action_confirm();
     } else {
-        ui_menu_validation_action_cancel_prompt();
+        ui_menu_validation_action_cancel();
     }
 }
 
 unsigned int ui_menu_transaction_start(void) {
     transactionContext.tagValueList.nbPairs = 0;
-    nbgl_useCaseReviewStart(&C_Monero_64px, "Review Transaction\nto send Monero", "",
-                            "Reject transaction", ui_menu_validation_action_confirm,
-                            ui_menu_validation_action_cancel_prompt);
-    return 0;
+    return SW_OK;
 }
 
 unsigned int ui_menu_transaction_signed(void) {
@@ -159,14 +148,9 @@ void ui_menu_change_validation_display_last(unsigned int value __attribute__((un
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
     transactionContext.tagValueList.nbPairs++;
 
-    transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Hold to sign";
-    transactionContext.infoLongPress.longPressToken = 0;
-    transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Sign transaction";
-
-    nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Reject transaction", ui_menu_validation_action);
+    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &C_Monero_64px,
+                       "Review Transaction\nto send Monero", NULL, "Sign transaction",
+                       ui_menu_validation_action);
 }
 
 static void timelock_callback(void) {
@@ -194,122 +178,27 @@ void ui_menu_timelock_validation_display(unsigned int value __attribute__((unuse
 
 /* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
 
-#ifdef TARGET_FLEX
-#define NEXT_PAGE_TEXT ("Swipe to continue")
-#else
-#define NEXT_PAGE_TEXT ("Tap to continue")
-#endif
-
 static void fill_amount_and_destination(void) {
-    transactionContext.tagValuePair[0].item = "Amount";
-    transactionContext.tagValuePair[0].value = G_monero_vstate.ux_amount;
+    transactionContext.tagValuePair[transactionContext.tagValueList.nbPairs].item = "Amount";
+    transactionContext.tagValuePair[transactionContext.tagValueList.nbPairs].value =
+        G_monero_vstate.ux_amount;
+    transactionContext.tagValueList.nbPairs++;
 
-    transactionContext.tagValuePair[1].item = "Destination";
-    transactionContext.tagValuePair[1].value = G_monero_vstate.ux_address;
-
-    transactionContext.tagValueList.nbPairs = 2;
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-}
-
-static void page_callback(int token, unsigned char index) {
-    (void)index;
-    release_context();
-
-    ui_menu_validation_action(token);
-}
-
-static void continue_display(int token, unsigned char index) {
-    (void)index;
-
-    if (token == QUIT_TOKEN) {
-        ui_menu_validation_action_cancel_prompt();
-    }
-
-    fill_amount_and_destination();
-
-    nbgl_pageNavigationInfo_t info = {.activePage = 0,
-                                      .nbPages = 0,
-                                      .navType = NAV_WITH_TAP,
-                                      .progressIndicator = true,
-                                      .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
-                                      .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Reject transaction",
-                                      .quitToken = QUIT_TOKEN,
-                                      .tuneId = TUNE_TAP_CASUAL};
-
-    nbgl_pageContent_t content = {
-        .type = TAG_VALUE_LIST,
-        .tagValueList.nbPairs = transactionContext.tagValueList.nbPairs,
-        .tagValueList.pairs = (nbgl_layoutTagValue_t*)transactionContext.tagValueList.pairs};
-
-    pageContext = nbgl_pageDrawGenericContent(page_callback, &info, &content);
-}
-
-static void continue_display_last(int token, unsigned char index) {
-    (void)index;
-
-    if (token == QUIT_TOKEN) {
-        ui_menu_validation_action_cancel_prompt();
-    }
-
-    fill_amount_and_destination();
-    transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Hold to sign";
-    transactionContext.infoLongPress.longPressToken = 0;
-    transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Sign transaction";
-
-    nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Reject transaction", ui_menu_validation_action);
-}
-
-static void display_previous_infos(bool last) {
-    release_context();
-
-    nbgl_pageNavigationInfo_t info = {.activePage = 0,
-                                      .nbPages = 0,
-                                      .navType = NAV_WITH_TAP,
-                                      .progressIndicator = true,
-                                      .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
-                                      .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Reject transaction",
-                                      .quitToken = QUIT_TOKEN,
-                                      .tuneId = TUNE_TAP_CASUAL};
-
-    nbgl_pageContent_t content = {
-        .type = TAG_VALUE_LIST,
-        .tagValueList.nbPairs = transactionContext.tagValueList.nbPairs,
-        .tagValueList.pairs = (nbgl_layoutTagValue_t*)transactionContext.tagValueList.pairs};
-
-    if (last) {
-        pageContext = nbgl_pageDrawGenericContent(continue_display_last, &info, &content);
-    } else {
-        pageContext = nbgl_pageDrawGenericContent(continue_display, &info, &content);
-    }
+    transactionContext.tagValuePair[transactionContext.tagValueList.nbPairs].item = "Destination";
+    transactionContext.tagValuePair[transactionContext.tagValueList.nbPairs].value =
+        G_monero_vstate.ux_address;
+    transactionContext.tagValueList.nbPairs++;
 }
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
-    const bool last = 0;
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    if (nbPairs > 0) {
-        display_previous_infos(last);
-    } else {
-        continue_display(CONTINUE_TOKEN, 0);
-    }
 }
 
 void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
-    const bool last = 1;
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
+    fill_amount_and_destination();
 
-    if (nbPairs > 0) {
-        display_previous_infos(last);
-    } else {
-        continue_display_last(CONTINUE_TOKEN, 0);
-    }
+    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &C_Monero_64px,
+                       "Review Transaction\nto send Monero", NULL, "Sign transaction",
+                       ui_menu_validation_action);
 }
 /* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
 #define ADDR_MAJOR G_monero_vstate.ux_address + 124

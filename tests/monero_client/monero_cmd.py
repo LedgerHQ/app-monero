@@ -458,6 +458,7 @@ class MoneroCmd(MoneroCryptoCmd):
             instructions = [
 
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.USE_CASE_REVIEW_TAP),
                 NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
             ]
