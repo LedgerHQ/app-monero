@@ -1270,6 +1270,8 @@ int monero_rng_mod_order(unsigned char *r, size_t r_len) {
     unsigned char rnd[32 + 8];
     int error;
     cx_rng(rnd, 32 + 8);
+    /* To uncomment in order to freeze the secret for test purposes */
+    /* memset(rnd, 0xBB, 32 + 8);                      */
     error = cx_math_modm_no_throw(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
     if (error) {
         return SW_SECURITY_INTERNAL;
