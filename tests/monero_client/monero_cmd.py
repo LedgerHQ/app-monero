@@ -27,6 +27,7 @@ from .exception.device_error import DeviceError
 from .utils.varint import encode_varint
 from .utils.utils import get_nano_review_instructions
 from pathlib import Path
+from ragger.firmware import Firmware
 from ragger.navigator import NavInsID, NavIns
 
 PROTOCOL_VERSION: int = 3
@@ -223,13 +224,13 @@ class MoneroCmd(MoneroCryptoCmd):
             encode_varint(timelock)
         ])
 
-        if firmware.device == "nanos":
+        if firmware == Firmware.NANOS:
             instructions = get_nano_review_instructions(1)
-        elif firmware.device.startswith("nano"):
+        elif firmware.is_nano:
             instructions = get_nano_review_instructions(1)
         else:
             instructions = [
-                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT)
+                NavInsID.SWIPE_CENTER_TO_LEFT
             ]
         with self.device.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
@@ -386,13 +387,13 @@ class MoneroCmd(MoneroCryptoCmd):
         # txntype is skipped in the app
         payload: bytes = struct.pack("B", txntype) + encode_varint(txnfee)
 
-        if firmware.device == "nanos":
+        if firmware == Firmware.NANOS:
             instructions = get_nano_review_instructions(1)
-        elif firmware.device.startswith("nano"):
+        elif firmware.is_nano:
             instructions = get_nano_review_instructions(1)
         else:
             instructions = [
-                NavIns(NavInsID.USE_CASE_REVIEW_TAP)
+                NavInsID.USE_CASE_REVIEW_TAP
             ]
 
         with self.device.send_async(cla=PROTOCOL_VERSION,
@@ -402,7 +403,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                     option=0,
                                     payload=payload):
 
-            if firmware.device.startswith("nano"):
+            if firmware.is_nano:
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_prehash_init",
                                                instructions)
@@ -450,12 +451,12 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
-        if firmware.device == "nanos":
+        if firmware == Firmware.NANOS:
             if is_last:
                 instructions = get_nano_review_instructions(1)
             else:
                 instructions = get_nano_review_instructions(7)
-        elif firmware.device.startswith("nano"):
+        elif firmware.is_nano:
             if is_last:
                 instructions = get_nano_review_instructions(1)
             else:
@@ -463,15 +464,14 @@ class MoneroCmd(MoneroCryptoCmd):
         else:
             if is_last:
                 instructions = [
-#                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
-                    NavIns(NavInsID.USE_CASE_REVIEW_TAP),
-                    NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
+                    NavInsID.USE_CASE_REVIEW_TAP,
+                    NavInsID.USE_CASE_REVIEW_CONFIRM
                 ]
 
             else:
                 instructions = [
-                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
-                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                    NavInsID.SWIPE_CENTER_TO_LEFT,
+                    NavInsID.SWIPE_CENTER_TO_LEFT,
                 ]
 
         backend.wait_for_text_on_screen("Processing")
