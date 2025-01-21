@@ -314,7 +314,7 @@ class MoneroCmd(MoneroCryptoCmd):
                         MoneroCryptoCmd.HMAC_KEY,
                         Type.AMOUNT_KEY),
             mask,
-            amount.to_bytes(32, byteorder="big")
+            amount.to_bytes(32, byteorder="little")
         ])
 
         self.device.send(cla=PROTOCOL_VERSION,
@@ -451,16 +451,28 @@ class MoneroCmd(MoneroCryptoCmd):
         ))
 
         if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(7)
+            if is_last:
+                instructions = get_nano_review_instructions(1)
+            else:
+                instructions = get_nano_review_instructions(7)
         elif firmware.device.startswith("nano"):
-            instructions = get_nano_review_instructions(3)
+            if is_last:
+                instructions = get_nano_review_instructions(1)
+            else:
+                instructions = get_nano_review_instructions(3)
         else:
-            instructions = [
+            if is_last:
+                instructions = [
+#                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                    NavIns(NavInsID.USE_CASE_REVIEW_TAP),
+                    NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
+                ]
 
-                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
-                NavIns(NavInsID.USE_CASE_REVIEW_TAP),
-                NavIns(NavInsID.USE_CASE_REVIEW_CONFIRM)
-            ]
+            else:
+                instructions = [
+                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                ]
 
         backend.wait_for_text_on_screen("Processing")
         with self.device.send_async(cla=PROTOCOL_VERSION,
@@ -470,11 +482,15 @@ class MoneroCmd(MoneroCryptoCmd):
                                     option=(0 if is_last else 0x80) | (
                                         0x02 if is_short else 0),
                                     payload=payload):
-
-            navigator.navigate_and_compare(TESTS_ROOT_DIR,
-                                           test_name + "_prehash_update",
-                                           instructions,
-                                           screen_change_after_last_instruction=False, timeout=10000)
+            if is_last:
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name + "_prehash_update_last",
+                                               instructions,
+                                               screen_change_after_last_instruction=False, timeout=10000)
+            else:
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name + "_prehash_update_first",
+                                               instructions)
 
         sw, response = self.device.async_response()  # type: int, bytes
 
@@ -527,4 +543,5 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=3 (finalize)")
 
-        assert len(response) == 32
+        if is_last:
+            assert len(response) == 32
