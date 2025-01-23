@@ -96,6 +96,9 @@ enum device_mode { NONE, TRANSACTION_CREATE_REAL, TRANSACTION_CREATE_FAKE, TRANS
 #define DISP_SUB        0x52
 #define DISP_INTEGRATED 0x53
 
+#define MAX_AMOUNT_LENGTH 23
+#define MAX_ADDR_LENGTH   160
+
 struct monero_v_state_s {
     unsigned char state;
     unsigned char protocol;
@@ -187,9 +190,9 @@ struct monero_v_state_s {
             /* menu */
             char ux_menu[16];
             // address to display: 95/106-chars + null
-            char ux_address[160];
+            char ux_address[MAX_ADDR_LENGTH];
             // xmr to display: max pow(2,64) unit, aka 20-chars + '0' + dot + null
-            char ux_amount[23];
+            char ux_amount[MAX_AMOUNT_LENGTH];
             // addr mode
             unsigned char disp_addr_mode;
             // M.m address
