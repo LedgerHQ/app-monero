@@ -34,39 +34,38 @@
 /* ----------------------------------------------------------------------- */
 /* ---                         Stax  UI layout                         --- */
 /* ----------------------------------------------------------------------- */
+#define MAX_TAGVALUE_NUMBER 9
+#define MAX_AMOUNT_NUMBER   6
+#define MAX_ADDR_NUMBER     3  //  MAX_AMOUNT_NUMBER - timelock - fee - change
 
 typedef struct {
-    nbgl_layoutTagValue_t tagValuePair[6];
-    nbgl_layoutTagValueList_t tagValueList;
+    nbgl_contentTagValue_t tagValuePair[MAX_TAGVALUE_NUMBER];
+    nbgl_contentTagValueList_t tagValueList;
     nbgl_pageInfoLongPress_t infoLongPress;
-    char timelockBuffer[23];
-    char feeBuffer[23];
-    char changeBuffer[23];
+    char amountBuffer[MAX_AMOUNT_NUMBER][MAX_AMOUNT_LENGTH];
+    uint32_t amountNum;
+    char dstBuffer[MAX_ADDR_NUMBER][MAX_ADDR_LENGTH];
+    uint32_t addrNum;
     nbgl_pageContent_t content;
     nbgl_pageNavigationInfo_t nav;
 } TransactionContext_t;
 
 static TransactionContext_t transactionContext;
-static nbgl_page_t* pageContext;
 
-static void release_context(void) {
-    if (pageContext != NULL) {
-        nbgl_pageRelease(pageContext);
-        pageContext = NULL;
-    }
+/* -------------------------------- TITLES ---------------------------------- */
+const char feeTitle[] = "Fee";
+const char changeTitle[] = "Change";
+const char amountTitle[] = "Amount";
+const char dstTitle[] = "Destination";
+const char timelockTitle[] = "Timelock";
+
+/* ------------------------------ STATIC HELPERS ---------------------------- */
+static void reset_context(void) {
+    transactionContext.tagValueList.nbPairs = 0;
+    transactionContext.amountNum = 0;
+    transactionContext.addrNum = 0;
 }
 
-/* -------------------------------- INFO UX --------------------------------- */
-
-void ui_menu_show_tx_aborted(void) {
-    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_menu_main_display);
-}
-
-void ui_menu_show_security_error(void) {
-    nbgl_useCaseStatus("Security Error", false, ui_menu_main_display);
-}
-
-/* -------------------------------- OPEN TX UX --------------------------------- */
 static void ui_menu_validation_action_cancel(void) {
     monero_abort_tx();
     monero_io_insert_u16(SW_DENY);
@@ -80,26 +79,62 @@ static void ui_menu_validation_action_confirm(void) {
     nbgl_useCaseSpinner("Processing TX");
 }
 
-static void ui_menu_validation_action_cancel_prompt(void) {
-    nbgl_useCaseConfirm("Reject transaction?", "", "Yes, Reject", "Go back to transaction",
-                        ui_menu_validation_action_cancel);
-}
-
 static void ui_menu_validation_action(bool value) {
     if (value) {
-        transactionContext.tagValueList.nbPairs = 0;
+        reset_context();
         ui_menu_validation_action_confirm();
     } else {
-        ui_menu_validation_action_cancel_prompt();
+        ui_menu_validation_action_cancel();
     }
 }
 
+static void add_amount(const char* title, bool forcePageStart) {
+    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
+    if ((transactionContext.amountNum >= MAX_AMOUNT_NUMBER) || (nbPairs >= MAX_TAGVALUE_NUMBER)) {
+        ui_menu_validation_action_cancel();
+        return;
+    }
+
+    strncpy(transactionContext.amountBuffer[transactionContext.amountNum],
+            G_monero_vstate.ux_amount, MAX_AMOUNT_LENGTH);
+
+    transactionContext.tagValuePair[nbPairs].item = title;
+    transactionContext.tagValuePair[nbPairs].value =
+        transactionContext.amountBuffer[transactionContext.amountNum];
+    if (forcePageStart) transactionContext.tagValuePair[nbPairs].forcePageStart = 1;
+
+    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
+
+    transactionContext.tagValueList.nbPairs++;
+    transactionContext.amountNum++;
+}
+
+static void add_address(void) {
+    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
+
+    if ((transactionContext.addrNum >= MAX_ADDR_NUMBER) || (nbPairs >= MAX_TAGVALUE_NUMBER)) {
+        ui_menu_validation_action_cancel();
+        return;
+    }
+
+    strncpy(transactionContext.dstBuffer[transactionContext.addrNum], G_monero_vstate.ux_address,
+            MAX_ADDR_LENGTH);
+
+    transactionContext.tagValuePair[nbPairs].item = dstTitle;
+    transactionContext.tagValuePair[nbPairs].value =
+        transactionContext.dstBuffer[transactionContext.addrNum];
+
+    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
+
+    transactionContext.tagValueList.nbPairs++;
+    transactionContext.addrNum++;
+}
+
+/* ------------------------------- OPEN TX UX ------------------------------- */
+
 unsigned int ui_menu_transaction_start(void) {
-    transactionContext.tagValueList.nbPairs = 0;
-    nbgl_useCaseReviewStart(&C_Monero_64px, "Review Transaction\nto send Monero", "",
-                            "Reject transaction", ui_menu_validation_action_confirm,
-                            ui_menu_validation_action_cancel_prompt);
-    return 0;
+    reset_context();
+    return SW_OK;
 }
 
 unsigned int ui_menu_transaction_signed(void) {
@@ -115,201 +150,59 @@ void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
     }
 }
 
-/* ----------------- FEE/CHANGE/TIMELOCK VALIDATION ----------------- */
+/* -------------------------------- INFO UX --------------------------------- */
+
+void ui_menu_show_tx_aborted(void) {
+    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_menu_main_display);
+}
+
+/* --------------------- FEE/CHANGE/TIMELOCK VALIDATION --------------------- */
+
+static void start_signature(void) {
+    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &C_Monero_64px,
+                       "Review Transaction\nto send Monero", NULL, "Sign transaction",
+                       ui_menu_validation_action);
+}
 
 void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) {
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    strncpy(transactionContext.feeBuffer, G_monero_vstate.ux_amount,
-            sizeof(transactionContext.feeBuffer));
-
-    transactionContext.tagValuePair[nbPairs].item = "Fee";
-    transactionContext.tagValuePair[nbPairs].value = transactionContext.feeBuffer;
-
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-    transactionContext.tagValueList.nbPairs++;
-
+    add_amount(feeTitle, false);
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    strncpy(transactionContext.changeBuffer, G_monero_vstate.ux_amount,
-            sizeof(transactionContext.changeBuffer));
-
-    transactionContext.tagValuePair[nbPairs].item = "Change";
-    transactionContext.tagValuePair[nbPairs].value = transactionContext.changeBuffer;
-
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-    transactionContext.tagValueList.nbPairs++;
-
+    add_amount(changeTitle, false);
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    strncpy(transactionContext.changeBuffer, G_monero_vstate.ux_amount,
-            sizeof(transactionContext.changeBuffer));
-
-    transactionContext.tagValuePair[nbPairs].item = "Change";
-    transactionContext.tagValuePair[nbPairs].value = transactionContext.changeBuffer;
-
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-    transactionContext.tagValueList.nbPairs++;
-
-    transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Hold to sign";
-    transactionContext.infoLongPress.longPressToken = 0;
-    transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Sign transaction";
-
-    nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Reject transaction", ui_menu_validation_action);
-}
-
-static void timelock_callback(void) {
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    strncpy(transactionContext.timelockBuffer, G_monero_vstate.ux_amount,
-            sizeof(transactionContext.timelockBuffer));
-
-    transactionContext.tagValuePair[nbPairs].item = "Timelock";
-    transactionContext.tagValuePair[nbPairs].value = transactionContext.timelockBuffer;
-
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-    transactionContext.tagValueList.nbPairs++;
-
-    ui_menu_validation_action_confirm();
+    add_amount(changeTitle, true);
+    start_signature();
 }
 
 void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
-    transactionContext.tagValueList.nbPairs = 0;
-
-    nbgl_useCaseReviewStart(&C_Monero_64px, "Review Transaction\nto send Monero", NULL,
-                            "Reject transaction", timelock_callback,
-                            ui_menu_validation_action_cancel_prompt);
-}
-
-/* ----------------------------- USER DEST/AMOUNT VALIDATION ----------------------------- */
-
-#ifdef TARGET_FLEX
-#define NEXT_PAGE_TEXT ("Swipe to continue")
-#else
-#define NEXT_PAGE_TEXT ("Tap to continue")
-#endif
-
-static void fill_amount_and_destination(void) {
-    transactionContext.tagValuePair[0].item = "Amount";
-    transactionContext.tagValuePair[0].value = G_monero_vstate.ux_amount;
-
-    transactionContext.tagValuePair[1].item = "Destination";
-    transactionContext.tagValuePair[1].value = G_monero_vstate.ux_address;
-
-    transactionContext.tagValueList.nbPairs = 2;
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
-}
-
-static void page_callback(int token, unsigned char index) {
-    (void)index;
-    release_context();
-
-    ui_menu_validation_action(token);
-}
-
-static void continue_display(int token, unsigned char index) {
-    (void)index;
-
-    if (token == QUIT_TOKEN) {
-        ui_menu_validation_action_cancel_prompt();
-    }
-
-    fill_amount_and_destination();
-
-    nbgl_pageNavigationInfo_t info = {.activePage = 0,
-                                      .nbPages = 0,
-                                      .navType = NAV_WITH_TAP,
-                                      .progressIndicator = true,
-                                      .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
-                                      .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Reject transaction",
-                                      .quitToken = QUIT_TOKEN,
-                                      .tuneId = TUNE_TAP_CASUAL};
-
-    nbgl_pageContent_t content = {
-        .type = TAG_VALUE_LIST,
-        .tagValueList.nbPairs = transactionContext.tagValueList.nbPairs,
-        .tagValueList.pairs = (nbgl_layoutTagValue_t*)transactionContext.tagValueList.pairs};
-
-    pageContext = nbgl_pageDrawGenericContent(page_callback, &info, &content);
-}
-
-static void continue_display_last(int token, unsigned char index) {
-    (void)index;
-
-    if (token == QUIT_TOKEN) {
-        ui_menu_validation_action_cancel_prompt();
-    }
-
-    fill_amount_and_destination();
-    transactionContext.infoLongPress.icon = &C_Monero_64px;
-    transactionContext.infoLongPress.longPressText = "Hold to sign";
-    transactionContext.infoLongPress.longPressToken = 0;
-    transactionContext.infoLongPress.tuneId = TUNE_TAP_CASUAL;
-    transactionContext.infoLongPress.text = "Sign transaction";
-
-    nbgl_useCaseStaticReview(&transactionContext.tagValueList, &transactionContext.infoLongPress,
-                             "Reject transaction", ui_menu_validation_action);
-}
-
-static void display_previous_infos(bool last) {
-    release_context();
-
-    nbgl_pageNavigationInfo_t info = {.activePage = 0,
-                                      .nbPages = 0,
-                                      .navType = NAV_WITH_TAP,
-                                      .progressIndicator = true,
-                                      .navWithTap.backButton = false,
-                                      .navWithTap.nextPageText = NEXT_PAGE_TEXT,
-                                      .navWithTap.nextPageToken = CONTINUE_TOKEN,
-                                      .navWithTap.quitText = "Reject transaction",
-                                      .quitToken = QUIT_TOKEN,
-                                      .tuneId = TUNE_TAP_CASUAL};
-
-    nbgl_pageContent_t content = {
-        .type = TAG_VALUE_LIST,
-        .tagValueList.nbPairs = transactionContext.tagValueList.nbPairs,
-        .tagValueList.pairs = (nbgl_layoutTagValue_t*)transactionContext.tagValueList.pairs};
-
-    if (last) {
-        pageContext = nbgl_pageDrawGenericContent(continue_display_last, &info, &content);
+    reset_context();
+    if (transactionContext.addrNum == 0) {
+        /* If no yet receivers addresses let us add the change on the same page */
+        add_amount(timelockTitle, false);
     } else {
-        pageContext = nbgl_pageDrawGenericContent(continue_display, &info, &content);
+        /* In the other case let us for new page */
+        add_amount(timelockTitle, true);
     }
+    ui_menu_validation_action_confirm();
 }
+
+/* ---------------------- USER DEST/AMOUNT VALIDATION ----------------------- */
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
-    const bool last = 0;
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    if (nbPairs > 0) {
-        display_previous_infos(last);
-    } else {
-        continue_display(CONTINUE_TOKEN, 0);
-    }
+    add_amount(amountTitle, true);
+    add_address();
+    ui_menu_validation_action_confirm();
 }
 
 void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
-    const bool last = 1;
-    uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-
-    if (nbPairs > 0) {
-        display_previous_infos(last);
-    } else {
-        continue_display_last(CONTINUE_TOKEN, 0);
-    }
+    add_amount(amountTitle, true);
+    add_address();
+    start_signature();
 }
 /* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
 #define ADDR_MAJOR G_monero_vstate.ux_address + 124
@@ -401,7 +294,7 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
     return 0;
 }
 
-/* -------------------------------- EXPORT VIEW KEY UX --------------------------------- */
+/* -------------------------- EXPORT VIEW KEY UX ---------------------------- */
 
 static void ui_menu_export_viewkey_action(bool value) {
     unsigned int sw;

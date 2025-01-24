@@ -1,8 +1,6 @@
 import pytest
 
 from monero_client.monero_types import SigType, Keys
-from monero_client.exception import ClientNotSupported
-
 
 @pytest.mark.incremental
 class TestSignature:
@@ -36,17 +34,28 @@ class TestSignature:
                  "a9FiYNpEjBoHZ9iTww3vL96P1hcmTQXvpFAo"
         )
 
+        receiver2 = Keys(
+            public_view_key=bytes.fromhex("1fe0cf63fc16b40b5397c47a5227e4eb4d"
+                                          "9bc735dbd8d062340c11d35966f904"),
+            public_spend_key=bytes.fromhex("a22faef2684feb1583f69a3d2bd87e09b3"
+                                           "9f70276b69b8512876b7adc8ddfac8"),
+            secret_view_key=bytes.fromhex("b9209a473237f601d66246de732680cb62"
+                                          "d344fbf0d2bc23e195087d53a06f37"),
+            secret_spend_key=None,
+            addr="5R32BpY7seiTednbP9I7mzS7L9tyN0VmxSp1lSfkasRlgoO98XjU6gnHpwqtX9Md0e7SBj9IaWLZR2AZeEzz6NsXhLMdRi9"
+        )
+
         return {"sender": sender,
-                "receiver_number": 2,
-                "receiver": [receiver, sender],
-                "is_change_addr": [False, True],
-                "amount": [int(69.36*1000000000000), int(0.55*1000000000000)],
+                "receiver_number": 3,
+                "receiver": [receiver, receiver2, sender],
+                "is_change_addr": [False, False, True],
+                "amount": [int(69.36*1000000000000), int(0.37*1000000000000), int(0.55*1000000000000)],
                 "tx_pub_key": None,
                 "_tx_priv_key": None,
-                "_ak_amount": [[], []],
-                "blinded_amount": [[], []],
-                "blinded_mask": [[], []],
-                "y": [[], []]}
+                "_ak_amount": [[], [], []],
+                "blinded_amount": [[], [], []],
+                "blinded_mask": [[], [], []],
+                "y": [[], [], []]}
 
     @staticmethod
     def test_set_sig(monero):
