@@ -1,7 +1,7 @@
 #*******************************************************************************
 #    Ledger App Monero
-#    (c) 2023 Ledger SAS.
-#    
+#    (c) 2023-2025 Ledger SAS.
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -29,7 +29,7 @@ APPNAME = "Monero"
 # Application version
 APPVERSION_M = 2
 APPVERSION_N = 0
-APPVERSION_P = 0
+APPVERSION_P = 1
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
 SPECVERSION = "1.0"

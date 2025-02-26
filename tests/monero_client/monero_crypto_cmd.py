@@ -121,7 +121,7 @@ class MoneroCryptoCmd:
         else:
             instructions = [
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
-                NavIns(NavInsID.TOUCH, (200, 350 if firmware.device.startswith("flex") else 410)),
+                NavIns(NavInsID.TOUCH, (200, 350 if firmware.device.startswith("flex") else 375)),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
