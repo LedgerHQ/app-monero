@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 import re
 import pytest
@@ -54,6 +55,6 @@ def _verify_version(version: str) -> None:
 def _read_makefile() -> List[str]:
     """Read lines from the parent Makefile """
 
-    with open("Makefile", "r", encoding="utf-8") as f_p:
+    with open(Path(__file__).parent.parent / "Makefile", "r", encoding="utf-8") as f_p:
         lines = f_p.readlines()
     return lines
