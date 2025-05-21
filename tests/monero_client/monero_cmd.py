@@ -27,15 +27,16 @@ from .exception.device_error import DeviceError
 from .utils.varint import encode_varint
 from .utils.utils import get_nano_review_instructions
 from pathlib import Path
-from ragger.firmware import Firmware
-from ragger.navigator import NavInsID
+from ledgered.devices import Device, DeviceType
+from ragger.backend.interface import BackendInterface
+from ragger.navigator import Navigator, NavInsID
 
 PROTOCOL_VERSION: int = 3
 TESTS_ROOT_DIR = Path(__file__).parent.parent
 
 
 class MoneroCmd(MoneroCryptoCmd):
-    def __init__(self, debug, backend) -> None:
+    def __init__(self, debug: bool, backend: BackendInterface) -> None:
         self.backend = backend
         MoneroCryptoCmd.__init__(self, backend, debug)
 
@@ -44,14 +45,14 @@ class MoneroCmd(MoneroCryptoCmd):
                               ) -> Tuple[int, int, int]:
         ins: InsType = InsType.INS_RESET
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=monero_client_version)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
@@ -72,14 +73,14 @@ class MoneroCmd(MoneroCryptoCmd):
 
         payload: bytes = struct.pack("B", sig_type)
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=1,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -101,14 +102,14 @@ class MoneroCmd(MoneroCryptoCmd):
         # 4 bytes
         account: bytes = struct.pack(">I", 0)
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=1,
                          p2=0,
                          option=0,
                          payload=account)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # Wait for internal backend screen to be up to date before continuing
         self.backend.wait_for_screen_change()
@@ -146,13 +147,13 @@ class MoneroCmd(MoneroCryptoCmd):
     def close_tx(self) -> None:
         ins: InsType = InsType.INS_CLOSE_TX
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # Wait for internal backend screen to be up to date before continuing
         self.backend.wait_for_screen_change()
@@ -190,14 +191,14 @@ class MoneroCmd(MoneroCryptoCmd):
             b"\x00" * 33,  # use_view_tags
         ))
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -216,7 +217,12 @@ class MoneroCmd(MoneroCryptoCmd):
 
         return _ak_amount, out_ephemeral_pub_key
 
-    def prefix_hash_init(self, backend, test_name, firmware, navigator, version: int, timelock: int) -> None:
+    def prefix_hash_init(self,
+                         test_name: str,
+                         device: Device,
+                         navigator: Navigator,
+                         version: int,
+                         timelock: int) -> None:
         ins: InsType = InsType.INS_PREFIX_HASH
 
         payload: bytes = b"".join([
@@ -225,23 +231,23 @@ class MoneroCmd(MoneroCryptoCmd):
         ])
 
         instructions = None
-        if firmware.is_nano:
+        if device.is_nano:
             instructions = get_nano_review_instructions(1)
 
-        with self.device.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=1,
                                     p2=0,
                                     option=0,
                                     payload=payload):
-            if firmware.is_nano:
+            if device.is_nano:
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_hash_init",
                                                instructions)
             else:
                 pass
 
-        sw, response = self.device.async_response()  # type: int, bytes
+        sw, response = self.transport.async_response()  # type: int, bytes
 
         # Screen change already waited in navigate_and_compare() above
 
@@ -253,14 +259,14 @@ class MoneroCmd(MoneroCryptoCmd):
     def prefix_hash_update(self, index: int, payload: bytes, is_last: bool) -> bytes:
         ins: InsType = InsType.INS_PREFIX_HASH
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=InsType.INS_PREFIX_HASH,
                          p1=2,
                          p2=index,
                          option=0 if is_last else 0x80,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -283,14 +289,14 @@ class MoneroCmd(MoneroCryptoCmd):
                         MoneroCryptoCmd.HMAC_KEY,
                         Type.AMOUNT_KEY)
         ])
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -317,14 +323,14 @@ class MoneroCmd(MoneroCryptoCmd):
             amount.to_bytes(32, byteorder="little")
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=2 if is_short else 0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -353,14 +359,14 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=2 if is_short else 0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 
@@ -374,10 +380,9 @@ class MoneroCmd(MoneroCryptoCmd):
         return mask, amount
 
     def validate_prehash_init(self,
-                              backend,
-                              test_name,
-                              firmware,
-                              navigator,
+                              test_name: str,
+                              device: Device,
+                              navigator: Navigator,
                               index: int,
                               txntype: int,
                               txnfee: int) -> None:
@@ -387,24 +392,24 @@ class MoneroCmd(MoneroCryptoCmd):
         payload: bytes = struct.pack("B", txntype) + encode_varint(txnfee)
 
         instructions = None
-        if firmware.is_nano:
+        if device.is_nano:
             instructions = get_nano_review_instructions(1)
 
-        with self.device.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=1,
                                     p2=index,
                                     option=0,
                                     payload=payload):
 
-            if firmware.is_nano:
+            if device.is_nano:
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_prehash_init",
                                                instructions)
             else:
                 pass
 
-        sw, response = self.device.async_response()  # type: int, bytes
+        sw, response = self.transport.async_response()  # type: int, bytes
 
         # Screen change already waited in navigate_and_compare() above
 
@@ -414,10 +419,9 @@ class MoneroCmd(MoneroCryptoCmd):
         assert len(response) == 0
 
     def validate_prehash_update(self,
-                                backend,
-                                test_name,
-                                firmware,
-                                navigator,
+                                backend: BackendInterface,
+                                test_name: str,
+                                navigator: Navigator,
                                 index: int,
                                 is_short: bool,
                                 is_change_addr: bool,
@@ -429,6 +433,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                 blinded_mask: bytes,
                                 blinded_amount: bytes,
                                 is_last: bool) -> None:
+        device = backend.device
         ins: InsType = InsType.INS_VALIDATE
 
         payload: bytes = b"".join((
@@ -446,12 +451,12 @@ class MoneroCmd(MoneroCryptoCmd):
         ))
 
         instructions = None
-        if firmware == Firmware.NANOS:
+        if device.type == DeviceType.NANOS:
             if is_last:
                 instructions = get_nano_review_instructions(1)
             else:
                 instructions = get_nano_review_instructions(7)
-        elif firmware.is_nano:
+        elif device.is_nano:
             if is_last:
                 instructions = get_nano_review_instructions(1)
             else:
@@ -468,7 +473,7 @@ class MoneroCmd(MoneroCryptoCmd):
                 ]
 
         backend.wait_for_text_on_screen("Processing")
-        with self.device.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=2,
                                     p2=index,
@@ -481,14 +486,14 @@ class MoneroCmd(MoneroCryptoCmd):
                                                instructions,
                                                screen_change_after_last_instruction=False, timeout=10000)
             else:
-                if firmware.is_nano:
+                if device.is_nano:
                     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                    test_name + "_prehash_update_" + str(index),
                                                    instructions)
                 else:
                     pass
 
-        sw, response = self.device.async_response()  # type: int, bytes
+        sw, response = self.transport.async_response()  # type: int, bytes
 
         # Screen change already waited in navigate_and_compare() above
 
@@ -525,14 +530,14 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=3,
                          p2=index,
                          option=(0 if is_last else 0x80) | (0x02 if is_short else 0),
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         # No screen change expected
 

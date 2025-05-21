@@ -1,8 +1,9 @@
 """Verifies settings and information navigation
 """
 from pathlib import Path
-from ragger.navigator import NavInsID, NavIns
-from ragger.firmware import Firmware
+from ledgered.devices import Device, DeviceType
+
+from ragger.navigator import Navigator, NavInsID, NavIns
 
 TESTS_ROOT_DIR = Path(__file__).parent
 
@@ -18,39 +19,39 @@ STAX_HEIGHT = 672
 STAX_HEADER_HEIGHT = 87
 STAX_ITEM_HEIGHT = 96
 
-def _get_settings_element_coordinates(firmware, number):
-    if firmware == Firmware.FLEX:
+def _get_settings_element_coordinates(device: Device, number):
+    if device.type == DeviceType.FLEX:
         return (FLEX_WIDTH//2, FLEX_HEADER_HEIGHT + (number)*FLEX_ITEM_HEIGHT + FLEX_ITEM_HEIGHT//2)
-    if firmware == Firmware.STAX:
+    if device.type == DeviceType.STAX:
         return (STAX_WIDTH//2, STAX_HEADER_HEIGHT + (number)*STAX_ITEM_HEIGHT + STAX_ITEM_HEIGHT//2)
     return (0, 0)
 
-def test_settings(navigator, firmware, test_name):
+def test_settings(navigator: Navigator, device: Device, test_name: str):
     """Verifies settings navigation
     """
     instructions = []
-    if firmware in [Firmware.FLEX, Firmware.STAX]:
+    if device.touchable:
         instructions = [
             # 0 (Main page)->Settings button = Page 1
             NavInsID.USE_CASE_HOME_SETTINGS,
             # 1 (Page 1)->Select Account = Select account
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 0)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 0)),
             # 2 (Select account)->Selecting account 2 = Page 1
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 2)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 2)),
             # 3 (Page 1)-> Select Account = Select account
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 0)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 0)),
             # 4 (Select account)-> Back = Page 1
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
             #5 (Page 1)-> Select Network = Select network
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 1)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 1)),
             #6 (Select network)-> Test network = Page 1
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 2)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 2)),
             #7 (Page 1)-> Select Network = Select network
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 1)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 1)),
             # 8 (Select account)-> Back = Page 1
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
             #9 (Page 1)-> Reset = Confirmation
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 2)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 2)),
             #10 (Confirmation)-> Reset = Text, Main page
             NavInsID.USE_CASE_CHOICE_CONFIRM,
             #11 (Main page)
@@ -58,15 +59,15 @@ def test_settings(navigator, firmware, test_name):
             # 12 (Main page)->Settings button = Page 1
             NavInsID.USE_CASE_HOME_SETTINGS,
             # 13 (Page 1)->Select Account = Select account
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 0)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 0)),
             # 14 (Select account)-> Back = Page 1
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
             #15 (Page 1)-> Select Network = Select network
-            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(firmware, 1)),
+            NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 1)),
             # 16 (Select account)-> Back = Page 1
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
         ]
-    elif firmware.is_nano:
+    elif device.is_nano:
         instructions = [
             # Setting Account 2
             NavInsID.RIGHT_CLICK,   # = Settings HL
@@ -133,11 +134,11 @@ def test_settings(navigator, firmware, test_name):
                                    instructions,
                                    screen_change_before_first_instruction = False)
 
-def test_info(navigator, firmware, test_name):
+def test_info(navigator: Navigator, device: Device, test_name: str):
     """Verifies info navigation
     """
     instructions = []
-    if firmware in [Firmware.FLEX, Firmware.STAX]:
+    if device.touchable:
         instructions = [
             # 0 (main page) -> Settings button = Page 1
             NavInsID.USE_CASE_HOME_SETTINGS,
@@ -146,23 +147,24 @@ def test_info(navigator, firmware, test_name):
             # 2 (Info 1) -> Right = Info 2
             NavInsID.SWIPE_CENTER_TO_LEFT,
         ]
-    elif firmware.is_nano and not Firmware.NANOS:
-        instructions = [
-            NavInsID.RIGHT_CLICK, # = Settings
-            NavInsID.RIGHT_CLICK, # = About
-            NavInsID.BOTH_CLICK,  # = About Info
-            NavInsID.RIGHT_CLICK, # = Back
-            NavInsID.BOTH_CLICK,  # = Main page
-        ]
-    elif firmware is Firmware.NANOS:
-        instructions = [
-            NavInsID.RIGHT_CLICK, # = Settings
-            NavInsID.RIGHT_CLICK, # = About
-            NavInsID.BOTH_CLICK,  # = About Info 1
-            NavInsID.RIGHT_CLICK, # = About Info 2
-            NavInsID.RIGHT_CLICK, # = Back
-            NavInsID.BOTH_CLICK,  # = Main page
-        ]
+    elif device.is_nano:
+        if device.type == DeviceType.NANOS:
+            instructions = [
+                NavInsID.RIGHT_CLICK, # = Settings
+                NavInsID.RIGHT_CLICK, # = About
+                NavInsID.BOTH_CLICK,  # = About Info 1
+                NavInsID.RIGHT_CLICK, # = About Info 2
+                NavInsID.RIGHT_CLICK, # = Back
+                NavInsID.BOTH_CLICK,  # = Main page
+            ]
+        else:
+            instructions = [
+                NavInsID.RIGHT_CLICK, # = Settings
+                NavInsID.RIGHT_CLICK, # = About
+                NavInsID.BOTH_CLICK,  # = About Info
+                NavInsID.RIGHT_CLICK, # = Back
+                NavInsID.BOTH_CLICK,  # = Main page
+            ]
     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                    test_name,
                                    instructions,

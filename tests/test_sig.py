@@ -1,6 +1,11 @@
 import pytest
 
+from ledgered.devices import Device
+from ragger.backend.interface import BackendInterface
+from ragger.navigator import Navigator
+
 from monero_client.monero_types import SigType, Keys
+from monero_client.monero_cmd import MoneroCmd
 
 @pytest.mark.incremental
 class TestSignature:
@@ -80,7 +85,7 @@ class TestSignature:
         state["_tx_priv_key"] = _tx_priv_key
 
     @staticmethod
-    def test_gen_txout_keys(monero, state):
+    def test_gen_txout_keys(monero: MoneroCmd, state):
         for index in range(state["receiver_number"]):
             _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
@@ -95,11 +100,11 @@ class TestSignature:
             state["_ak_amount"][index].append(_ak_amount)  # _ak_amount_t
 
     @staticmethod
-    def test_prefix_hash(monero, backend, navigator, firmware, test_name):
+    def test_prefix_hash(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str):
         expected: bytes = bytes.fromhex("9a259973bf721120aceae3d8d40696c0"
                                         "7470331e386028753123f37fee36926b")
         # should ask for timelock validation
-        monero.prefix_hash_init(backend, test_name, firmware,
+        monero.prefix_hash_init(test_name, device,
                                 navigator=navigator, version=0, timelock=2147483650)
         result: bytes = monero.prefix_hash_update(
             index=1,
@@ -110,14 +115,14 @@ class TestSignature:
         assert result == expected
 
     @staticmethod
-    def test_gen_commitment_mask(monero, state):
+    def test_gen_commitment_mask(monero: MoneroCmd, state):
         for index in range(state["receiver_number"]):
             assert len(state["_ak_amount"][index]) != 0
             s: bytes = monero.gen_commitment_mask(state["_ak_amount"][index][0])
             state["y"][index].append(s)  # y_t
 
     @staticmethod
-    def test_blind(monero, state):
+    def test_blind(monero: MoneroCmd, state):
         for index in range(state["receiver_number"]):
             assert len(state["y"][index]) != 0
             assert len(state["_ak_amount"][index]) != 0
@@ -149,24 +154,27 @@ class TestSignature:
             assert len(state["blinded_mask"][index]) != 0
 
     @staticmethod
-    def test_validate(monero, backend, navigator, firmware, test_name, state):
+    def test_validate(monero: MoneroCmd,
+                      backend: BackendInterface,
+                      navigator: Navigator,
+                      test_name,
+                      state):
 
+        device = backend.device
         fee: int = 100000000  # 0.0001 XMR
 
         # should ask for fee validation
-        monero.validate_prehash_init(backend,
-                                     navigator=navigator,
-                                     firmware=firmware,
-                                     test_name=test_name,
-                                     index=1,  # start at 1
-                                     txntype=0,
-                                     txnfee=fee)
+        monero.validate_prehash_init(test_name,
+                                     device,
+                                     navigator,
+                                     1,  # start at 1
+                                     0,
+                                     fee)
 
         for index in range(state["receiver_number"]):
             monero.validate_prehash_update(
                 backend,
                 test_name,
-                firmware,
                 navigator,
                 index=index+1,
                 is_short=True,
@@ -196,5 +204,5 @@ class TestSignature:
             )
 
     @staticmethod
-    def test_close_tx(monero):
+    def test_close_tx(monero: MoneroCmd):
         monero.close_tx()
