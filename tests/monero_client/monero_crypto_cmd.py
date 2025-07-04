@@ -113,7 +113,8 @@ class MoneroCryptoCmd:
                         device: Device,
                         navigator: Navigator,
                         derivation: bytes,
-                        output_index: bytes) -> bytes:
+                        output_index: bytes,
+                        screen_num: int = 3) -> bytes:
         ins: InsType = InsType.INS_DISPLAY_ADDRESS
 
         payload: bytes = b"".join([
@@ -125,12 +126,20 @@ class MoneroCryptoCmd:
             instructions = get_nano_review_instructions(8)
         elif device.is_nano:
             instructions = get_nano_review_instructions(4)
-        else:
+        elif device.type == DeviceType.FLEX or screen_num == 3:
             instructions = [
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.TOUCH, (200, 350 if device.type == DeviceType.FLEX else 375)),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
+                NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
+            ]
+        elif device.type == DeviceType.STAX:
+            instructions = [
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.TOUCH, (63, 519)),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
                 NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
             ]

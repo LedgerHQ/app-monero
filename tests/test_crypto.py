@@ -232,7 +232,7 @@ def test_display_address(monero: MoneroCmd, navigator: Navigator, device: Device
     minor: bytes = (0).to_bytes(4, byteorder='little')
     payment_id: bytes = bytes.fromhex(8*"00")
     monero.display_address(test_name, device, navigator, major +
-                           minor + payment_id, bytes.fromhex("00"))
+                           minor + payment_id, bytes.fromhex("00"), 2)
 
 
 def test_display_subaddress(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str):
