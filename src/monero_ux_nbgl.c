@@ -298,22 +298,25 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
 
 static void ui_menu_export_viewkey_action(bool value) {
     unsigned int sw;
-    unsigned char x[KEY_SIZE];
+    const char* exp_msg = "VIEW KEY\nEXPORTED";
+    const char* rej_msg = "THE EXPORT IS\nREJECTED";
+    const char* set_msg = NULL;
 
     monero_io_discard(0);
-    explicit_bzero(x, sizeof(x));
-    sw = SW_OK;
 
     if (value) {
+        sw = SW_OK;
         monero_io_insert(G_monero_vstate.a, KEY_SIZE);
-        G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
+        set_msg = exp_msg;
+
     } else {
-        monero_io_insert(x, KEY_SIZE);
-        G_monero_vstate.export_view_key = 0;
+        sw = SW_DENY;
+        set_msg = rej_msg;
     }
+
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
-    nbgl_useCaseStatus("VIEW KEY\nEXPORTED", true, ui_menu_main_display);
+    nbgl_useCaseStatus(set_msg, true, ui_menu_main_display);
 }
 
 void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {

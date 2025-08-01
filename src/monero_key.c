@@ -330,13 +330,8 @@ int monero_apdu_get_key() {
         // get private
         case 2:
             // view key
-            if (G_monero_vstate.export_view_key == EXPORT_VIEW_KEY) {
-                monero_io_insert(G_monero_vstate.a, KEY_SIZE);
-            } else {
-                ui_export_viewkey_display(0);
-                return 0;
-            }
-            break;
+            ui_export_viewkey_display(0);
+            return 0;
 
 #ifdef DEBUG_HWDEVICE
         // get info
