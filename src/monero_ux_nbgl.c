@@ -160,7 +160,7 @@ void ui_menu_show_tx_aborted(void) {
 
 static void start_signature(void) {
     nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &C_Monero_64px,
-                       "Review Transaction\nto send Monero", NULL, "Sign transaction",
+                       "Review Transaction\nto send Monero", NULL, "Sign transaction?",
                        ui_menu_validation_action);
 }
 
