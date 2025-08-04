@@ -28,6 +28,15 @@ def test_private_view_key(monero: MoneroCmd,
                                           "e9c72927f813728b0f01f28f9d5e1201")
 
 
+def test_private_view_key_reject(monero: MoneroCmd,
+                                 navigator: Navigator,
+                                 device: Device,
+                                 test_name: str):
+    view_priv_key: bytes = monero.get_private_view_key(test_name, device, navigator, True)
+
+    assert view_priv_key is None
+
+
 def test_keygen_and_verify(monero: MoneroCmd):
     pub_key, _priv_key = monero.generate_keypair()  # type: bytes, bytes
 
