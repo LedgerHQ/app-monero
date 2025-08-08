@@ -316,7 +316,7 @@ static void ui_menu_export_viewkey_action(bool value) {
 
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
-    nbgl_useCaseStatus(set_msg, true, ui_menu_main_display);
+    nbgl_useCaseStatus(set_msg, value, ui_menu_main_display);
 }
 
 void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
