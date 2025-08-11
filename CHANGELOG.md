@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.0 - 2025-08-04
+
+- enforcing the sharing private view key functionality - the consent is always needed
+- minor UI improvements
+
+
 ## 2.0.1 - 2025-01-02
 
 - Update to Ledger SDK API_LEVEL_22, deprecated API replacement

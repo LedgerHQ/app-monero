@@ -10,6 +10,7 @@ from pathlib import Path
 from ledgered.devices import Device, DeviceType
 
 from ragger.backend.interface import BackendInterface
+from ragger.error import ExceptionRAPDU
 from ragger.navigator import Navigator, NavInsID, NavIns
 from .utils.utils import get_nano_review_instructions
 
@@ -164,29 +165,43 @@ class MoneroCryptoCmd:
     def get_private_view_key(self,
                              test_name: str,
                              device: Device,
-                             navigator: Navigator) -> bytes:
+                             navigator: Navigator,
+                             refuse: bool = False) -> bytes:
         ins: InsType = InsType.INS_GET_KEY
 
-        if device.type == DeviceType.NANOS:
-            instructions = get_nano_review_instructions(1)
-        elif device.is_nano:
-            instructions = get_nano_review_instructions(1)
+        if not refuse:
+            if device.is_nano:
+                instructions = get_nano_review_instructions(1)
+            else:
+                instructions = [
+                    NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM)
+                ]
         else:
-            instructions = [
-                NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM)
-            ]
+            if device.is_nano:
+                instructions = get_nano_review_instructions(2)
+            else:
+                instructions = [
+                    NavIns(NavInsID.USE_CASE_CHOICE_REJECT)
+                ]
+        try:
 
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
-                                    ins=ins,
-                                    p1=2,
-                                    p2=0,
-                                    option=0):
+            with self.transport.send_async(cla=PROTOCOL_VERSION,
+                                        ins=ins,
+                                        p1=2,
+                                        p2=0,
+                                        option=0):
 
-            navigator.navigate_and_compare(TESTS_ROOT_DIR,
-                                           test_name,
-                                           instructions)
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name,
+                                               instructions)
 
-        sw, response = self.transport.async_response()  # type: int, bytes
+            sw, response = self.transport.async_response()  # type: int, bytes
+        except ExceptionRAPDU as e:
+            # Looking for Deny value
+            if e.status == 0x6982 and refuse and not e.data:
+                return None
+            else:
+                raise ValueError(e)
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=2")

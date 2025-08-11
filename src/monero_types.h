@@ -124,7 +124,6 @@ struct monero_v_state_s {
     /* ------------------------------------------ */
     /* ---            State Machine           --- */
     /* ------------------------------------------ */
-    unsigned int export_view_key;
     unsigned char key_set;
 
 /* protocol guard */
