@@ -289,20 +289,15 @@ void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
 }
 
 unsigned int ui_menu_export_viewkey_action(unsigned int value) {
-    unsigned int sw;
-    unsigned char x[KEY_SIZE];
+    unsigned int sw = SW_DENY;
 
     monero_io_discard(0);
-    explicit_bzero(x, sizeof(x));
-    sw = SW_OK;
 
     if (value == ACCEPT) {
+        sw = SW_OK;
         monero_io_insert(G_monero_vstate.a, KEY_SIZE);
-        G_monero_vstate.export_view_key = EXPORT_VIEW_KEY;
-    } else {
-        monero_io_insert(x, KEY_SIZE);
-        G_monero_vstate.export_view_key = 0;
     }
+
     monero_io_insert_u16(sw);
     monero_io_do(IO_RETURN_AFTER_TX);
     ui_menu_main_display();

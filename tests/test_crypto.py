@@ -1,4 +1,11 @@
-def test_public_keys(monero):
+
+from ledgered.devices import Device
+from ragger.navigator import Navigator
+
+from monero_client.monero_cmd import MoneroCmd
+
+
+def test_public_keys(monero: MoneroCmd):
     (view_pub_key,
      spend_pub_key,
      address) = monero.get_public_keys()  # type: bytes, bytes, str
@@ -11,20 +18,32 @@ def test_public_keys(monero):
                        "p5pSacMdSg7A3b71RejLzB8EkGbfjp5PELVHCRUaE")
 
 
-def test_private_view_key(monero, navigator, firmware, test_name):
-    view_priv_key: bytes = monero.get_private_view_key(test_name, firmware, navigator)
+def test_private_view_key(monero: MoneroCmd,
+                          navigator: Navigator,
+                          device: Device,
+                          test_name: str):
+    view_priv_key: bytes = monero.get_private_view_key(test_name, device, navigator)
 
     assert view_priv_key == bytes.fromhex("0f3fe25d0c6d4c94dde0c0bcc214b233"
                                           "e9c72927f813728b0f01f28f9d5e1201")
 
 
-def test_keygen_and_verify(monero):
+def test_private_view_key_reject(monero: MoneroCmd,
+                                 navigator: Navigator,
+                                 device: Device,
+                                 test_name: str):
+    view_priv_key: bytes = monero.get_private_view_key(test_name, device, navigator, True)
+
+    assert view_priv_key is None
+
+
+def test_keygen_and_verify(monero: MoneroCmd):
     pub_key, _priv_key = monero.generate_keypair()  # type: bytes, bytes
 
     assert monero.verify_key(_priv_key, pub_key) is True
 
 
-def test_key_image(monero):
+def test_key_image(monero: MoneroCmd):
     expected_key_img: bytes = bytes.fromhex("b8af9b11b9391f0cd921863b5f774677"
                                             "29a188d31f8c7df37bd7f2dfd99defee")
 
@@ -39,7 +58,7 @@ def test_key_image(monero):
     assert expected_key_img == key_image
 
 
-def test_put_key(monero):
+def test_put_key(monero: MoneroCmd):
     priv_view_key: bytes = bytes.fromhex("0f3fe25d0c6d4c94dde0c0bcc214b233"
                                          "e9c72927f813728b0f01f28f9d5e1201")
     pub_view_key: bytes = bytes.fromhex("865cbfab852a1d1ccdfc7328e4dac90f"
@@ -58,7 +77,7 @@ def test_put_key(monero):
                    address=address)
 
 
-def test_gen_key_derivation(monero):
+def test_gen_key_derivation(monero: MoneroCmd):
     # 8 * r.G
     expected: bytes = bytes.fromhex("57029f1d2a7453254be1ee81d7d8b540"
                                     "1db398f0a541315c0095fad27625ebfa")
@@ -84,12 +103,12 @@ class Derivation_Test:
     _output_index: bytes
     _expected_view_tag: int
 
-    def __init__(self, derivation, output_index, expected_view_tag):
+    def __init__(self, derivation: str, output_index: int, expected_view_tag: int):
         self._derivation = bytes.fromhex(derivation)
         self._output_index = (output_index).to_bytes(4, byteorder='big')
         self._expected_view_tag = expected_view_tag
 
-    def do_test(self, monero):
+    def do_test(self, monero: MoneroCmd):
         encrypted_derivation = monero.xor_cipher(
             self._derivation, b"\x55")  # encrypt with dummy key 0x55
         assert self._expected_view_tag == monero.derive_view_tag(
@@ -212,22 +231,22 @@ DERIVATION_TESTS = [
 ]
 
 
-def test_derive_view_tag(monero):
+def test_derive_view_tag(monero: MoneroCmd):
     for test in DERIVATION_TESTS:
         test.do_test(monero)
 
 
-def test_display_address(monero, navigator, firmware, test_name):
+def test_display_address(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str):
     major: bytes = (0).to_bytes(4, byteorder='little')
     minor: bytes = (0).to_bytes(4, byteorder='little')
     payment_id: bytes = bytes.fromhex(8*"00")
-    monero.display_address(test_name, firmware, navigator, major +
-                           minor + payment_id, bytes.fromhex("00"))
+    monero.display_address(test_name, device, navigator, major +
+                           minor + payment_id, bytes.fromhex("00"), 2)
 
 
-def test_display_subaddress(monero, navigator, firmware, test_name):
+def test_display_subaddress(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str):
     major: bytes = (0).to_bytes(4, byteorder='little')
     minor: bytes = (1).to_bytes(4, byteorder='little')
     payment_id: bytes = bytes.fromhex(8*"00")
-    monero.display_address(test_name, firmware, navigator, major +
+    monero.display_address(test_name, device, navigator, major +
                            minor + payment_id, bytes.fromhex("00"))

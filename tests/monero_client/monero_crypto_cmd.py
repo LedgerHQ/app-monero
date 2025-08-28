@@ -7,7 +7,11 @@ from .monero_types import InsType
 from .monero_types import Type
 from .io.transport import Transport
 from pathlib import Path
-from ragger.navigator import NavInsID, NavIns
+from ledgered.devices import Device, DeviceType
+
+from ragger.backend.interface import BackendInterface
+from ragger.error import ExceptionRAPDU
+from ragger.navigator import Navigator, NavInsID, NavIns
 from .utils.utils import get_nano_review_instructions
 
 PROTOCOL_VERSION: int = 3
@@ -17,8 +21,8 @@ TESTS_ROOT_DIR = Path(__file__).parent.parent
 class MoneroCryptoCmd:
     HMAC_KEY: bytes = b"\xab" * 32
 
-    def __init__(self, backend, debug: bool = False) -> None:
-        self.device = Transport(backend, debug=debug)
+    def __init__(self, backend: BackendInterface, debug: bool = False) -> None:
+        self.transport = Transport(backend, debug=debug)
         self.is_in_tx_mode = False
 
     @staticmethod
@@ -41,14 +45,14 @@ class MoneroCryptoCmd:
                         Type.SCALAR),  # hmac
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -57,8 +61,7 @@ class MoneroCryptoCmd:
 
         return response  # scalar * pub_key
 
-    def secret_scalar_mul_base(self,
-                               _priv_key: bytes):
+    def secret_scalar_mul_base(self, _priv_key: bytes):
         ins: InsType = InsType.INS_SECRET_SCAL_MUL_BASE
 
         payload: bytes = b"".join([
@@ -68,14 +71,14 @@ class MoneroCryptoCmd:
                         Type.SCALAR),  # hmac
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -87,13 +90,13 @@ class MoneroCryptoCmd:
     def get_public_keys(self) -> Tuple[bytes, bytes, str]:
         ins: InsType = InsType.INS_GET_KEY
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=1,
                          p2=0,
                          option=0)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=1")
@@ -106,7 +109,13 @@ class MoneroCryptoCmd:
 
         return view_pub_key, spend_pub_key, base58_address
 
-    def display_address(self, test_name, firmware, navigator, derivation: bytes, output_index: bytes) -> bytes:
+    def display_address(self,
+                        test_name: str,
+                        device: Device,
+                        navigator: Navigator,
+                        derivation: bytes,
+                        output_index: bytes,
+                        screen_num: int = 3) -> bytes:
         ins: InsType = InsType.INS_DISPLAY_ADDRESS
 
         payload: bytes = b"".join([
@@ -114,20 +123,28 @@ class MoneroCryptoCmd:
             output_index,
         ])
 
-        if firmware.device == "nanos":
+        if device.type == DeviceType.NANOS:
             instructions = get_nano_review_instructions(8)
-        elif firmware.device.startswith("nano"):
+        elif device.is_nano:
             instructions = get_nano_review_instructions(4)
-        else:
+        elif device.type == DeviceType.FLEX or screen_num == 3:
             instructions = [
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
-                NavIns(NavInsID.TOUCH, (200, 350 if firmware.device.startswith("flex") else 375)),
+                NavIns(NavInsID.TOUCH, (200, 350 if device.type == DeviceType.FLEX else 375)),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
                 NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
             ]
-        with self.device.send_async(cla=PROTOCOL_VERSION,
+        elif device.type == DeviceType.STAX:
+            instructions = [
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.TOUCH, (63, 519)),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
+                NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
+            ]
+        with self.transport.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=0,
                                     p2=0,
@@ -138,36 +155,53 @@ class MoneroCryptoCmd:
                                            test_name,
                                            instructions)
 
-        sw, response = self.device.async_response()  # type: int, bytes
+        sw, response = self.transport.async_response()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=2")
 
         return response  # priv_view_key
 
-    def get_private_view_key(self, test_name, firmware, navigator) -> bytes:
+    def get_private_view_key(self,
+                             test_name: str,
+                             device: Device,
+                             navigator: Navigator,
+                             refuse: bool = False) -> bytes:
         ins: InsType = InsType.INS_GET_KEY
 
-        if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(1)
-        elif firmware.device.startswith("nano"):
-            instructions = get_nano_review_instructions(1)
+        if not refuse:
+            if device.is_nano:
+                instructions = get_nano_review_instructions(1)
+            else:
+                instructions = [
+                    NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM)
+                ]
         else:
-            instructions = [
-                NavIns(NavInsID.USE_CASE_CHOICE_CONFIRM)
-            ]
+            if device.is_nano:
+                instructions = get_nano_review_instructions(2)
+            else:
+                instructions = [
+                    NavIns(NavInsID.USE_CASE_CHOICE_REJECT)
+                ]
+        try:
 
-        with self.device.send_async(cla=PROTOCOL_VERSION,
-                                    ins=ins,
-                                    p1=2,
-                                    p2=0,
-                                    option=0):
+            with self.transport.send_async(cla=PROTOCOL_VERSION,
+                                        ins=ins,
+                                        p1=2,
+                                        p2=0,
+                                        option=0):
 
-            navigator.navigate_and_compare(TESTS_ROOT_DIR,
-                                           test_name,
-                                           instructions)
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name,
+                                               instructions)
 
-        sw, response = self.device.async_response()  # type: int, bytes
+            sw, response = self.transport.async_response()  # type: int, bytes
+        except ExceptionRAPDU as e:
+            # Looking for Deny value
+            if e.status == 0x6982 and refuse and not e.data:
+                return None
+            else:
+                raise ValueError(e)
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins, "P1=2")
@@ -179,13 +213,13 @@ class MoneroCryptoCmd:
     def generate_keypair(self) -> Tuple[bytes, bytes]:
         ins: InsType = InsType.INS_GENERATE_KEYPAIR
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -200,14 +234,14 @@ class MoneroCryptoCmd:
     def verify_key(self, _priv_key: bytes, pub_key: bytes) -> bool:
         ins: InsType = InsType.INS_VERIFY_KEY
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=_priv_key + pub_key)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -230,14 +264,14 @@ class MoneroCryptoCmd:
                         Type.SCALAR),  # hmac
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -262,14 +296,14 @@ class MoneroCryptoCmd:
             address.encode("ascii")
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -287,14 +321,14 @@ class MoneroCryptoCmd:
                         Type.SCALAR),
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
@@ -321,14 +355,14 @@ class MoneroCryptoCmd:
             output_index,
         ])
 
-        self.device.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=PROTOCOL_VERSION,
                          ins=ins,
                          p1=0,
                          p2=0,
                          option=0,
                          payload=payload)
 
-        sw, response = self.device.recv()  # type: int, bytes
+        sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:
             raise DeviceError(sw, ins)
