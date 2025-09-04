@@ -44,6 +44,7 @@ ICON_NANOX = icons/app_monero_14px.gif
 ICON_NANOSP = icons/app_monero_14px.gif
 ICON_STAX = icons/app_monero_32px.gif
 ICON_FLEX = icons/app_monero_40px.gif
+ICON_APEX_P = icons/app_monero_32px_mono.png
 
 # Application allowed derivation curves.
 CURVE_APP_LOAD_PARAMS = secp256k1

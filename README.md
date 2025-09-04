@@ -80,6 +80,8 @@ You can choose which device to compile and load for by setting the `BOLOS_SDK` e
 * `BOLOS_SDK=$NANOX_SDK`
 * `BOLOS_SDK=$NANOSP_SDK`
 * `BOLOS_SDK=$STAX_SDK`
+* `BOLOS_SDK=$FLEX_SDK`
+* `BOLOS_SDK=$APEX_P_SDK`
 
 By default this variable is set to build/load for Nano S+.
 
@@ -167,7 +169,7 @@ pip install -r tests/requirements.txt
 
 Then you can :
 
-Run the functional tests (here for nanos+ but available for any device once you have built the binaries) :
+Run the functional tests (here for Nano S+ but available for any device once you have built the binaries) :
 
 ```shell
 pytest tests/ --tb=short -v --device nanosp
