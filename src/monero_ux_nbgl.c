@@ -19,8 +19,9 @@
 #include "os.h"
 #include "ux.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
+#include "monero_ui.h"
 #include "monero_vars.h"
 
 #include "os_io_seproxyhal.h"
@@ -159,7 +160,7 @@ void ui_menu_show_tx_aborted(void) {
 /* --------------------- FEE/CHANGE/TIMELOCK VALIDATION --------------------- */
 
 static void start_signature(void) {
-    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &C_Monero_64px,
+    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &ICON_APP_MAIN,
                        "Review Transaction\nto send Monero", NULL, "Sign transaction?",
                        ui_menu_validation_action);
 }
@@ -273,7 +274,7 @@ void display_account(void) {
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
     nbgl_useCaseAddressReview(G_monero_vstate.ux_address, &transactionContext.tagValueList,
-                              &C_Monero_64px, "Verify Monero\naddress", NULL,
+                              &ICON_APP_MAIN, "Verify Monero\naddress", NULL,
                               ui_menu_pubaddr_action);
 }
 
@@ -320,7 +321,7 @@ static void ui_menu_export_viewkey_action(bool value) {
 }
 
 void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
-    nbgl_useCaseChoice(&C_Monero_64px, "Export\nview key", "", "Accept", "Reject if not sure",
+    nbgl_useCaseChoice(&ICON_APP_MAIN, "Export\nview key", "", "Accept", "Reject if not sure",
                        ui_menu_export_viewkey_action);
 }
 

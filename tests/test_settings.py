@@ -19,11 +19,19 @@ STAX_HEIGHT = 672
 STAX_HEADER_HEIGHT = 87
 STAX_ITEM_HEIGHT = 96
 
+# Apex P screen parameters
+APEX_P_WIDTH = 300
+APEX_P_HEIGHT = 400
+APEX_P_HEADER_HEIGHT = 59
+APEX_P_ITEM_HEIGHT = 68
+
 def _get_settings_element_coordinates(device: Device, number):
     if device.type == DeviceType.FLEX:
         return (FLEX_WIDTH//2, FLEX_HEADER_HEIGHT + (number)*FLEX_ITEM_HEIGHT + FLEX_ITEM_HEIGHT//2)
     if device.type == DeviceType.STAX:
         return (STAX_WIDTH//2, STAX_HEADER_HEIGHT + (number)*STAX_ITEM_HEIGHT + STAX_ITEM_HEIGHT//2)
+    if device.type == DeviceType.APEX_P:
+        return (APEX_P_WIDTH//2, APEX_P_HEADER_HEIGHT + (number)*APEX_P_ITEM_HEIGHT + APEX_P_ITEM_HEIGHT//2)
     return (0, 0)
 
 def test_settings(navigator: Navigator, device: Device, test_name: str):
