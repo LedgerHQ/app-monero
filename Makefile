@@ -39,7 +39,6 @@ APP_SOURCE_PATH += src
 
 # Application icons following guidelines:
 # https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
-ICON_NANOS = icons/app_monero_16px.gif
 ICON_NANOX = icons/app_monero_14px.gif
 ICON_NANOSP = icons/app_monero_14px.gif
 ICON_STAX = icons/app_monero_32px.gif

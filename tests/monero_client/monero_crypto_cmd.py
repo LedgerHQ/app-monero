@@ -123,9 +123,7 @@ class MoneroCryptoCmd:
             output_index,
         ])
 
-        if device.type == DeviceType.NANOS:
-            instructions = get_nano_review_instructions(8)
-        elif device.is_nano:
+        if device.is_nano:
             instructions = get_nano_review_instructions(4)
         elif device.type == DeviceType.APEX_P:
             instructions = [

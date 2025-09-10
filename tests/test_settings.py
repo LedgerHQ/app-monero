@@ -135,23 +135,13 @@ def test_info(navigator: Navigator, device: Device, test_name: str):
             NavInsID.SWIPE_CENTER_TO_LEFT,
         ]
     elif device.is_nano:
-        if device.type == DeviceType.NANOS:
-            instructions = [
-                NavInsID.RIGHT_CLICK, # = Settings
-                NavInsID.RIGHT_CLICK, # = About
-                NavInsID.BOTH_CLICK,  # = About Info 1
-                NavInsID.RIGHT_CLICK, # = About Info 2
-                NavInsID.RIGHT_CLICK, # = Back
-                NavInsID.BOTH_CLICK,  # = Main page
-            ]
-        else:
-            instructions = [
-                NavInsID.RIGHT_CLICK, # = Settings
-                NavInsID.RIGHT_CLICK, # = About
-                NavInsID.BOTH_CLICK,  # = About Info
-                NavInsID.RIGHT_CLICK, # = Back
-                NavInsID.BOTH_CLICK,  # = Main page
-            ]
+        instructions = [
+            NavInsID.RIGHT_CLICK, # = Settings
+            NavInsID.RIGHT_CLICK, # = About
+            NavInsID.BOTH_CLICK,  # = About Info
+            NavInsID.RIGHT_CLICK, # = Back
+            NavInsID.BOTH_CLICK,  # = Main page
+        ]
     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                    test_name,
                                    instructions,

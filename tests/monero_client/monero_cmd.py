@@ -451,12 +451,7 @@ class MoneroCmd(MoneroCryptoCmd):
         ))
 
         instructions = None
-        if device.type == DeviceType.NANOS:
-            if is_last:
-                instructions = get_nano_review_instructions(1)
-            else:
-                instructions = get_nano_review_instructions(7)
-        elif device.is_nano:
+        if device.is_nano:
             if is_last:
                 instructions = get_nano_review_instructions(1)
             else:
