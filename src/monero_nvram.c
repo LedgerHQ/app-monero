@@ -22,8 +22,4 @@
 #include "monero_api.h"
 #include "monero_vars.h"
 
-#if defined(TARGET_NANOS)
-monero_nv_state_t N_state_pic;
-#else
 const monero_nv_state_t N_state_pic;
-#endif

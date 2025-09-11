@@ -19,12 +19,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: ["$NANOX_SDK", "$NANOSP_SDK", "$STAX_SDK", "$FLEX_SDK"]
+        sdk: ["$NANOX_SDK", "$NANOSP_SDK", "$STAX_SDK", "$FLEX_SDK", "$APEX_P_SDK"]
         # 'cpp' covers C and C++
         language: ['cpp']
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-legacy:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
 
     steps:
       - name: Clone

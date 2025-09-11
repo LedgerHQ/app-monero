@@ -43,12 +43,7 @@ void ui_menu_words_display(unsigned int value);
 void ui_menu_words_clear(unsigned int value);
 void ui_menu_words_back(unsigned int value);
 
-UX_STEP_NOCB(ux_menu_words_1_step,
-#ifndef TARGET_NANOS
-             bnnn_paging,
-#else
-             bn_paging,
-#endif
+UX_STEP_NOCB(ux_menu_words_1_step, bnnn_paging,
              {
                  .title = "Electrum Seed",
                  .text = "NOTSET",
@@ -232,13 +227,7 @@ void ui_menu_validation_action(unsigned int value);
 
 UX_STEP_NOCB(ux_menu_validation_1_step, bn, {"Amount", G_monero_vstate.ux_amount});
 
-UX_STEP_NOCB(ux_menu_validation_2_step,
-#ifndef TARGET_NANOS
-             bnnn_paging,
-#else
-             bn_paging,
-#endif
-             {"Destination", G_monero_vstate.ux_address});
+UX_STEP_NOCB(ux_menu_validation_2_step, bnnn_paging, {"Destination", G_monero_vstate.ux_address});
 
 UX_STEP_CB(ux_menu_validation_3_step, pb, ui_menu_validation_action(ACCEPT),
            {&C_icon_validate_14, "Sign transaction"});
@@ -508,7 +497,6 @@ void settings_submenu_selector(unsigned int idx) {
 #define STR(x)  #x
 #define XSTR(x) STR(x)
 
-#ifndef TARGET_NANOS
 UX_STEP_NOCB(ux_menu_about_1_step, bnnn,
              {
                  "Monero",
@@ -516,20 +504,6 @@ UX_STEP_NOCB(ux_menu_about_1_step, bnnn,
                  "Spec  " XSTR(SPEC_VERSION),
                  "App  " XSTR(MONERO_VERSION),
              });
-#else
-UX_STEP_NOCB(ux_menu_about_1a_step, bn,
-             {
-                 "Monero",
-                 "(c) Ledger SAS",
-             });
-
-UX_STEP_NOCB(ux_menu_about_1b_step, nn,
-             {
-                 "Spec  " XSTR(SPEC_VERSION),
-                 "App  " XSTR(MONERO_VERSION),
-             });
-
-#endif
 
 UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(),
            {
@@ -537,13 +511,7 @@ UX_STEP_CB(ux_menu_about_2_step, pb, ui_menu_main_display(),
                "Back",
            });
 
-UX_FLOW(ux_flow_about,
-#ifndef TARGET_NANOS
-        &ux_menu_about_1_step,
-#else
-        &ux_menu_about_1a_step, &ux_menu_about_1b_step,
-#endif
-        &ux_menu_about_2_step);
+UX_FLOW(ux_flow_about, &ux_menu_about_1_step, &ux_menu_about_2_step);
 
 void ui_menu_about_display(void) {
     ux_flow_init(0, ux_flow_about, NULL);
