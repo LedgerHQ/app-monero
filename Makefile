@@ -29,7 +29,7 @@ APPNAME = "Monero"
 # Application version
 APPVERSION_M = 2
 APPVERSION_N = 1
-APPVERSION_P = 0
+APPVERSION_P = 1
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
 SPECVERSION = "1.0"
@@ -39,11 +39,11 @@ APP_SOURCE_PATH += src
 
 # Application icons following guidelines:
 # https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
-ICON_NANOS = icons/app_monero_16px.gif
 ICON_NANOX = icons/app_monero_14px.gif
 ICON_NANOSP = icons/app_monero_14px.gif
 ICON_STAX = icons/app_monero_32px.gif
 ICON_FLEX = icons/app_monero_40px.gif
+ICON_APEX_P = icons/app_monero_32px_mono.png
 
 # Application allowed derivation curves.
 CURVE_APP_LOAD_PARAMS = secp256k1

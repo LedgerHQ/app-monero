@@ -123,10 +123,17 @@ class MoneroCryptoCmd:
             output_index,
         ])
 
-        if device.type == DeviceType.NANOS:
-            instructions = get_nano_review_instructions(8)
-        elif device.is_nano:
+        if device.is_nano:
             instructions = get_nano_review_instructions(4)
+        elif device.type == DeviceType.APEX_P:
+            instructions = [
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.TOUCH, (150, 250)),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_EXIT_QR),
+                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),
+                NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
+                NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
+            ]
         elif device.type == DeviceType.FLEX or screen_num == 3:
             instructions = [
                 NavIns(NavInsID.SWIPE_CENTER_TO_LEFT),

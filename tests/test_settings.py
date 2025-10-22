@@ -3,28 +3,15 @@
 from pathlib import Path
 from ledgered.devices import Device, DeviceType
 
+
+from ragger.firmware.touch.positions import POSITIONS
 from ragger.navigator import Navigator, NavInsID, NavIns
 
 TESTS_ROOT_DIR = Path(__file__).parent
 
-# Flex screen parameters
-FLEX_WIDTH = 480
-FLEX_HEIGHT = 600
-FLEX_HEADER_HEIGHT = 95
-FLEX_ITEM_HEIGHT = 92
-
-# Stax screen parameters
-STAX_WIDTH = 400
-STAX_HEIGHT = 672
-STAX_HEADER_HEIGHT = 87
-STAX_ITEM_HEIGHT = 96
-
 def _get_settings_element_coordinates(device: Device, number):
-    if device.type == DeviceType.FLEX:
-        return (FLEX_WIDTH//2, FLEX_HEADER_HEIGHT + (number)*FLEX_ITEM_HEIGHT + FLEX_ITEM_HEIGHT//2)
-    if device.type == DeviceType.STAX:
-        return (STAX_WIDTH//2, STAX_HEADER_HEIGHT + (number)*STAX_ITEM_HEIGHT + STAX_ITEM_HEIGHT//2)
-    return (0, 0)
+    return POSITIONS["ChoiceList"][device.type][number + 1]
+
 
 def test_settings(navigator: Navigator, device: Device, test_name: str):
     """Verifies settings navigation
@@ -148,23 +135,13 @@ def test_info(navigator: Navigator, device: Device, test_name: str):
             NavInsID.SWIPE_CENTER_TO_LEFT,
         ]
     elif device.is_nano:
-        if device.type == DeviceType.NANOS:
-            instructions = [
-                NavInsID.RIGHT_CLICK, # = Settings
-                NavInsID.RIGHT_CLICK, # = About
-                NavInsID.BOTH_CLICK,  # = About Info 1
-                NavInsID.RIGHT_CLICK, # = About Info 2
-                NavInsID.RIGHT_CLICK, # = Back
-                NavInsID.BOTH_CLICK,  # = Main page
-            ]
-        else:
-            instructions = [
-                NavInsID.RIGHT_CLICK, # = Settings
-                NavInsID.RIGHT_CLICK, # = About
-                NavInsID.BOTH_CLICK,  # = About Info
-                NavInsID.RIGHT_CLICK, # = Back
-                NavInsID.BOTH_CLICK,  # = Main page
-            ]
+        instructions = [
+            NavInsID.RIGHT_CLICK, # = Settings
+            NavInsID.RIGHT_CLICK, # = About
+            NavInsID.BOTH_CLICK,  # = About Info
+            NavInsID.RIGHT_CLICK, # = Back
+            NavInsID.BOTH_CLICK,  # = Main page
+        ]
     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                    test_name,
                                    instructions,

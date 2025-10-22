@@ -27,14 +27,8 @@
 #include "monero_api.h"
 
 extern monero_v_state_t G_monero_vstate;
-
-#if defined(TARGET_NANOS)
-extern monero_nv_state_t N_state_pic;
-#define N_monero_pstate ((WIDE monero_nv_state_t *)PIC(&N_state_pic))
-#else
 extern const monero_nv_state_t N_state_pic;
 #define N_monero_pstate ((volatile monero_nv_state_t *)PIC(&N_state_pic))
-#endif
 
 #ifdef MONERO_DEBUG_MAIN
 extern int apdu_n;

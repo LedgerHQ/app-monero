@@ -19,8 +19,9 @@
 #include "os.h"
 #include "ux.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
+#include "monero_ui.h"
 #include "monero_vars.h"
 
 #include "os_io_seproxyhal.h"
@@ -257,7 +258,7 @@ static void display_home_and_settings(bool displayHome) {
     homeAction.icon = NULL;
     homeAction.text = transactionContext.buffer;
 
-    nbgl_useCaseHomeAndSettings(APPNAME, &C_Monero_64px, NULL, displayHome ? INIT_HOME_PAGE : 0,
+    nbgl_useCaseHomeAndSettings(APPNAME, &ICON_APP_MAIN, NULL, displayHome ? INIT_HOME_PAGE : 0,
                                 &settingContents, &infoList, &homeAction, app_exit);
 }
 
