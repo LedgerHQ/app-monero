@@ -179,8 +179,8 @@ Test 1: transfer
 - Make a transfer to only main address
 - Make a transfer to only one sub-address
 - Make a transfer to two sub-addresses
-- Make a transfer to main main address and only one sub-address
-- Make a transfer to main main address and two sub-addresses
+- Make a transfer to main address and only one sub-address
+- Make a transfer to main address and two sub-addresses
 
 2. Do the same from std wallet to device wallet
 
