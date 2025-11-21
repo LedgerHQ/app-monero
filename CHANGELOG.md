@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.2 - 2025-11-21
+
+- Fix Flex inversed USB PID (in the SDK)
+
 ## 2.1.1 - 2025-09-08
 
 - Apex P porting
