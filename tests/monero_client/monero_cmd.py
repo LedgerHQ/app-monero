@@ -433,7 +433,8 @@ class MoneroCmd(MoneroCryptoCmd):
                                 blinded_mask: bytes,
                                 blinded_amount: bytes,
                                 is_last: bool,
-                                swipe_count: int = 4) -> None:
+                                swipe_count: int = 4,
+                                do_navigation: bool = True) -> None:
         device = backend.device
         ins: InsType = InsType.INS_VALIDATE
 
@@ -479,7 +480,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                                instructions,
                                                screen_change_after_last_instruction=False, timeout=10000)
             else:
-                if device.is_nano:
+                if device.is_nano and do_navigation:
                     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                    test_name + "_prehash_update_" + str(index),
                                                    instructions)

@@ -293,7 +293,7 @@ class TestSignatureRealAmountZero:
                 blinded_amount=state["blinded_amount"][0][0],
                 blinded_mask=state["blinded_mask"][0][0],
                 is_last=False,  # Set to False to skip navigation - error happens before UI
-                swipe_count=None
+                do_navigation = False
             )
 
         # Verify the error code is SW_SECURITY_AMOUNT_CHAIN_CONTROL
