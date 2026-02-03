@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.3 - 2026-02-03
+
+- Fix silent signature when the change is with amount=0 and the order of outputs is not guaranteed
+
 ## 2.1.2 - 2025-11-21
 
 - Fix Flex inversed USB PID (in the SDK)
