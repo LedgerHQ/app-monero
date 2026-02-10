@@ -15,33 +15,6 @@ on:
 
 jobs:
   analyse:
-    name: Analyse
-    strategy:
-      fail-fast: false
-      matrix:
-        sdk: ["$NANOX_SDK", "$NANOSP_SDK", "$STAX_SDK", "$FLEX_SDK", "$APEX_P_SDK"]
-        # 'cpp' covers C and C++
-        language: ['cpp']
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
-
-    steps:
-      - name: Clone
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-
-      # CodeQL will create the database during the compilation
-      - name: Build
-        run: |
-          make BOLOS_SDK=${{ matrix.sdk }}
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+    name: Call Ledger CodeQL analysis
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_codeql_checks.yml@v1
+    secrets: inherit
