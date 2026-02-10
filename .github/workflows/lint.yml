@@ -1,0 +1,16 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint Checks
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_lint.yml@v1
+    secrets: inherit

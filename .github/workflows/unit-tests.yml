@@ -1,0 +1,16 @@
+name: Unit Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+
+jobs:
+  unit_tests:
+    name: Unit Tests
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v1
+    secrets: inherit
