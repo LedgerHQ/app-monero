@@ -94,7 +94,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if sig_mode not in (1, 2):
             raise Exception("Signature mode should be 1 (real) or 2 (fake).")
 
-        return SigType.REAL if sig_mode else SigType.FAKE
+        return SigType.REAL if sig_mode == 1 else SigType.FAKE
 
     def open_tx(self) -> Tuple[bytes, bytes, bytes, bytes]:
         ins: InsType = InsType.INS_OPEN_TX
@@ -231,7 +231,7 @@ class MoneroCmd(MoneroCryptoCmd):
         ])
 
         instructions = None
-        if device.is_nano:
+        if device.is_nano and timelock != 0:
             instructions = get_nano_review_instructions(1)
 
         with self.transport.send_async(cla=PROTOCOL_VERSION,
@@ -240,7 +240,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                     p2=0,
                                     option=0,
                                     payload=payload):
-            if device.is_nano:
+            if device.is_nano and navigator is not None and timelock != 0:
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_hash_init",
                                                instructions)
@@ -402,7 +402,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                     option=0,
                                     payload=payload):
 
-            if device.is_nano:
+            if device.is_nano and navigator is not None:
                 navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                test_name + "_prehash_init",
                                                instructions)
@@ -432,7 +432,9 @@ class MoneroCmd(MoneroCryptoCmd):
                                 commitment: bytes,
                                 blinded_mask: bytes,
                                 blinded_amount: bytes,
-                                is_last: bool) -> None:
+                                is_last: bool,
+                                swipe_count: int = 4,
+                                do_navigation: bool = True) -> None:
         device = backend.device
         ins: InsType = InsType.INS_VALIDATE
 
@@ -458,11 +460,8 @@ class MoneroCmd(MoneroCryptoCmd):
                 instructions = get_nano_review_instructions(3)
         else:
             if is_last:
-                instructions = [
-                    NavInsID.SWIPE_CENTER_TO_LEFT,
-                    NavInsID.SWIPE_CENTER_TO_LEFT,
-                    NavInsID.SWIPE_CENTER_TO_LEFT,
-                    NavInsID.SWIPE_CENTER_TO_LEFT,
+                # For NBGL devices (Flex/Stax), calculate total swipes needed
+                instructions = [NavInsID.SWIPE_CENTER_TO_LEFT] * swipe_count + [
                     NavInsID.USE_CASE_REVIEW_TAP,
                     NavInsID.USE_CASE_REVIEW_CONFIRM
                 ]
@@ -481,7 +480,7 @@ class MoneroCmd(MoneroCryptoCmd):
                                                instructions,
                                                screen_change_after_last_instruction=False, timeout=10000)
             else:
-                if device.is_nano:
+                if device.is_nano and do_navigation:
                     navigator.navigate_and_compare(TESTS_ROOT_DIR,
                                                    test_name + "_prehash_update_" + str(index),
                                                    instructions)

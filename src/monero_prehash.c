@@ -213,26 +213,31 @@ int monero_apdu_mlsag_prehash_update() {
         // ask user
         uint64_t amount;
         amount = monero_bamount2uint64(v, sizeof(v));
-        if (amount) {
-            monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
-            snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
-                     sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
-
-            if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
-                if (!is_change) {
-                    ui_menu_validation_display_last(0);
-                } else {
-                    ui_menu_change_validation_display_last(0);
-                }
-            } else {
-                if (!is_change) {
-                    ui_menu_validation_display(0);
-                } else {
-                    ui_menu_change_validation_display(0);
-                }
-            }
-            return 0;
+        /* Rejecting signature for a non-change output with amount equal to 0.
+         * Otherwise showing review sequence.
+         */
+        if ((amount == 0) && (!is_change)) {
+            return SW_SECURITY_AMOUNT_CHAIN_CONTROL;
         }
+
+        monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
+        snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
+                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
+
+        if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
+            if (!is_change) {
+                ui_menu_validation_display_last(0);
+            } else {
+                ui_menu_change_validation_display_last(0);
+            }
+        } else {
+            if (!is_change) {
+                ui_menu_validation_display(0);
+            } else {
+                ui_menu_change_validation_display(0);
+            }
+        }
+        return 0;
     }
     return SW_OK;
 
