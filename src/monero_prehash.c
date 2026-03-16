@@ -55,10 +55,12 @@ int monero_apdu_mlsag_prehash_init() {
         monero_io_fetch_u8();
         // fee str
         monero_vamount2str(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                           G_monero_vstate.ux_amount, 15);
+                           G_monero_vstate.ux_amount,
+                           15);
 
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
-                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
+                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount),
+                 " XMR");
         // ask user
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
@@ -129,8 +131,11 @@ int monero_apdu_mlsag_prehash_update() {
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (is_change == 0) {
             // encode dest adress
-            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
-                                           is_subaddress, NULL);
+            err = monero_base58_public_key(&G_monero_vstate.ux_address[0],
+                                           Aout,
+                                           Bout,
+                                           is_subaddress,
+                                           NULL);
             if (err) {
                 return err;
             }
@@ -156,7 +161,12 @@ int monero_apdu_mlsag_prehash_update() {
         }
 
         // check C = aH+kG
-        err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
+        err = monero_unblind(v,
+                             k,
+                             AKout,
+                             G_monero_vstate.options & 0x03,
+                             sizeof(v),
+                             sizeof(k),
                              sizeof(AKout));
         if (err) {
             return err;
@@ -222,7 +232,8 @@ int monero_apdu_mlsag_prehash_update() {
 
         monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
-                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
+                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount),
+                 " XMR");
 
         if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
             if (!is_change) {

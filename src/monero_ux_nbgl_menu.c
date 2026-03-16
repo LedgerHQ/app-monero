@@ -64,7 +64,9 @@ enum { MAIN_NET, STAGE_NET, TEST_NET, MAX_NET };
 
 #define SETTING_INFO_NB 4
 static const char* const infoTypes[] = {"Spec", "Version", "Developer", "Copyright"};
-static const char* const infoContents[] = {XSTR(SPEC_VERSION), APPVERSION, "Ledger",
+static const char* const infoContents[] = {XSTR(SPEC_VERSION),
+                                           APPVERSION,
+                                           "Ledger",
                                            "(c) 2024 Ledger"};
 
 static const char* const barTexts[] = {"Select Account", "Select Network", "Reset"};
@@ -146,7 +148,7 @@ static void resetCallback(void) {
     magic[1] = 0;
     magic[2] = 0;
     magic[3] = 0;
-    monero_nvm_write((void*)N_monero_pstate->magic, magic, 4);
+    monero_nvm_write((void*) N_monero_pstate->magic, magic, 4);
     monero_init();
     nbgl_useCaseStatus("ACCOUNT INFOS\nRESETTED", true, ui_menu_main_display);
 }
@@ -158,7 +160,7 @@ static void account_settings_control_cb(int token, uint8_t index) {
         case ACCOUNT_CHOICE:
             index = (token - ACCOUNT_CHOICE) * 4 + index;
             if (index <= 9) {
-                monero_nvm_write((void*)&N_monero_pstate->account_id, &index, sizeof(uint8_t));
+                monero_nvm_write((void*) &N_monero_pstate->account_id, &index, sizeof(uint8_t));
                 monero_init();
             }
             display_settings_menu();
@@ -201,17 +203,26 @@ static void settings_control_cb(int token, uint8_t index, int page) {
     UNUSED(page);
     switch (token) {
         case ACCOUNT_TOKEN:
-            nbgl_useCaseNavigableContent("Select account", 0, 3, display_settings_menu,
+            nbgl_useCaseNavigableContent("Select account",
+                                         0,
+                                         3,
+                                         display_settings_menu,
                                          account_settings_navigation_cb,
                                          account_settings_control_cb);
             break;
         case NETWORK_TOKEN:
-            nbgl_useCaseNavigableContent("Select network", 0, 2, display_settings_menu,
+            nbgl_useCaseNavigableContent("Select network",
+                                         0,
+                                         2,
+                                         display_settings_menu,
                                          network_settings_navigation_cb,
                                          network_settings_control_cb);
             break;
         case RESET_TOKEN:
-            nbgl_useCaseConfirm("Reset account\ninformations ?", "", "Yes, Reset", "Go back",
+            nbgl_useCaseConfirm("Reset account\ninformations ?",
+                                "",
+                                "Yes, Reset",
+                                "Go back",
                                 resetCallback);
             break;
 
@@ -248,18 +259,29 @@ static void display_home_and_settings(bool displayHome) {
 
     explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
-    snprintf(transactionContext.buffer, sizeof(transactionContext.buffer), "Show %s",
+    snprintf(transactionContext.buffer,
+             sizeof(transactionContext.buffer),
+             "Show %s",
              G_monero_vstate.ux_wallet_account_name);
 
-    monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A, G_monero_vstate.B, 0,
+    monero_base58_public_key(G_monero_vstate.ux_address,
+                             G_monero_vstate.A,
+                             G_monero_vstate.B,
+                             0,
                              NULL);
 
     homeAction.callback = display_account;
     homeAction.icon = NULL;
     homeAction.text = transactionContext.buffer;
 
-    nbgl_useCaseHomeAndSettings(APPNAME, &ICON_APP_MAIN, NULL, displayHome ? INIT_HOME_PAGE : 0,
-                                &settingContents, &infoList, &homeAction, app_exit);
+    nbgl_useCaseHomeAndSettings(APPNAME,
+                                &ICON_APP_MAIN,
+                                NULL,
+                                displayHome ? INIT_HOME_PAGE : 0,
+                                &settingContents,
+                                &infoList,
+                                &homeAction,
+                                app_exit);
 }
 
 static void display_settings_menu(void) {

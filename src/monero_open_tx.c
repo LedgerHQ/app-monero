@@ -81,7 +81,9 @@ int monero_apdu_open_tx_cont() {
         return error;
     }
 
-    error = monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r, sizeof(G_monero_vstate.R),
+    error = monero_ecmul_G(G_monero_vstate.R,
+                           G_monero_vstate.r,
+                           sizeof(G_monero_vstate.R),
                            sizeof(G_monero_vstate.r));
     if (error) {
         return error;
@@ -90,9 +92,9 @@ int monero_apdu_open_tx_cont() {
     monero_io_insert(G_monero_vstate.R, KEY_SIZE);
     monero_io_insert_encrypt(G_monero_vstate.r, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void *) C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void *) C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
     return SW_OK;
 }
 
