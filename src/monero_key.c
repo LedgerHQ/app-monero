@@ -423,23 +423,26 @@ int monero_apdu_verify_key() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-#define CHACHA8_KEY_TAIL 0x8c
+#define CHACHA8_LABEL       "MONERO_CHACHA8_PREKEY"
+#define CHACHA8_LABEL_LEN   (sizeof(CHACHA8_LABEL) - 1U)
+#define CHACHA8_PREKEY_SIZE 200
 int monero_apdu_get_chacha8_prekey(/*char  *prekey*/) {
-    unsigned char abt[65];
-    unsigned char pre[KEY_SIZE];
+    unsigned char abt[CHACHA8_LABEL_LEN + KEY_SIZE];
+    unsigned char pre[CHACHA8_PREKEY_SIZE];
 
     monero_io_discard(0);
-    memcpy(abt, G_monero_vstate.a, KEY_SIZE);
-    memcpy(abt + KEY_SIZE, G_monero_vstate.b, KEY_SIZE);
-    abt[64] = CHACHA8_KEY_TAIL;
-    int error = monero_keccak_F(abt, 65, pre);
-    if (error) {
-        return error;
+    memcpy(abt, CHACHA8_LABEL, CHACHA8_LABEL_LEN);
+    memcpy(abt + CHACHA8_LABEL_LEN, G_monero_vstate.a, KEY_SIZE);
+    cx_err_t error = cx_shake256_hash(abt, CHACHA8_LABEL_LEN + KEY_SIZE, pre, CHACHA8_PREKEY_SIZE);
+    explicit_bzero(abt, sizeof(abt));
+    if (CX_OK != error) {
+        explicit_bzero(pre, sizeof(pre));
+        return SW_SECURITY_INTERNAL;
     }
-    monero_io_insert((unsigned char *)G_monero_vstate.keccakF.acc, 200);
+    monero_io_insert(pre, CHACHA8_PREKEY_SIZE);
+    explicit_bzero(pre, sizeof(pre));
     return SW_OK;
 }
-#undef CHACHA8_KEY_TAIL
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
