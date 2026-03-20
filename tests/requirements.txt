@@ -1,3 +1,4 @@
 base58
 bip32
-ragger[tests,speculos]
+speculos==0.25.5
+ragger[tests]>=1.6.0

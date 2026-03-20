@@ -61,14 +61,14 @@ def test_chacha8_prekey(monero: MoneroCmd):
     # ---- Send INS_GET_CHACHA8_PREKEY ----
     print("[*] Sending INS_GET_CHACHA8_PREKEY to device...")
 
-    monero.transport.send(cla=PROTOCOL_VERSION,
-                          ins=InsType.INS_GET_CHACHA8_PREKEY,
-                          p1=0,
-                          p2=0,
-                          option=0,
-                          payload=b"")
+    monero.device.send(cla=PROTOCOL_VERSION,
+                       ins=InsType.INS_GET_CHACHA8_PREKEY,
+                       p1=0,
+                       p2=0,
+                       option=0,
+                       payload=b"")
 
-    sw, response = monero.transport.recv()
+    sw, response = monero.device.recv()
 
     assert sw == 0x9000, f"APDU failed with SW=0x{sw:04x}"
     assert len(response) == PREKEY_SIZE, \
@@ -89,14 +89,14 @@ def test_chacha8_prekey(monero: MoneroCmd):
     # ---- Verify determinism: call again, must get the same result ----
     print("[*] Verifying determinism (second call)...")
 
-    monero.transport.send(cla=PROTOCOL_VERSION,
-                          ins=InsType.INS_GET_CHACHA8_PREKEY,
-                          p1=0,
-                          p2=0,
-                          option=0,
-                          payload=b"")
+    monero.device.send(cla=PROTOCOL_VERSION,
+                       ins=InsType.INS_GET_CHACHA8_PREKEY,
+                       p1=0,
+                       p2=0,
+                       option=0,
+                       payload=b"")
 
-    sw2, response2 = monero.transport.recv()
+    sw2, response2 = monero.device.recv()
 
     assert sw2 == 0x9000, f"Second APDU failed with SW=0x{sw2:04x}"
     assert bytes(response2) == bytes(response), \
