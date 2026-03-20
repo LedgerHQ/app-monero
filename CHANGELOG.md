@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.1 - 2026-03-20
+
+- Fix Get ChaCha8 PreKey response: now uses a deterministic 200-byte SHAKE-256 output
+
 ## 2.0.0 - 2024-05-01
 
 - Support of Flex device
