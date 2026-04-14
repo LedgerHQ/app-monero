@@ -118,10 +118,15 @@ int monero_apdu_clsag_hash() {
         if (monero_keccak_init_H()) {
             return SW_WRONG_DATA;
         }
+        G_monero_vstate.clsag_match_history = 0;
     }
-
     monero_io_fetch(msg, 32);
     monero_io_discard(1);
+
+    G_monero_vstate.clsag_match_history = (G_monero_vstate.clsag_match_history << 1) & 0x07;
+    if (memcmp(msg, G_monero_vstate.mlsagH, 32) == 0) {
+        G_monero_vstate.clsag_match_history |= 1;
+    }
 
     err = monero_keccak_update_H(msg, 32);
     if (err) {
@@ -129,6 +134,10 @@ int monero_apdu_clsag_hash() {
     }
 
     if ((G_monero_vstate.options & 0x80) == 0) {
+        if (!(G_monero_vstate.clsag_match_history & 0x04)) {
+            return SW_SECURITY_INTERNAL;
+        }
+
         err = monero_keccak_final_H(c);
         if (err) {
             return err;
