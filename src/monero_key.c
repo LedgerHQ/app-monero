@@ -144,6 +144,10 @@ int monero_apdu_manage_seedwords(void) {
 
             monero_io_discard(1);
             if (G_monero_vstate.io_p2) {
+                if ((G_monero_vstate.io_p2 > WORDS_MAX_LENGTH) ||
+                    (G_monero_vstate.io_p2 > (MONERO_IO_BUFFER_LENGTH / 24))) {
+                    return SW_WRONG_P1P2;
+                }
                 for (int i = 0; i < 24; i++) {
                     for (int j = 0; j < G_monero_vstate.io_p2; j++) {
                         G_monero_vstate.io_buffer[i * G_monero_vstate.io_p2 + j] =
