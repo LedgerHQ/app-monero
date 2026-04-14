@@ -166,6 +166,7 @@ struct monero_v_state_s {
     unsigned char prefixH[32];
     unsigned char mlsagH[32];
     unsigned char c[32];
+    unsigned char clsag_match_history;
 
     /* -- track tx-in/out and commitment -- */
     cx_sha256_t sha256_out_keys;
