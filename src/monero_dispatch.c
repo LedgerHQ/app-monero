@@ -282,13 +282,6 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
-            if (G_monero_vstate.protocol == 3) {
-                if ((G_monero_vstate.tx_state_ins != INS_OPEN_TX) &&
-                    (G_monero_vstate.tx_state_ins != INS_GEN_TXOUT_KEYS) &&
-                    (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
-                    return SW_COMMAND_NOT_ALLOWED;
-                }
-            }
             if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
                 return SW_WRONG_P1P2;
             }
@@ -347,11 +340,9 @@ int monero_dispatch() {
             /*--- COMMITMENT MASK --- */
         case INS_GEN_COMMITMENT_MASK:
             // 1. state machine check
-            if (G_monero_vstate.protocol == 3) {
-                if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
-                    (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
-                    return SW_COMMAND_NOT_ALLOWED;
-                }
+            if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
+                (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
+                return SW_COMMAND_NOT_ALLOWED;
             }
 
             if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
@@ -369,11 +360,9 @@ int monero_dispatch() {
         case INS_BLIND:
             // 1. state machine check
             if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
-                if (G_monero_vstate.protocol == 3) {
-                    if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
-                        (G_monero_vstate.tx_state_ins != INS_BLIND)) {
-                        return SW_COMMAND_NOT_ALLOWED;
-                    }
+                if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
+                    (G_monero_vstate.tx_state_ins != INS_BLIND)) {
+                    return SW_COMMAND_NOT_ALLOWED;
                 }
             } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
                 if ((G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK) &&
