@@ -39,6 +39,7 @@ int monero_reset_tx(int reset_tx_cnt) {
     monero_sha256_outkeys_init();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
+    G_monero_vstate.tx_change_cnt = 0;
     if (reset_tx_cnt) {
         G_monero_vstate.tx_cnt = 0;
     }
@@ -90,9 +91,9 @@ int monero_apdu_open_tx_cont() {
     monero_io_insert(G_monero_vstate.R, KEY_SIZE);
     monero_io_insert_encrypt(G_monero_vstate.r, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void *)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void *)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
     return SW_OK;
 }
 

@@ -127,6 +127,13 @@ int monero_apdu_mlsag_prehash_update() {
     }
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        // reject spoofed change address before any state is mutated
+        if (is_change) {
+            err = monero_check_change_address(Aout, Bout);
+            if (err) {
+                return err;
+            }
+        }
         if (is_change == 0) {
             // encode dest adress
             err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
