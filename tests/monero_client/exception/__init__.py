@@ -14,6 +14,7 @@ __all__ = [
     "SecurityInternal",
     "SecurityMaxSignatureReached",
     "SecurityPrefixHash",
+    "SecurityChangeAddress",
     "SecurityLocked",
     "CommandNotAllowed",
     "SubCommandNotAllowed",
@@ -86,6 +87,10 @@ class SecurityMaxSignatureReached(UnknownDeviceError):
 
 
 class SecurityPrefixHash(UnknownDeviceError):
+    pass
+
+
+class SecurityChangeAddress(UnknownDeviceError):
     pass
 
 
