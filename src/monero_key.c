@@ -915,10 +915,76 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
     }
 
     memcpy(G_monero_vstate.last_get_subaddress_secret_key, sub_sec, KEY_SIZE);
+
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        unsigned int major = (unsigned int)index[0] | ((unsigned int)index[1] << 8) |
+                             ((unsigned int)index[2] << 16) | ((unsigned int)index[3] << 24);
+        unsigned int minor = (unsigned int)index[4] | ((unsigned int)index[5] << 8) |
+                             ((unsigned int)index[6] << 16) | ((unsigned int)index[7] << 24);
+        unsigned char already_seen = 0;
+        for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
+            if (G_monero_vstate.tx_change_major_indices[i] == major &&
+                G_monero_vstate.tx_change_minor_indices[i] == minor) {
+                already_seen = 1;
+                break;
+            }
+        }
+        if (!already_seen && (major != 0 || minor != 0) && G_monero_vstate.tx_change_cnt < 8) {
+            G_monero_vstate.tx_change_major_indices[G_monero_vstate.tx_change_cnt] = major;
+            G_monero_vstate.tx_change_minor_indices[G_monero_vstate.tx_change_cnt] = minor;
+            G_monero_vstate.tx_change_cnt++;
+        }
+    }
+
     monero_io_insert_encrypt(sub_sec, KEY_SIZE, TYPE_SCALAR);
     explicit_bzero(sec, sizeof(sec));
     explicit_bzero(sub_sec, sizeof(sec));
     return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout) {
+    unsigned char C[KEY_SIZE];
+    unsigned char D[KEY_SIZE];
+    unsigned char index[8];
+    int err;
+
+    /* primary address (major=0, minor=0) */
+    if ((memcmp(Aout, G_monero_vstate.A, KEY_SIZE) == 0) &&
+        (memcmp(Bout, G_monero_vstate.B, KEY_SIZE) == 0)) {
+        return 0;
+    }
+
+    for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
+        unsigned int M = G_monero_vstate.tx_change_major_indices[i];
+        unsigned int m = G_monero_vstate.tx_change_minor_indices[i];
+        /* candidates: exact (M,m), then account root (M,0) if m!=0 && M!=0 */
+        unsigned char candidates = (m != 0 && M != 0) ? 2 : 1;
+
+        index[0] = (unsigned char)(M & 0xFF);
+        index[1] = (unsigned char)((M >> 8) & 0xFF);
+        index[2] = (unsigned char)((M >> 16) & 0xFF);
+        index[3] = (unsigned char)((M >> 24) & 0xFF);
+
+        for (unsigned char j = 0; j < candidates; j++) {
+            unsigned int m_check = (j == 0) ? m : 0;
+            index[4] = (unsigned char)(m_check & 0xFF);
+            index[5] = (unsigned char)((m_check >> 8) & 0xFF);
+            index[6] = (unsigned char)((m_check >> 16) & 0xFF);
+            index[7] = (unsigned char)((m_check >> 24) & 0xFF);
+            err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE, sizeof(index));
+            if (err) {
+                return err;
+            }
+            if ((memcmp(Aout, C, KEY_SIZE) == 0) && (memcmp(Bout, D, KEY_SIZE) == 0)) {
+                return 0;
+            }
+        }
+    }
+
+    return SW_SECURITY_CHANGE_ADDRESS;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -973,6 +1039,16 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
         monero_io_skip(KEY_SIZE);
     }
     use_view_tags = monero_io_fetch_u8();
+
+    // reject spoofed change address before any state is mutated
+    if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
+        err = monero_check_change_address(Aout, Bout);
+        if (err) {
+            explicit_bzero(tx_key, sizeof(tx_key));
+            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
+            return err;
+        }
+    }
 
     // update outkeys hash control
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {

@@ -144,6 +144,11 @@ struct monero_v_state_s {
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
+    /* change address verification */
+    unsigned int tx_change_major_indices[8];
+    unsigned int tx_change_minor_indices[8];
+    unsigned char tx_change_cnt;
+
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
     /* ------------------------------------------ */
@@ -309,6 +314,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_INTERNAL                 0x6919
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
+#define SW_SECURITY_CHANGE_ADDRESS           0x691C
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

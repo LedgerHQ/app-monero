@@ -195,6 +195,7 @@ int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *ind
                           size_t D_len, size_t index_len);
 int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
                                      size_t sub_s_len, size_t s_len, size_t index_len);
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout);
 
 void monero_clear_words(void);
 /* ----------------------------------------------------------------------- */
