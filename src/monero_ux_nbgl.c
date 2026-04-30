@@ -97,7 +97,8 @@ static void add_amount(const char* title, bool forcePageStart) {
     }
 
     strncpy(transactionContext.amountBuffer[transactionContext.amountNum],
-            G_monero_vstate.ux_amount, MAX_AMOUNT_LENGTH);
+            G_monero_vstate.ux_amount,
+            MAX_AMOUNT_LENGTH);
 
     transactionContext.tagValuePair[nbPairs].item = title;
     transactionContext.tagValuePair[nbPairs].value =
@@ -118,7 +119,8 @@ static void add_address(void) {
         return;
     }
 
-    strncpy(transactionContext.dstBuffer[transactionContext.addrNum], G_monero_vstate.ux_address,
+    strncpy(transactionContext.dstBuffer[transactionContext.addrNum],
+            G_monero_vstate.ux_address,
             MAX_ADDR_LENGTH);
 
     transactionContext.tagValuePair[nbPairs].item = dstTitle;
@@ -160,8 +162,12 @@ void ui_menu_show_tx_aborted(void) {
 /* --------------------- FEE/CHANGE/TIMELOCK VALIDATION --------------------- */
 
 static void start_signature(void) {
-    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &ICON_APP_MAIN,
-                       "Review Transaction\nto send Monero", NULL, "Sign transaction?",
+    nbgl_useCaseReview(TYPE_TRANSACTION,
+                       &transactionContext.tagValueList,
+                       &ICON_APP_MAIN,
+                       "Review Transaction\nto send Monero",
+                       NULL,
+                       "Sign transaction?",
                        ui_menu_validation_action);
 }
 
@@ -273,18 +279,26 @@ void display_account(void) {
 
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
-    nbgl_useCaseAddressReview(G_monero_vstate.ux_address, &transactionContext.tagValueList,
-                              &ICON_APP_MAIN, "Verify Monero\naddress", NULL,
+    nbgl_useCaseAddressReview(G_monero_vstate.ux_address,
+                              &transactionContext.tagValueList,
+                              &ICON_APP_MAIN,
+                              "Verify Monero\naddress",
+                              NULL,
                               ui_menu_pubaddr_action);
 }
 
-int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
-                                unsigned char* pub_spend, unsigned char is_subbadress,
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
+                                unsigned char* pub_view,
+                                unsigned char* pub_spend,
+                                unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
     int error;
     explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
 
-    error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
+    error = monero_base58_public_key(G_monero_vstate.ux_address,
+                                     pub_view,
+                                     pub_spend,
+                                     is_subbadress,
                                      paymanetID);
     if (error) {
         return error;
@@ -321,7 +335,11 @@ static void ui_menu_export_viewkey_action(bool value) {
 }
 
 void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
-    nbgl_useCaseChoice(&ICON_APP_MAIN, "Export\nview key", "", "Accept", "Reject if not sure",
+    nbgl_useCaseChoice(&ICON_APP_MAIN,
+                       "Export\nview key",
+                       "",
+                       "Accept",
+                       "Reject if not sure",
                        ui_menu_export_viewkey_action);
 }
 

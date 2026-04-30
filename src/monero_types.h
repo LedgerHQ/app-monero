@@ -218,8 +218,8 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define TYPE_ALPHA      4
 
 /* ---  ...  --- */
-#define IO_OFFSET_END  (unsigned int)-1
-#define IO_OFFSET_MARK (unsigned int)-2
+#define IO_OFFSET_END  (unsigned int) -1
+#define IO_OFFSET_MARK (unsigned int) -2
 
 #define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
 

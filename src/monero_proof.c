@@ -96,7 +96,7 @@ int monero_apdu_get_tx_proof() {
     }
     // tmp = msg || D || X || Y
     memcpy(G_monero_vstate.tmp + 32 * 3, XY, 32);
-    err = monero_keccak_H((unsigned char *)"TXPROOF_V2", 10, sep);
+    err = monero_keccak_H((unsigned char *) "TXPROOF_V2", 10, sep);
     if (err) {
         explicit_bzero(r, sizeof(r));
         return err;

@@ -238,7 +238,9 @@ int monero_apdu_clsag_sign() {
         return err;
     }
 
-    err = monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
+    err = monero_reduce(G_monero_vstate.c,
+                        G_monero_vstate.c,
+                        sizeof(G_monero_vstate.c),
                         sizeof(G_monero_vstate.c));
     if (err) {
         return err;
@@ -266,7 +268,11 @@ int monero_apdu_clsag_sign() {
         return err;
     }
     // mu_P = c * (p*mu_P + mu_C*z)
-    err = monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P), sizeof(G_monero_vstate.c),
+    err = monero_multm(mu_P,
+                       G_monero_vstate.c,
+                       s,
+                       sizeof(mu_P),
+                       sizeof(G_monero_vstate.c),
                        sizeof(s));
     if (err) {
         return err;

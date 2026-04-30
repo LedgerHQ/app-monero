@@ -23,13 +23,55 @@
 #include "monero_vars.h"
 
 #ifndef MONERO_ALPHA
-const unsigned char C_MAINNET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
-                                              0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x10};
+const unsigned char C_MAINNET_NETWORK_ID[] = {0x12,
+                                              0x30,
+                                              0xF1,
+                                              0x71,
+                                              0x61,
+                                              0x04,
+                                              0x41,
+                                              0x61,
+                                              0x17,
+                                              0x31,
+                                              0x00,
+                                              0x82,
+                                              0x16,
+                                              0xA1,
+                                              0xA1,
+                                              0x10};
 #endif
-const unsigned char C_TESTNET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
-                                              0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x11};
-const unsigned char C_STAGENET_NETWORK_ID[] = {0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61,
-                                               0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x12};
+const unsigned char C_TESTNET_NETWORK_ID[] = {0x12,
+                                              0x30,
+                                              0xF1,
+                                              0x71,
+                                              0x61,
+                                              0x04,
+                                              0x41,
+                                              0x61,
+                                              0x17,
+                                              0x31,
+                                              0x00,
+                                              0x82,
+                                              0x16,
+                                              0xA1,
+                                              0xA1,
+                                              0x11};
+const unsigned char C_STAGENET_NETWORK_ID[] = {0x12,
+                                               0x30,
+                                               0xF1,
+                                               0x71,
+                                               0x61,
+                                               0x04,
+                                               0x41,
+                                               0x61,
+                                               0x17,
+                                               0x31,
+                                               0x00,
+                                               0x82,
+                                               0x16,
+                                               0xA1,
+                                               0xA1,
+                                               0x12};
 
 // Copyright (c) 2014-2017, The Monero Project
 //
@@ -117,8 +159,11 @@ static void encode_block(const unsigned char* block, unsigned int size, char* re
     }
 }
 
-int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* spend,
-                             unsigned char is_subbadress, unsigned char* paymanetID) {
+int monero_base58_public_key(char* str_b58,
+                             unsigned char* view,
+                             unsigned char* spend,
+                             unsigned char is_subbadress,
+                             unsigned char* paymanetID) {
     unsigned char data[72 + 8];
     unsigned int offset;
     unsigned int prefix;
@@ -180,12 +225,14 @@ int monero_base58_public_key(char* str_b58, unsigned char* view, unsigned char* 
     unsigned int full_block_count = (offset) / FULL_BLOCK_SIZE;
     unsigned int last_block_size = (offset) % FULL_BLOCK_SIZE;
     for (size_t i = 0; i < full_block_count; ++i) {
-        encode_block(data + i * FULL_BLOCK_SIZE, FULL_BLOCK_SIZE,
+        encode_block(data + i * FULL_BLOCK_SIZE,
+                     FULL_BLOCK_SIZE,
                      &str_b58[i * FULL_ENCODED_BLOCK_SIZE]);
     }
 
     if (0 < last_block_size) {
-        encode_block(data + full_block_count * FULL_BLOCK_SIZE, last_block_size,
+        encode_block(data + full_block_count * FULL_BLOCK_SIZE,
+                     last_block_size,
                      &str_b58[full_block_count * FULL_ENCODED_BLOCK_SIZE]);
     }
 

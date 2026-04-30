@@ -83,8 +83,13 @@ int monero_apdu_blind() {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_unblind(unsigned char *v, unsigned char *k, unsigned char *AKout,
-                   unsigned int short_amount, size_t v_len, size_t k_len, size_t AKout_len) {
+int monero_unblind(unsigned char *v,
+                   unsigned char *k,
+                   unsigned char *AKout,
+                   unsigned int short_amount,
+                   size_t v_len,
+                   size_t k_len,
+                   size_t AKout_len) {
     int error;
     if (short_amount == 2) {
         error = monero_genCommitmentMask(k, AKout, k_len, AKout_len);
@@ -144,7 +149,12 @@ int monero_apdu_unblind() {
 
     monero_io_discard(1);
 
-    err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
+    err = monero_unblind(v,
+                         k,
+                         AKout,
+                         G_monero_vstate.options & 0x03,
+                         sizeof(v),
+                         sizeof(k),
                          sizeof(AKout));
     if (err) {
         return err;
