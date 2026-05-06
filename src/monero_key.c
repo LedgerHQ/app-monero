@@ -264,6 +264,7 @@ int is_fake_spend_key(unsigned char *s) {
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_put_key() {
+#ifdef DEBUG_HWDEVICE
     unsigned char raw[KEY_SIZE];
     unsigned char pub[KEY_SIZE];
     unsigned char sec[KEY_SIZE];
@@ -307,6 +308,9 @@ int monero_apdu_put_key() {
     monero_io_discard(1);
 
     return SW_OK;
+#else
+    return SW_INS_NOT_SUPPORTED;
+#endif
 }
 
 /* ----------------------------------------------------------------------- */
