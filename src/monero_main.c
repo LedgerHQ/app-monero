@@ -16,8 +16,6 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#ifndef MONERO_DEBUG_MAIN
-
 #include "os.h"
 #include "cx.h"
 #include "monero_types.h"
@@ -72,5 +70,3 @@ void app_main(void) {
         }
     }
 }
-
-#endif
