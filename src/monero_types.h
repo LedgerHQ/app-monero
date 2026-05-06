@@ -76,13 +76,6 @@ struct monero_nv_state_s {
     unsigned char b[KEY_SIZE];
     /* view key */
     unsigned char a[KEY_SIZE];
-
-/*words*/
-#define WORDS_MAX_LENGTH 20
-    union {
-        char words[26][WORDS_MAX_LENGTH];
-        char words_list[25 * WORDS_MAX_LENGTH + 25];
-    };
 };
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -246,7 +239,6 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define INS_PUT_KEY            0x22
 #define INS_GET_CHACHA8_PREKEY 0x24
 #define INS_VERIFY_KEY         0x26
-#define INS_MANAGE_SEEDWORDS   0x28
 
 #define INS_SECRET_KEY_TO_PUBLIC_KEY 0x30
 #define INS_GEN_KEY_DERIVATION       0x32
