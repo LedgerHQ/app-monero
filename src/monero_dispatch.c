@@ -82,7 +82,6 @@ int check_ins_access() {
         case INS_GET_SUBADDRESS:
         case INS_GET_SUBADDRESS_SPEND_PUBLIC_KEY:
         case INS_GET_SUBADDRESS_SECRET_KEY:
-        case INS_MANAGE_SEEDWORDS:
         case INS_UNBLIND:
         case INS_STEALTH:
         case INS_GET_TX_PROOF:
@@ -145,10 +144,6 @@ int monero_dispatch() {
         case INS_DISPLAY_ADDRESS:
             sw = monero_apdu_display_address();
             break;
-        case INS_MANAGE_SEEDWORDS:
-            sw = monero_apdu_manage_seedwords();
-            break;
-
             /* --- PROVISIONING--- */
         case INS_VERIFY_KEY:
             sw = monero_apdu_verify_key();
