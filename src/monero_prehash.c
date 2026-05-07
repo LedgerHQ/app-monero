@@ -31,26 +31,42 @@
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_init() {
     int error = 0;
-    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        if (G_monero_vstate.io_p2 == 1) {
-            error = monero_sha256_outkeys_final(G_monero_vstate.OUTK);
-            if (error) {
-                return error;
-            }
-            monero_sha256_outkeys_init();
-            monero_sha256_commitment_init();
-            error = monero_keccak_init_H();
-            if (error) {
-                return error;
-            }
-        }
-    }
-    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
-    if (error) {
-        return error;
-    }
     if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) && (G_monero_vstate.io_p2 == 1)) {
+        // The fee APDU must be exactly [u8 type] [varint fee]. Reject any trailing
+        // bytes so that host-controlled data cannot be silently absorbed into the
+        // transaction prehash while the UI displays only the fee (CWE-451).
+        unsigned int payload_len = G_monero_vstate.io_length - G_monero_vstate.io_offset;
+        if (payload_len < 2) {
+            return SW_WRONG_DATA;
+        }
+        unsigned int fee_off = G_monero_vstate.io_offset + 1;
+        unsigned int fee_max = G_monero_vstate.io_length - fee_off;
+        uint64_t fee = 0;
+        unsigned int fee_len = 0;
+        error = monero_decode_varint(G_monero_vstate.io_buffer + fee_off, MIN(8, fee_max), &fee,
+                                     &fee_len);
+        if (error) {
+            return error;
+        }
+        if (fee_off + fee_len != G_monero_vstate.io_length) {
+            return SW_WRONG_DATA;
+        }
+
+        error = monero_sha256_outkeys_final(G_monero_vstate.OUTK);
+        if (error) {
+            return error;
+        }
+        monero_sha256_outkeys_init();
+        monero_sha256_commitment_init();
+        error = monero_keccak_init_H();
+        if (error) {
+            return error;
+        }
+        error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                                       1 + fee_len);
+        if (error) {
+            return error;
+        }
         // skip type
         monero_io_fetch_u8();
         // fee str
@@ -63,10 +79,15 @@ int monero_apdu_mlsag_prehash_init() {
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
         return 0;
-    } else {
-        monero_io_discard(1);
-        return SW_OK;
     }
+
+    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    if (error) {
+        return error;
+    }
+    monero_io_discard(1);
+    return SW_OK;
 }
 
 /* ----------------------------------------------------------------------- */
