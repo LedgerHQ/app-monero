@@ -899,7 +899,10 @@ int monero_ecmul_H(unsigned char *W, unsigned char *scalar32, size_t W_len, size
 /* ----------------------------------------------------------------------- */
 int monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32, size_t W_len,
                    size_t P_len, size_t scalar32_len) {
+    /* Compressed Ed25519 identity: encoded y=1 with x sign 0 (32 bytes, LE). */
+    static const unsigned char ED25519_IDENTITY[32] = {0x01};
     unsigned char Pxy[PXY_SIZE];
+    unsigned char eightP[32];
     unsigned char s[32];
     int error = 0;
 
@@ -915,6 +918,19 @@ int monero_ecmul_k(unsigned char *W, unsigned char *P, unsigned char *scalar32, 
     error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     if (error) {
         return error;
+    }
+
+    /* Reject low-order points before multiplying by a (potentially secret) scalar:
+     * if [8]P == identity then P lies in the 8-torsion subgroup and the returned
+     * product leaks the scalar mod ord(P). Delegate the cofactor multiplication
+     * to monero_ecmul_8(), the same primitive used by monero_hash_to_ec(), so the
+     * check runs as a self-contained SDK sequence before Pxy is touched. */
+    error = monero_ecmul_8(eightP, P, sizeof(eightP), 32);
+    if (error) {
+        return error;
+    }
+    if (memcmp(eightP, ED25519_IDENTITY, 32) == 0) {
+        return SW_WRONG_DATA;
     }
 
     Pxy[0] = 0x02;
