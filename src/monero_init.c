@@ -85,7 +85,8 @@ int monero_init_private_key(void) {
     path[3] = 0x00000000;
     path[4] = 0x00000000;
     if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, path, 5, seed, chain)) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     switch (N_monero_pstate->key_mode) {
@@ -93,24 +94,24 @@ int monero_init_private_key(void) {
 
             error = monero_keccak_F(seed, KEY_SIZE, G_monero_vstate.b);
             if (error) {
-                return error;
+                goto end;
             }
 
             error = monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b),
                                   sizeof(G_monero_vstate.b));
             if (error) {
-                return error;
+                goto end;
             }
 
             error = monero_keccak_F(G_monero_vstate.b, KEY_SIZE, G_monero_vstate.a);
             if (error) {
-                return error;
+                goto end;
             }
 
             error = monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a),
                                   sizeof(G_monero_vstate.a));
             if (error) {
-                return error;
+                goto end;
             }
             break;
 
@@ -120,27 +121,33 @@ int monero_init_private_key(void) {
             break;
 
         default:
-            return SW_SECURITY_LOAD_KEY;
+            error = SW_SECURITY_LOAD_KEY;
+            goto end;
     }
     error = monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A),
                            sizeof(G_monero_vstate.a));
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B),
                            sizeof(G_monero_vstate.b));
     if (error) {
-        return error;
+        goto end;
     }
 
     // generate key protection
     error = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a, G_monero_vstate.b);
     if (error) {
-        return error;
+        goto end;
     }
 
     G_monero_vstate.key_set = 1;
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(seed, sizeof(seed));
+    explicit_bzero(chain, sizeof(chain));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
