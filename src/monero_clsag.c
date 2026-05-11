@@ -49,12 +49,13 @@ int monero_apdu_clsag_prepare() {
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        return SW_SECURITY_MAX_SIGNATURE_REACHED;
+        err = SW_SECURITY_MAX_SIGNATURE_REACHED;
+        goto end;
     }
 
     err = monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_fetch(z, 32);
@@ -64,39 +65,47 @@ int monero_apdu_clsag_prepare() {
     // a
     err = monero_rng_mod_order(a, sizeof(a));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert_encrypt(a, 32, TYPE_ALPHA);
     // a.G
     err = monero_ecmul_G(W, a, sizeof(W), sizeof(a));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert(W, 32);
     // a.H
     err = monero_ecmul_k(W, H, a, sizeof(W), sizeof(H), sizeof(a));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert(W, 32);
     // I = p.H
     err = monero_ecmul_k(W, H, p, sizeof(W), sizeof(H), sizeof(p));
     if (err) {
-        return err;
+        goto end;
     }
     monero_io_insert(W, 32);
 
     // D = z.H
     err = monero_ecmul_k(W, H, z, sizeof(W), sizeof(H), sizeof(z));
     if (err) {
-        return err;
+        goto end;
     }
     monero_io_insert(W, 32);
 
-    return SW_OK;
+    err = SW_OK;
+
+end:
+    explicit_bzero(a, sizeof(a));
+    explicit_bzero(p, sizeof(p));
+    explicit_bzero(z, sizeof(z));
+    explicit_bzero(H, sizeof(H));
+    explicit_bzero(W, sizeof(W));
+    return err;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -191,66 +200,67 @@ int monero_apdu_clsag_sign() {
     } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         err = monero_io_fetch_decrypt(a, 32, TYPE_ALPHA);
         if (err) {
-            return err;
+            goto end;
         }
 
         err = monero_io_fetch_decrypt(p, 32, TYPE_SCALAR);
         if (err) {
-            return err;
+            goto end;
         }
         monero_io_fetch(z, 32);
         monero_io_fetch(mu_P, 32);
         monero_io_fetch(mu_C, 32);
     } else {
-        return SW_SECURITY_INTERNAL;
+        err = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     monero_io_discard(1);
 
     err = monero_check_scalar_not_null(a);
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_check_scalar_not_null(p);
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_check_scalar_not_null(z);
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(a, a, sizeof(a), sizeof(a));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(p, p, sizeof(p), sizeof(p));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(z, z, sizeof(z), sizeof(z));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(mu_P, mu_P, sizeof(mu_P), sizeof(mu_P));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(mu_C, mu_C, sizeof(mu_C), sizeof(mu_C));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
                         sizeof(G_monero_vstate.c));
     if (err) {
-        return err;
+        goto end;
     }
 
     // s0_p_mu_P = mu_P*p
@@ -262,31 +272,40 @@ int monero_apdu_clsag_sign() {
     // s = p*mu_P
     err = monero_multm(s, p, mu_P, sizeof(s), sizeof(p), sizeof(mu_P));
     if (err) {
-        return err;
+        goto end;
     }
     // mu_P = mu_C*z
     err = monero_multm(mu_P, mu_C, z, sizeof(mu_P), sizeof(mu_C), sizeof(z));
     if (err) {
-        return err;
+        goto end;
     }
     // s = p*mu_P + mu_C*z
     err = monero_addm(s, s, mu_P, sizeof(s), sizeof(s), sizeof(mu_P));
     if (err) {
-        return err;
+        goto end;
     }
     // mu_P = c * (p*mu_P + mu_C*z)
     err = monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P), sizeof(G_monero_vstate.c),
                        sizeof(s));
     if (err) {
-        return err;
+        goto end;
     }
     // s = a - c*(p*mu_P + mu_C*z)
     err = monero_subm(s, a, mu_P, sizeof(s), sizeof(a), sizeof(mu_P));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert(s, 32);
 
-    return SW_OK;
+    err = SW_OK;
+
+end:
+    explicit_bzero(s, sizeof(s));
+    explicit_bzero(a, sizeof(a));
+    explicit_bzero(p, sizeof(p));
+    explicit_bzero(z, sizeof(z));
+    explicit_bzero(mu_P, sizeof(mu_P));
+    explicit_bzero(mu_C, sizeof(mu_C));
+    return err;
 }

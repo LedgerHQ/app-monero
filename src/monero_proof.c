@@ -52,8 +52,7 @@ int monero_apdu_get_tx_proof() {
     monero_io_skip(32);
     err = monero_io_fetch_decrypt_key(r, sizeof(r));
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
 
     monero_io_discard(0);
@@ -61,8 +60,7 @@ int monero_apdu_get_tx_proof() {
     // Generate random k
     err = monero_rng_mod_order(k, k_len);
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
 
     // tmp = msg
@@ -74,15 +72,13 @@ int monero_apdu_get_tx_proof() {
         // X = kB
         err = monero_ecmul_k(XY, B, k, sizeof(XY), 32, k_len);
         if (err) {
-            explicit_bzero(r, sizeof(r));
-            return err;
+            goto end;
         }
     } else {
         // X = kG
         err = monero_ecmul_G(XY, k, sizeof(XY), k_len);
         if (err) {
-            explicit_bzero(r, sizeof(r));
-            return err;
+            goto end;
         }
     }
     // tmp = msg || D || X
@@ -91,15 +87,13 @@ int monero_apdu_get_tx_proof() {
     // Y = kA
     err = monero_ecmul_k(XY, A, k, sizeof(XY), 32, k_len);
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
     // tmp = msg || D || X || Y
     memcpy(G_monero_vstate.tmp + 32 * 3, XY, 32);
     err = monero_keccak_H((unsigned char *)"TXPROOF_V2", 10, sep);
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
     // tmp = msg || D || X || Y || sep
     memcpy(G_monero_vstate.tmp + 32 * 4, sep, 32);
@@ -113,27 +107,32 @@ int monero_apdu_get_tx_proof() {
     // sig_c = H_n(tmp)
     err = monero_hash_to_scalar(sig_c, &G_monero_vstate.tmp[0], sizeof(sig_c), 32 * 8);
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
 
     // sig_c*r
     err = monero_multm(XY, sig_c, r, sizeof(XY), sizeof(sig_c), sizeof(r));
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
 
     // sig_r = k - sig_c*r
     err = monero_subm(sig_r, k, XY, sizeof(sig_r), k_len, sizeof(r));
     if (err) {
-        explicit_bzero(r, sizeof(r));
-        return err;
+        goto end;
     }
 
     monero_io_insert(sig_c, 32);
     monero_io_insert(sig_r, 32);
 
+    err = SW_OK;
+
+end:
     explicit_bzero(r, sizeof(r));
-    return SW_OK;
+    explicit_bzero(XY, sizeof(XY));
+    explicit_bzero(sig_c, sizeof(sig_c));
+    explicit_bzero(sig_r, sizeof(sig_r));
+    explicit_bzero(sep, sizeof(sep));
+    explicit_bzero(G_monero_vstate.tmp, sizeof(G_monero_vstate.tmp));
+    return err;
 }
