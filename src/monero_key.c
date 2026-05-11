@@ -855,8 +855,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     monero_io_fetch_u32();  // skip tx_version
     err = monero_io_fetch_decrypt_key(tx_key, sizeof(tx_key));
     if (err) {
-        explicit_bzero(tx_key, sizeof(tx_key));
-        return err;
+        goto end;
     }
     txkey_pub = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
     monero_io_skip(KEY_SIZE);
@@ -871,9 +870,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     if (need_additional_txkeys) {
         err = monero_io_fetch_decrypt_key(additional_txkey_sec, sizeof(additional_txkey_sec));
         if (err) {
-            explicit_bzero(tx_key, sizeof(tx_key));
-            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-            return err;
+            goto end;
         }
     } else {
         monero_io_skip(KEY_SIZE);
@@ -884,9 +881,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
         err = monero_check_change_address(Aout, Bout);
         if (err) {
-            explicit_bzero(tx_key, sizeof(tx_key));
-            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-            return err;
+            goto end;
         }
     }
 
@@ -895,21 +890,15 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
         if (G_monero_vstate.io_protocol_version >= 2) {
             err = monero_sha256_outkeys_update(Aout, KEY_SIZE);
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                return err;
+                goto end;
             }
             err = monero_sha256_outkeys_update(Bout, KEY_SIZE);
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                return err;
+                goto end;
             }
             err = monero_sha256_outkeys_update(&is_change, 1);
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                return err;
+                goto end;
             }
         }
     }
@@ -921,17 +910,13 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
                                  sizeof(additional_txkey_pub), KEY_SIZE,
                                  sizeof(additional_txkey_sec));
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                return err;
+                goto end;
             }
         } else {
             err = monero_ecmul_G(additional_txkey_pub, additional_txkey_sec,
                                  sizeof(additional_txkey_pub), sizeof(additional_txkey_sec));
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                return err;
+                goto end;
             }
         }
     } else {
@@ -944,9 +929,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
             monero_generate_key_derivation(derivation, txkey_pub, G_monero_vstate.a,
                                            sizeof(derivation), KEY_SIZE, sizeof(G_monero_vstate.a));
         if (err) {
-            explicit_bzero(tx_key, sizeof(tx_key));
-            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-            return err;
+            goto end;
         }
     } else {
         err = monero_generate_key_derivation(
@@ -954,9 +937,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
             (is_subaddress && need_additional_txkeys) ? additional_txkey_sec : tx_key,
             sizeof(derivation), KEY_SIZE, KEY_SIZE);
         if (err) {
-            explicit_bzero(tx_key, sizeof(tx_key));
-            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-            return err;
+            goto end;
         }
     }
 
@@ -964,19 +945,13 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     err = monero_derivation_to_scalar(amount_key, derivation, output_index, sizeof(amount_key),
                                       sizeof(derivation));
     if (err) {
-        explicit_bzero(tx_key, sizeof(tx_key));
-        explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-        explicit_bzero(amount_key, sizeof(amount_key));
-        return err;
+        goto end;
     }
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (G_monero_vstate.io_protocol_version >= 2) {
             err = monero_sha256_outkeys_update(amount_key, KEY_SIZE);
             if (err) {
-                explicit_bzero(tx_key, sizeof(tx_key));
-                explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-                explicit_bzero(amount_key, sizeof(amount_key));
-                return err;
+                goto end;
             }
         }
     }
@@ -985,20 +960,14 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     err = monero_derive_public_key(out_eph_public_key, derivation, output_index, Bout,
                                    sizeof(out_eph_public_key), sizeof(derivation), KEY_SIZE);
     if (err) {
-        explicit_bzero(tx_key, sizeof(tx_key));
-        explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-        explicit_bzero(amount_key, sizeof(amount_key));
-        return err;
+        goto end;
     }
 
     // compute view tag
     if (use_view_tags) {
         err = monero_derive_view_tag(view_tag, derivation, output_index);
         if (err) {
-            explicit_bzero(tx_key, sizeof(tx_key));
-            explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
-            explicit_bzero(amount_key, sizeof(amount_key));
-            return err;
+            goto end;
         }
     }
 
@@ -1013,8 +982,12 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
         monero_io_insert(view_tag, 1);
     }
     G_monero_vstate.tx_output_cnt++;
+    err = SW_OK;
+
+end:
     explicit_bzero(tx_key, sizeof(tx_key));
     explicit_bzero(additional_txkey_sec, sizeof(additional_txkey_sec));
     explicit_bzero(amount_key, sizeof(amount_key));
-    return SW_OK;
+    explicit_bzero(derivation, sizeof(derivation));
+    return err;
 }

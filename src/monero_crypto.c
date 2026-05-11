@@ -64,39 +64,44 @@ int monero_aes_derive(cx_aes_key_t *sk, unsigned char *seed32, unsigned char *a,
 
     error = monero_keccak_init_H();
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_keccak_update_H(seed32, KEY_SIZE);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_keccak_update_H(a, KEY_SIZE);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_keccak_update_H(b, KEY_SIZE);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_keccak_final_H(h1);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_keccak_H(h1, KEY_SIZE, h1);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = cx_aes_init_key_no_throw(h1, 16, sk);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(h1, sizeof(h1));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -570,20 +575,24 @@ int monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
     memcpy(varint, drv_data, 32);
     error = monero_encode_varint(varint + 32, 8, out_idx, &len_varint);
     if (error) {
-        return error;
+        goto end;
     }
     len_varint += 32;
 
     error = monero_keccak_F(varint, len_varint, varint);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_reduce(scalar, varint, scalar_len, sizeof(varint));
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(varint, sizeof(varint));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -598,15 +607,19 @@ int monero_derive_secret_key(unsigned char *x, unsigned char *drv_data, unsigned
     // derivation to scalar
     error = monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
     if (error) {
-        return error;
+        goto end;
     }
 
     // generate
     error = monero_addm(x, tmp, ec_priv, x_len, sizeof(tmp), ec_priv_len);
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(tmp, sizeof(tmp));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -620,19 +633,23 @@ int monero_derive_public_key(unsigned char *x, unsigned char *drv_data, unsigned
     // derivation to scalar
     int error = monero_derivation_to_scalar(tmp, drv_data, out_idx, sizeof(tmp), drv_data_len);
     if (error) {
-        return error;
+        goto end;
     }
     // generate
     error = monero_ecmul_G(tmp, tmp, sizeof(tmp), sizeof(tmp));
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_ecadd(x, tmp, ec_pub, x_len, sizeof(tmp), ec_pub_len);
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(tmp, sizeof(tmp));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -675,17 +692,21 @@ int monero_derive_view_tag(unsigned char *view_tag, const unsigned char drv_data
     memcpy(varint + 8, drv_data, 32);
     error = monero_encode_varint(varint + 8 + 32, 8, out_idx, &len_varint);
     if (error) {
-        return error;
+        goto end;
     }
     len_varint += 8 + 32;
 
     error = monero_keccak_F(varint, len_varint, varint);
     if (error) {
-        return error;
+        goto end;
     }
 
     *view_tag = varint[0];
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(varint, sizeof(varint));
+    return error;
 }
 
 /* ======================================================================= */
@@ -703,17 +724,21 @@ int monero_derive_subaddress_public_key(unsigned char *x, unsigned char *pub,
 
     error = monero_derivation_to_scalar(scalarG, drv_data, index, sizeof(scalarG), drv_data_len);
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_ecmul_G(scalarG, scalarG, sizeof(scalarG), sizeof(scalarG));
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_ecsub(x, pub, scalarG, x_len, pub_len, sizeof(scalarG));
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(scalarG, sizeof(scalarG));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -788,14 +813,18 @@ int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, uns
 
     error = monero_keccak_F(in, sizeof(in), sub_s);
     if (error) {
-        return error;
+        goto end;
     }
 
     error = monero_reduce(sub_s, sub_s, sub_s_len, sub_s_len);
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(in, sizeof(in));
+    return error;
 }
 
 /* ======================================================================= */
@@ -1140,9 +1169,13 @@ int monero_genCommitmentMask(unsigned char *c, unsigned char *sk, size_t c_len, 
     memcpy(data + 15, sk, 32);
     error = monero_hash_to_scalar(c, data, c_len, 15 + 32);
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(data, sizeof(data));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1288,13 +1321,18 @@ int monero_rng_mod_order(unsigned char *r, size_t r_len) {
     cx_rng(rnd, 32 + 8);
     error = cx_math_modm_no_throw(rnd, 32 + 8, (unsigned char *)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     error = monero_reverse32(r, rnd + 8, r_len, 32);
     if (error) {
-        return error;
+        goto end;
     }
-    return 0;
+    error = 0;
+
+end:
+    explicit_bzero(rnd, sizeof(rnd));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
