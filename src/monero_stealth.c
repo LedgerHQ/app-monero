@@ -38,8 +38,7 @@ int monero_apdu_stealth() {
     // fetch sec
     err = monero_io_fetch_decrypt_key(sec, sizeof(sec));
     if (err) {
-        explicit_bzero(sec, sizeof(sec));
-        return err;
+        goto end;
     }
     // fetch paymentID
     monero_io_fetch(payID, 8);
@@ -49,16 +48,14 @@ int monero_apdu_stealth() {
     // Compute Dout
     err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
     if (err) {
-        explicit_bzero(sec, sizeof(sec));
-        return err;
+        goto end;
     }
 
     // compute mask
     drv[KEY_SIZE] = ENCRYPTED_PAYMENT_ID_TAIL;
     err = monero_keccak_F(drv, 33, sec);
     if (err) {
-        explicit_bzero(sec, sizeof(sec));
-        return err;
+        goto end;
     }
 
     // stealth!
@@ -68,7 +65,10 @@ int monero_apdu_stealth() {
 
     monero_io_insert(payID, 8);
 
-    explicit_bzero(sec, sizeof(sec));
+    err = SW_OK;
 
-    return SW_OK;
+end:
+    explicit_bzero(sec, sizeof(sec));
+    explicit_bzero(drv, sizeof(drv));
+    return err;
 }
