@@ -76,13 +76,6 @@ struct monero_nv_state_s {
     unsigned char b[KEY_SIZE];
     /* view key */
     unsigned char a[KEY_SIZE];
-
-/*words*/
-#define WORDS_MAX_LENGTH 20
-    union {
-        char words[26][WORDS_MAX_LENGTH];
-        char words_list[25 * WORDS_MAX_LENGTH + 25];
-    };
 };
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -146,6 +139,11 @@ struct monero_v_state_s {
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
+    /* change address verification */
+    unsigned int tx_change_major_indices[8];
+    unsigned int tx_change_minor_indices[8];
+    unsigned char tx_change_cnt;
+
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
     /* ------------------------------------------ */
@@ -168,6 +166,7 @@ struct monero_v_state_s {
     unsigned char prefixH[32];
     unsigned char mlsagH[32];
     unsigned char c[32];
+    unsigned char clsag_match_history;
 
     /* -- track tx-in/out and commitment -- */
     cx_sha256_t sha256_out_keys;
@@ -240,7 +239,6 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define INS_PUT_KEY            0x22
 #define INS_GET_CHACHA8_PREKEY 0x24
 #define INS_VERIFY_KEY         0x26
-#define INS_MANAGE_SEEDWORDS   0x28
 
 #define INS_SECRET_KEY_TO_PUBLIC_KEY 0x30
 #define INS_GEN_KEY_DERIVATION       0x32
@@ -310,6 +308,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_INTERNAL                 0x6919
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
+#define SW_SECURITY_CHANGE_ADDRESS           0x691C
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

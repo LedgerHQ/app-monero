@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.0 - 2026-05-11
+
+- Different security fixes
+
 ## 2.1.4 - 2026-03-19
 
 - Fix Get ChaCha8 PreKey response: now uses a deterministic 200-byte SHAKE-256 output

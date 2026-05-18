@@ -34,7 +34,6 @@ int monero_dispatch(void);
 int monero_apdu_put_key(void);
 int monero_apdu_get_key(void);
 int monero_apdu_display_address(void);
-int monero_apdu_manage_seedwords(void);
 int monero_apdu_verify_key(void);
 int monero_apdu_get_chacha8_prekey(void);
 int monero_apdu_sc_add(void);
@@ -195,8 +194,8 @@ int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *ind
                           size_t D_len, size_t index_len);
 int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
                                      size_t sub_s_len, size_t s_len, size_t index_len);
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout);
 
-void monero_clear_words(void);
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
 /* ----------------------------------------------------------------------- */
