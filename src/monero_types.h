@@ -123,7 +123,7 @@ struct monero_v_state_s {
 #define PROTOCOL_UNLOCKED          0x24
     unsigned char protocol_barrier;
 
-    /* Tx state machine */
+    /* Tx state machine — 1-byte fields packed to absorb alignment padding */
     unsigned char tx_in_progress;
     unsigned char tx_cnt;
     unsigned char tx_sig_mode;
@@ -131,16 +131,26 @@ struct monero_v_state_s {
     unsigned char tx_state_p1;
     unsigned char tx_state_p2;
     unsigned char tx_output_cnt;
+    unsigned char tx_change_cnt;
+    unsigned char clsag_match_history;
     unsigned int tx_sign_cnt;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
-    /* change address verification */
-    unsigned int tx_change_major_indices[8];
-    unsigned int tx_change_minor_indices[8];
-    unsigned char tx_change_cnt;
+    /* change address verification: max distinct (major, minor) subaddress
+     * tuples tracked per transaction. A smaller cap is conservative — it
+     * never accepts a change address it shouldn't, but may reject legitimate
+     * change to subaddresses beyond the cap. Constrained on Nano S to fit
+     * the 4 KB RAM budget. */
+#ifdef TARGET_NANOS
+#define MONERO_TX_CHANGE_INDICES_MAX 4
+#else
+#define MONERO_TX_CHANGE_INDICES_MAX 8
+#endif
+    unsigned int tx_change_major_indices[MONERO_TX_CHANGE_INDICES_MAX];
+    unsigned int tx_change_minor_indices[MONERO_TX_CHANGE_INDICES_MAX];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -164,7 +174,6 @@ struct monero_v_state_s {
     unsigned char prefixH[32];
     unsigned char mlsagH[32];
     unsigned char c[32];
-    unsigned char clsag_match_history;
 
     /* -- track tx-in/out and commitment -- */
     cx_sha256_t sha256_out_keys;

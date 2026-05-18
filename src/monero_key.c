@@ -769,7 +769,8 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
                 break;
             }
         }
-        if (!already_seen && (major != 0 || minor != 0) && G_monero_vstate.tx_change_cnt < 8) {
+        if (!already_seen && (major != 0 || minor != 0) &&
+            G_monero_vstate.tx_change_cnt < MONERO_TX_CHANGE_INDICES_MAX) {
             G_monero_vstate.tx_change_major_indices[G_monero_vstate.tx_change_cnt] = major;
             G_monero_vstate.tx_change_minor_indices[G_monero_vstate.tx_change_cnt] = minor;
             G_monero_vstate.tx_change_cnt++;
