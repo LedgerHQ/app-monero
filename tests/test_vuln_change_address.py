@@ -508,8 +508,13 @@ class TestChangeAddressFixed_Prehash:
             state["_ak_amount"][i] = _ak
 
     @staticmethod
-    def test_prefix_hash_ph(monero: MoneroCmd, device, test_name: str):
-        monero.prefix_hash_init(test_name, device, navigator=None, version=0, timelock=0)
+    def test_prefix_hash_ph(monero: MoneroCmd, backend, firmware, test_name: str):
+        # nanos's monero_cmd.prefix_hash_init takes (backend, test_name, firmware, navigator, ...)
+        # whereas the develop-side variant takes (test_name, device, navigator, ...). timelock=0
+        # makes the device skip its UI step (monero_apdu_prefix_hash_init() returns synchronously
+        # via ui_menu_transaction_start), so navigator=None is fine.
+        monero.prefix_hash_init(backend, test_name, firmware,
+                                navigator=None, version=0, timelock=0)
         monero.prefix_hash_update(index=1, payload=b"", is_last=True)
 
     @staticmethod
@@ -534,6 +539,7 @@ class TestChangeAddressFixed_Prehash:
     def test_prehash_update_rejected(
         monero: MoneroCmd,
         backend: BackendInterface,
+        firmware,
         navigator: Navigator,
         test_name: str,
         state,
@@ -547,10 +553,10 @@ class TestChangeAddressFixed_Prehash:
         No intermediate legitimate output is processed: the check rejects
         regardless of position because it runs before any state mutation.
         """
-        device = backend.device
-
-        # Fee approval — legitimate, expected snapshot generated here
-        monero.validate_prehash_init(test_name, device, navigator, 1, 0, _FEE)
+        # nanos's validate_prehash_init signature is
+        # (backend, test_name, firmware, navigator, index, txntype, txnfee),
+        # whereas the develop-side variant is (test_name, device, navigator, ...).
+        monero.validate_prehash_init(backend, test_name, firmware, navigator, 1, 0, _FEE)
 
         # Attacker's (A', B') as the first and only prehash_update.
         # Rejection is synchronous — no output UI is ever shown on any platform.

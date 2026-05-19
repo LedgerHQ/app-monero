@@ -223,23 +223,30 @@ class MoneroCmd(MoneroCryptoCmd):
             encode_varint(timelock)
         ])
 
-        if firmware.device == "nanos":
-            instructions = get_nano_review_instructions(1)
-        elif firmware.device.startswith("nano"):
-            instructions = get_nano_review_instructions(1)
-        else:
-            instructions = [
-                NavIns(NavInsID.SWIPE_CENTER_TO_LEFT)
-            ]
+        # The device only shows the timelock confirmation UI when timelock != 0
+        # (see monero_apdu_prefix_hash_init in src/monero_prefix.c). When the
+        # caller passes navigator=None we therefore expect the device to respond
+        # synchronously and skip navigation entirely.
+        if navigator is not None:
+            if firmware.device == "nanos":
+                instructions = get_nano_review_instructions(1)
+            elif firmware.device.startswith("nano"):
+                instructions = get_nano_review_instructions(1)
+            else:
+                instructions = [
+                    NavIns(NavInsID.SWIPE_CENTER_TO_LEFT)
+                ]
+
         with self.device.send_async(cla=PROTOCOL_VERSION,
                                     ins=ins,
                                     p1=1,
                                     p2=0,
                                     option=0,
                                     payload=payload):
-            navigator.navigate_and_compare(TESTS_ROOT_DIR,
-                                           test_name + "_hash_init",
-                                           instructions)
+            if navigator is not None:
+                navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                               test_name + "_hash_init",
+                                               instructions)
 
         sw, response = self.device.async_response()  # type: int, bytes
 
