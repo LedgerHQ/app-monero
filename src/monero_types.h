@@ -76,13 +76,6 @@ struct monero_nv_state_s {
     unsigned char b[KEY_SIZE];
     /* view key */
     unsigned char a[KEY_SIZE];
-
-/*words*/
-#define WORDS_MAX_LENGTH 20
-    union {
-        char words[26][WORDS_MAX_LENGTH];
-        char words_list[25 * WORDS_MAX_LENGTH + 25];
-    };
 };
 
 typedef struct monero_nv_state_s monero_nv_state_t;
@@ -130,7 +123,7 @@ struct monero_v_state_s {
 #define PROTOCOL_UNLOCKED          0x24
     unsigned char protocol_barrier;
 
-    /* Tx state machine */
+    /* Tx state machine — 1-byte fields packed to absorb alignment padding */
     unsigned char tx_in_progress;
     unsigned char tx_cnt;
     unsigned char tx_sig_mode;
@@ -138,11 +131,26 @@ struct monero_v_state_s {
     unsigned char tx_state_p1;
     unsigned char tx_state_p2;
     unsigned char tx_output_cnt;
+    unsigned char tx_change_cnt;
+    unsigned char clsag_match_history;
     unsigned int tx_sign_cnt;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
+
+    /* change address verification: max distinct (major, minor) subaddress
+     * tuples tracked per transaction. A smaller cap is conservative — it
+     * never accepts a change address it shouldn't, but may reject legitimate
+     * change to subaddresses beyond the cap. Constrained on Nano S to fit
+     * the 4 KB RAM budget. */
+#ifdef TARGET_NANOS
+#define MONERO_TX_CHANGE_INDICES_MAX 4
+#else
+#define MONERO_TX_CHANGE_INDICES_MAX 8
+#endif
+    unsigned int tx_change_major_indices[MONERO_TX_CHANGE_INDICES_MAX];
+    unsigned int tx_change_minor_indices[MONERO_TX_CHANGE_INDICES_MAX];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -238,7 +246,6 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define INS_PUT_KEY            0x22
 #define INS_GET_CHACHA8_PREKEY 0x24
 #define INS_VERIFY_KEY         0x26
-#define INS_MANAGE_SEEDWORDS   0x28
 
 #define INS_SECRET_KEY_TO_PUBLIC_KEY 0x30
 #define INS_GEN_KEY_DERIVATION       0x32
@@ -308,6 +315,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_INTERNAL                 0x6919
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
+#define SW_SECURITY_CHANGE_ADDRESS           0x691C
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

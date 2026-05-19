@@ -38,45 +38,6 @@
 void __attribute__((noreturn)) app_exit(void);
 void ui_menu_main_display();
 
-/* -------------------------------------- 25 WORDS --------------------------------------- */
-void ui_menu_words_display(unsigned int value);
-void ui_menu_words_clear(unsigned int value);
-void ui_menu_words_back(unsigned int value);
-
-UX_STEP_NOCB(ux_menu_words_1_step,
-#ifndef TARGET_NANOS
-             bnnn_paging,
-#else
-             bn_paging,
-#endif
-             {
-                 .title = "Electrum Seed",
-                 .text = "NOTSET",
-             });
-
-UX_STEP_CB(ux_menu_words_2_step, bn, ui_menu_words_clear(0),
-           {"CLEAR WORDS", "(Do not wipe the wallet)"});
-
-UX_STEP_CB(ux_menu_words_3_step, pb, ui_menu_words_back(0), {&C_icon_back, "back"});
-
-UX_FLOW(ux_flow_words, &ux_menu_words_1_step, &ux_menu_words_2_step, &ux_menu_words_3_step);
-
-void ui_menu_words_clear(unsigned int value __attribute__((unused))) {
-    monero_clear_words();
-    ui_menu_main_display();
-}
-
-void ui_menu_words_back(unsigned int value __attribute__((unused))) {
-    ui_menu_main_display();
-}
-
-void ui_menu_words_display(unsigned int value __attribute__((unused))) {
-    ux_flow_init(0, ux_flow_words, NULL);
-}
-
-void settings_show_25_words(void) {
-    ui_menu_words_display(0);
-}
 /* -------------------------------- INFO UX --------------------------------- */
 UX_STEP_CB(ux_menu_info_1_step, nn, (void)ui_menu_main_display(),
            {
@@ -476,7 +437,10 @@ void ui_menu_reset_action(unsigned int value) {
 /* ------------------------------- SETTINGS UX ------------------------------- */
 
 const char* const settings_submenu_getter_values[] = {
-    "Select Account", "Select Network", "Show 25 words", "Reset", "Back",
+    "Select Account",
+    "Select Network",
+    "Reset",
+    "Back",
 };
 
 const char* settings_submenu_getter(unsigned int idx) {
@@ -499,9 +463,6 @@ void settings_submenu_selector(unsigned int idx) {
             settings_change_network();
             break;
         case 2:
-            settings_show_25_words();
-            break;
-        case 3:
             settings_reset();
             break;
         default:

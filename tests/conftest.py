@@ -27,6 +27,21 @@ def monero(backend, debug=False):
     yield monero_client
 
 
+@pytest.fixture(autouse=True)
+def _firmware_axis(firmware):
+    """Force every test in the suite to depend on the `firmware` fixture so all
+    tests share the same parametrize signature (e.g. [nanos-nanos]).
+
+    Some test methods take `firmware`/`backend` as parameters (because their
+    monero_cmd helpers branch on `firmware.device`), while others don't. Pytest
+    groups tests by parametrize-index tuple — methods that pick up the
+    `firmware` parametrize end up in a different collection group than those
+    that don't, which interleaves @pytest.mark.incremental classes and breaks
+    source ordering. Pulling firmware here gives every test the same signature
+    and keeps incremental classes in declared order."""
+    return firmware
+
+
 _test_failed_incremental: Dict[str, Dict[Tuple[int, ...], str]] = {}
 
 

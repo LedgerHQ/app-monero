@@ -19,6 +19,10 @@ class MoneroCryptoCmd:
 
     def __init__(self, backend, debug: bool = False) -> None:
         self.device = Transport(backend, debug=debug)
+        # Alias `transport` to `device` so cherry-picked tests written against
+        # the develop-side API (which exposes `monero.transport`) work
+        # unchanged on this branch.
+        self.transport = self.device
         self.is_in_tx_mode = False
 
     @staticmethod

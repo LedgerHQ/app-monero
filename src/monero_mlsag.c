@@ -31,11 +31,12 @@ int monero_apdu_mlsag_prepare() {
     unsigned char xin[32];
     unsigned char alpha[32];
     unsigned char mul[32];
-    int err;
+    int err = 0;
 
     G_monero_vstate.tx_sign_cnt++;
     if (G_monero_vstate.tx_sign_cnt == 0) {
-        return SW_SECURITY_MAX_SIGNATURE_REACHED;
+        err = SW_SECURITY_MAX_SIGNATURE_REACHED;
+        goto end;
     }
 
     if (G_monero_vstate.io_length > 1) {
@@ -45,7 +46,7 @@ int monero_apdu_mlsag_prepare() {
         } else {
             err = monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
             if (err) {
-                return err;
+                goto end;
             }
         }
         options = 1;
@@ -58,12 +59,12 @@ int monero_apdu_mlsag_prepare() {
     // ai
     err = monero_rng_mod_order(alpha, sizeof(alpha));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(alpha, alpha, sizeof(alpha), sizeof(alpha));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert_encrypt(alpha, 32, TYPE_ALPHA);
@@ -71,7 +72,7 @@ int monero_apdu_mlsag_prepare() {
     // ai.G
     err = monero_ecmul_G(mul, alpha, sizeof(mul), sizeof(alpha));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert(mul, 32);
@@ -80,17 +81,24 @@ int monero_apdu_mlsag_prepare() {
         // ai.Hi
         err = monero_ecmul_k(mul, Hi, alpha, sizeof(mul), sizeof(Hi), sizeof(alpha));
         if (err) {
-            return err;
+            goto end;
         }
         monero_io_insert(mul, 32);
         // IIi = xin.Hi
         err = monero_ecmul_k(mul, Hi, xin, sizeof(mul), sizeof(Hi), sizeof(xin));
         if (err) {
-            return err;
+            goto end;
         }
         monero_io_insert(mul, 32);
     }
-    return SW_OK;
+    err = SW_OK;
+
+end:
+    explicit_bzero(Hi, sizeof(Hi));
+    explicit_bzero(xin, sizeof(xin));
+    explicit_bzero(alpha, sizeof(alpha));
+    explicit_bzero(mul, sizeof(mul));
+    return err;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -139,7 +147,7 @@ int monero_apdu_mlsag_sign() {
     unsigned char alpha[32];
     unsigned char ss[32];
     unsigned char ss2[32];
-    int err;
+    int err = 0;
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin, 32);
@@ -147,47 +155,56 @@ int monero_apdu_mlsag_sign() {
     } else if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         err = monero_io_fetch_decrypt(xin, 32, TYPE_SCALAR);
         if (err) {
-            return err;
+            goto end;
         }
         err = monero_io_fetch_decrypt(alpha, 32, TYPE_ALPHA);
         if (err) {
-            return err;
+            goto end;
         }
     } else {
-        return SW_SECURITY_INTERNAL;
+        err = SW_SECURITY_INTERNAL;
+        goto end;
     }
     monero_io_discard(1);
 
     // check xin and alpha are not null
     if (cx_math_is_zero(xin, 32) || cx_math_is_zero(alpha, 32)) {
-        return SW_SECURITY_RANGE_VALUE;
+        err = SW_SECURITY_RANGE_VALUE;
+        goto end;
     }
 
     err = monero_reduce(ss, G_monero_vstate.c, sizeof(ss), sizeof(G_monero_vstate.c));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(xin, xin, sizeof(xin), sizeof(xin));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_multm(ss, ss, xin, sizeof(ss), sizeof(ss), sizeof(xin));
     if (err) {
-        return err;
+        goto end;
     }
 
     err = monero_reduce(alpha, alpha, sizeof(alpha), sizeof(alpha));
     if (err) {
-        return err;
+        goto end;
     }
     err = monero_subm(ss2, alpha, ss, sizeof(ss2), sizeof(alpha), sizeof(ss));
     if (err) {
-        return err;
+        goto end;
     }
 
     monero_io_insert(ss2, 32);
     monero_io_insert_u32(G_monero_vstate.tx_sig_mode);
-    return SW_OK;
+    err = SW_OK;
+
+end:
+    explicit_bzero(xin, sizeof(xin));
+    explicit_bzero(alpha, sizeof(alpha));
+    explicit_bzero(ss, sizeof(ss));
+    explicit_bzero(ss2, sizeof(ss2));
+    return err;
 }

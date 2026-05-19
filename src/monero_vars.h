@@ -36,9 +36,5 @@ extern const monero_nv_state_t N_state_pic;
 #define N_monero_pstate ((volatile monero_nv_state_t *)PIC(&N_state_pic))
 #endif
 
-#ifdef MONERO_DEBUG_MAIN
-extern int apdu_n;
-#endif
-
 extern ux_state_t ux;
 #endif
