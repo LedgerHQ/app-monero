@@ -20,6 +20,7 @@ class DeviceError(Exception):  # pylint: disable=too-few-public-methods
         0x6919: SecurityInternal,
         0x691a: SecurityMaxSignatureReached,
         0x691b: SecurityPrefixHash,
+        0x691c: SecurityChangeAddress,
         0x69ee: SecurityLocked,
         0x6980: CommandNotAllowed,
         0x6981: SubCommandNotAllowed,

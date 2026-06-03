@@ -99,7 +99,6 @@ def test_settings(navigator: Navigator, device: Device, test_name: str):
             NavInsID.RIGHT_CLICK,   # = Settings HL
             NavInsID.BOTH_CLICK,    # = Settings LL
             NavInsID.RIGHT_CLICK,   # = Select Network
-            NavInsID.RIGHT_CLICK,   # = Show 25 words
             NavInsID.RIGHT_CLICK,   # = Reset
             NavInsID.BOTH_CLICK,    # = Really reset
             NavInsID.RIGHT_CLICK,   # = No
