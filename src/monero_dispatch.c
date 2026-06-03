@@ -185,7 +185,7 @@ int monero_dispatch() {
             sw = monero_apdu_scal_mul_base();
             break;
 
-        /* --- ADRESSES --- */
+        /* --- ADDRESSES --- */
         case INS_DERIVE_SUBADDRESS_PUBLIC_KEY:
             sw = monero_apdu_derive_subaddress_public_key();
             break;

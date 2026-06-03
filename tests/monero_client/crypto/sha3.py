@@ -1,4 +1,4 @@
-"""Helpers for Monero adresses.
+"""Helpers for Monero addresses.
 
 mainnet address prefix:
     - address: 18
