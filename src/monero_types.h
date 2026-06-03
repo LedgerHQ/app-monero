@@ -28,7 +28,7 @@
 
 /* big private DO */
 #define MONERO_EXT_PRIVATE_DO_LENGTH 512
-/* will be fixed..1024 is not enougth */
+/* will be fixed..1024 is not enough */
 #define MONERO_EXT_CARD_HOLDER_CERT_LENTH 2560
 /* random choice */
 #define MONERO_EXT_CHALLENGE_LENTH 254
@@ -69,7 +69,7 @@ struct monero_nv_state_s {
 #define KEY_MODE_SEED     0x42
     unsigned char key_mode;
 
-    /* acount id for bip derivation */
+    /* account id for bip derivation */
     unsigned int account_id;
 
     /* spend key */
