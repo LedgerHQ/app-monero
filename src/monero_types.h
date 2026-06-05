@@ -175,23 +175,32 @@ struct monero_v_state_s {
     cx_sha256_t sha256_commitment;
     unsigned char C[32];
 
-    /* -- bind on-chain output ephemeral keys to the reviewed destinations -- */
-    /* sha256_out_eph chains every out_eph_public_key computed in INS_GEN_TXOUT_KEYS
-     * (build side); the same context is re-used while parsing the signed tx prefix
-     * (verify side). OUT_EPH holds the finalized build-side digest. */
+    /* -- bind the signed outputs to the reviewed destinations -- */
+    /* sha256_out_eph/OUT_EPH chain the output keys derived in INS_GEN_TXOUT_KEYS,
+     * then get re-checked while parsing the signed prefix. sha256_addk/ADDK do the
+     * same for additional tx pubkeys; EXTRA_R holds the expected main tx pubkey.
+     * All three are checked against the prefix's vout and extra fields. */
     cx_sha256_t sha256_out_eph;
     unsigned char OUT_EPH[KEY_SIZE];
-    /* Resumable state machine that walks vin/vout of the tx prefix streamed over
-     * INS_PREFIX_HASH (chunks split at arbitrary byte boundaries). */
+    cx_sha256_t sha256_addk;
+    unsigned char ADDK[KEY_SIZE];
+    unsigned char EXTRA_R[KEY_SIZE];
+    /* Resumable state machine that walks vin/vout/extra of the tx prefix streamed
+     * over INS_PREFIX_HASH (chunks split at arbitrary byte boundaries). */
     uint64_t prefix_vi_val;            /* in-progress varint accumulator         */
     uint64_t prefix_vin_remaining;     /* inputs left to parse                   */
-    uint64_t prefix_off_remaining;     /* key_offsets left in the current input  */
+    uint64_t prefix_off_remaining;     /* key_offsets left / extra skip / addk keys */
     uint64_t prefix_vout_remaining;    /* outputs left to parse                  */
+    uint64_t prefix_extra_remaining;   /* bytes left to consume inside `extra`   */
     unsigned char prefix_vi_shift;     /* in-progress varint bit shift           */
     unsigned char prefix_state;        /* parser state (see PFX_* in monero_prefix.c) */
     unsigned char prefix_field_off;    /* byte progress within a 32-byte field   */
     unsigned char prefix_outkey_tag;   /* current vout target tag (0x02/0x03)    */
-    unsigned char prefix_outkeys_done; /* set once all vout keys are verified    */
+    unsigned char prefix_extra_acc;    /* diff accumulator while matching EXTRA_R */
+    unsigned char prefix_addk_expected;   /* build: an output produced additional keys */
+    unsigned char prefix_extra_r_found;    /* verify: tag 0x01 seen & matched     */
+    unsigned char prefix_extra_addk_found; /* verify: tag 0x04 seen & matched     */
+    unsigned char prefix_outkeys_done; /* set once vout AND extra are verified   */
 
     /* ------------------------------------------ */
     /* ---               UI/UX                --- */

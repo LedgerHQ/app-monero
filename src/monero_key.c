@@ -983,6 +983,17 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
                 goto end;
             }
         }
+        /* Also bind the tx pubkeys that go into `extra`: the main R (txkey_pub,
+         * same for every output) and, when present, the per-output additional
+         * key. INS_PREFIX_HASH checks both against the signed prefix. */
+        memcpy(G_monero_vstate.EXTRA_R, txkey_pub, KEY_SIZE);
+        if (need_additional_txkeys) {
+            G_monero_vstate.prefix_addk_expected = 1;
+            err = monero_sha256_addk_update(additional_txkey_pub, KEY_SIZE);
+            if (err) {
+                goto end;
+            }
+        }
     }
 
     // send all

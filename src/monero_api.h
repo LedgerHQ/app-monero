@@ -269,6 +269,18 @@ static inline int monero_sha256_out_eph_final(unsigned char *out) {
     return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_eph, out);
 }
 
+static inline void monero_sha256_addk_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_addk);
+}
+
+static inline int monero_sha256_addk_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_addk, buf, len);
+}
+
+static inline int monero_sha256_addk_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_addk, out);
+}
+
 /* Reset the tx-prefix output-key parser before streaming a new prefix. */
 void monero_prefix_outkeys_reset(void);
 
