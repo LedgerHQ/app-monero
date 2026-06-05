@@ -966,6 +966,25 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
         }
     }
 
+    // Chain each output key (and view tag) into OUT_EPH as we derive it. The
+    // host puts the same out_eph_public_key into the prefix, so INS_PREFIX_HASH
+    // can re-walk the signed outputs and check them against this chain. The
+    // wallet emits outputs in this call order (construct_tx_with_tx_key), so
+    // both sides hash them the same way.
+    if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+        (G_monero_vstate.io_protocol_version >= 2)) {
+        err = monero_sha256_out_eph_update(out_eph_public_key, KEY_SIZE);
+        if (err) {
+            goto end;
+        }
+        if (use_view_tags) {
+            err = monero_sha256_out_eph_update(view_tag, 1);
+            if (err) {
+                goto end;
+            }
+        }
+    }
+
     // send all
     monero_io_discard(0);
     monero_io_insert_encrypt(amount_key, KEY_SIZE, TYPE_AMOUNT_KEY);

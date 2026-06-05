@@ -175,6 +175,24 @@ struct monero_v_state_s {
     cx_sha256_t sha256_commitment;
     unsigned char C[32];
 
+    /* -- bind on-chain output ephemeral keys to the reviewed destinations -- */
+    /* sha256_out_eph chains every out_eph_public_key computed in INS_GEN_TXOUT_KEYS
+     * (build side); the same context is re-used while parsing the signed tx prefix
+     * (verify side). OUT_EPH holds the finalized build-side digest. */
+    cx_sha256_t sha256_out_eph;
+    unsigned char OUT_EPH[KEY_SIZE];
+    /* Resumable state machine that walks vin/vout of the tx prefix streamed over
+     * INS_PREFIX_HASH (chunks split at arbitrary byte boundaries). */
+    uint64_t prefix_vi_val;            /* in-progress varint accumulator         */
+    uint64_t prefix_vin_remaining;     /* inputs left to parse                   */
+    uint64_t prefix_off_remaining;     /* key_offsets left in the current input  */
+    uint64_t prefix_vout_remaining;    /* outputs left to parse                  */
+    unsigned char prefix_vi_shift;     /* in-progress varint bit shift           */
+    unsigned char prefix_state;        /* parser state (see PFX_* in monero_prefix.c) */
+    unsigned char prefix_field_off;    /* byte progress within a 32-byte field   */
+    unsigned char prefix_outkey_tag;   /* current vout target tag (0x02/0x03)    */
+    unsigned char prefix_outkeys_done; /* set once all vout keys are verified    */
+
     /* ------------------------------------------ */
     /* ---               UI/UX                --- */
     /* ------------------------------------------ */

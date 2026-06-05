@@ -37,6 +37,8 @@ int monero_reset_tx(int reset_tx_cnt) {
     }
     monero_sha256_commitment_init();
     monero_sha256_outkeys_init();
+    monero_sha256_out_eph_init();
+    monero_prefix_outkeys_reset();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
     G_monero_vstate.tx_change_cnt = 0;

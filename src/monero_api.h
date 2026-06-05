@@ -257,6 +257,26 @@ static inline int monero_sha256_outkeys_final(unsigned char *out) {
     return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_keys, out);
 }
 
+static inline void monero_sha256_out_eph_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_out_eph);
+}
+
+static inline int monero_sha256_out_eph_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, buf, len);
+}
+
+static inline int monero_sha256_out_eph_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_eph, out);
+}
+
+/* Reset the tx-prefix output-key parser before streaming a new prefix. */
+void monero_prefix_outkeys_reset(void);
+
+/* Feed the next tx-prefix chunk (vin/vout/extra, as streamed over
+ * INS_PREFIX_HASH P2) to the output-key check. Returns an error if the signed
+ * outputs don't match the ones derived in INS_GEN_TXOUT_KEYS. */
+int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len);
+
 /*
  *  check 1<s<N, else throw
  */
