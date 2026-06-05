@@ -19,6 +19,7 @@ from ragger.navigator import Navigator
 
 from monero_client.monero_types import SigType, Keys
 from monero_client.monero_cmd import MoneroCmd
+from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 
 @pytest.mark.incremental
 class TestSignatureRealSimple:
@@ -46,7 +47,9 @@ class TestSignatureRealSimple:
             "_ak_amount": [[], []],
             "blinded_amount": [[], []],
             "blinded_mask": [[], []],
-            "y": [[], []]
+            "y": [[], []],
+            # device-derived one-time output keys, captured for the REAL prefix
+            "eph_keys": [],
         }
 
     @staticmethod
@@ -200,16 +203,24 @@ class TestSignatureRealSimple:
             )
 
             state["_ak_amount"][index].append(_ak_amount)
+            state["eph_keys"].append(out_ephemeral_pub_key)
             print(f"TX1 Output {index}: ephemeral key = {out_ephemeral_pub_key.hex()}")
 
     @staticmethod
-    def test_prefix_hash_2(monero: MoneroCmd, navigator: Navigator, device, test_name: str):
-        """Compute transaction prefix hash for first transaction."""
+    def test_prefix_hash_2(monero: MoneroCmd, navigator: Navigator, device, test_name: str, state):
+        """Compute transaction prefix hash for first transaction.
+
+        Stream a real prefix whose vout carries the device-derived one-time keys
+        (as an honest wallet does). The device's output-key binding check
+        re-walks vin/vout and confirms each key matches what it derived.
+        """
+        assert len(state["eph_keys"]) == state["receiver_number"]
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"])
         monero.prefix_hash_init(test_name, device,
                                 navigator=navigator, version=0, timelock=0)
         result = monero.prefix_hash_update(
             index=1,
-            payload=b"",
+            payload=prefix,
             is_last=True
         )
         print(f"TX1 Prefix hash: {result.hex()}")

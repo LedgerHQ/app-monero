@@ -50,6 +50,7 @@ from monero_client.monero_crypto_cmd import MoneroCryptoCmd, PROTOCOL_VERSION
 from monero_client.monero_types import InsType, Type, Keys, SigType
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.varint import encode_varint
+from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 from monero_client.utils.utils import get_nano_review_instructions
 from monero_client.exception import SecurityChangeAddress
 
@@ -469,6 +470,8 @@ class TestChangeAddressFixed_Prehash:
             "y": [None, None],
             "blinded_mask": [None, None],
             "blinded_amount": [None, None],
+            # device-derived one-time keys (both outputs to primary), for the prefix
+            "eph_keys": [None, None],
         }
 
     @staticmethod
@@ -496,7 +499,7 @@ class TestChangeAddressFixed_Prehash:
         receivers_spend = [_USER.public_spend_key, _USER.public_spend_key]
         is_change = [False, True]
         for i in range(2):
-            _ak, _ = monero.gen_txout_keys(
+            _ak, eph_key = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=receivers_view[i],
@@ -506,11 +509,16 @@ class TestChangeAddressFixed_Prehash:
                 is_subaddress=False,
             )
             state["_ak_amount"][i] = _ak
+            state["eph_keys"][i] = eph_key
 
     @staticmethod
-    def test_prefix_hash_ph(monero: MoneroCmd, device, test_name: str):
+    def test_prefix_hash_ph(monero: MoneroCmd, device, test_name: str, state):
+        # Honest prefix carrying the device-derived keys: the output-key binding
+        # check passes here, so the deferred change-address substitution is the
+        # one that gets rejected (0x691C) at prehash_update below.
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"])
         monero.prefix_hash_init(test_name, device, navigator=None, version=0, timelock=0)
-        monero.prefix_hash_update(index=1, payload=b"", is_last=True)
+        monero.prefix_hash_update(index=1, payload=prefix, is_last=True)
 
     @staticmethod
     def test_gen_commitment_mask_ph(monero: MoneroCmd, state):
