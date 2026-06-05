@@ -31,7 +31,9 @@ TXOUT_TO_TAGGED_KEY_TAG = 0x03
 
 def build_tx_prefix_outkeys(
     vout_keys: Sequence[bytes],
+    tx_pubkey: bytes,
     view_tags: Optional[Sequence[int]] = None,
+    additional_pubkeys: Optional[Sequence[bytes]] = None,
     n_inputs: int = 1,
     ring: int = 11,
 ) -> bytes:
@@ -41,9 +43,15 @@ def build_tx_prefix_outkeys(
         vout_keys:  the one-time output keys, in output-index order. To exercise
                     the honest path these must be the device-derived keys returned
                     by gen_txout_keys; to forge an attack, substitute one of them.
+        tx_pubkey:  the main tx public key R that goes in `extra` (tag 0x01). The
+                    device binds this against the txkey_pub it was given in
+                    gen_txout_keys, so honest tests must pass that same R.
         view_tags:  optional per-output view-tag bytes; when provided, outputs are
                     serialized as txout_to_tagged_key (0x03). Must match vout_keys
                     length. When None, outputs are txout_to_key (0x02).
+        additional_pubkeys: optional additional tx public keys (tag 0x04), in
+                    output order; bound by the device when the outputs use
+                    subaddresses. Each must be 32 bytes.
         n_inputs:   number of (dummy) ring inputs to emit.
         ring:       number of key offsets per input.
 
@@ -55,6 +63,12 @@ def build_tx_prefix_outkeys(
     for key in vout_keys:
         if len(key) != 32:
             raise ValueError("each vout key must be 32 bytes")
+    if len(tx_pubkey) != 32:
+        raise ValueError("tx_pubkey must be 32 bytes")
+    if additional_pubkeys is not None:
+        for key in additional_pubkeys:
+            if len(key) != 32:
+                raise ValueError("each additional pubkey must be 32 bytes")
 
     out = b""
 
@@ -80,8 +94,12 @@ def build_tx_prefix_outkeys(
             out += key
             out += bytes([view_tags[idx] & 0xFF])
 
-    # --- extra: a single tx public key entry (0x01 || R) ---
-    extra = b"\x01" + bytes(32)
+    # --- extra: main tx pub key (0x01 || R), optional additional keys (0x04) ---
+    extra = b"\x01" + tx_pubkey
+    if additional_pubkeys:
+        extra += (b"\x04"
+                  + encode_varint(len(additional_pubkeys))
+                  + b"".join(additional_pubkeys))
     out += encode_varint(len(extra)) + extra
 
     return out

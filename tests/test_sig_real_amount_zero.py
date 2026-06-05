@@ -211,7 +211,7 @@ class TestSignatureRealAmountZero:
         validate (amount=0 non-change → SW_SECURITY_AMOUNT_CHAIN_CONTROL).
         """
         assert len(state["eph_keys"]) == state["receiver_number"]
-        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"])
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"], tx_pubkey=state["tx_pub_key"])
         monero.prefix_hash_init(test_name, device,
                                 navigator=navigator, version=0, timelock=0)
         result = monero.prefix_hash_update(

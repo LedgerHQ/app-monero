@@ -125,8 +125,11 @@ class TestOutKeySubstitutionVuln:
             test_name, device, navigator=None, version=0, timelock=0
         )
 
-        # Forge the prefix: vout carries the ATTACKER key, not state["p_device"].
-        forged = build_tx_prefix_outkeys(vout_keys=[_ATTACKER_OUT_KEY])
+        # Forge the prefix: vout carries the ATTACKER key, not state["p_device"]
+        # (extra still carries the genuine R, so the only anomaly is the vout key).
+        forged = build_tx_prefix_outkeys(
+            vout_keys=[_ATTACKER_OUT_KEY], tx_pubkey=state["tx_pub_key"]
+        )
         prefix_hash = monero.prefix_hash_update(index=1, payload=forged, is_last=True)
 
         # Vulnerable device hashed the forged output key without complaint.
@@ -163,13 +166,15 @@ class TestOutKeySubstitutionFixed:
 
     @staticmethod
     def test_prefix_hash_rejects_swapped_key(
-        monero: MoneroCmd, device, test_name: str
+        monero: MoneroCmd, device, test_name: str, state
     ):
         monero.prefix_hash_init(
             test_name, device, navigator=None, version=0, timelock=0
         )
 
-        forged = build_tx_prefix_outkeys(vout_keys=[_ATTACKER_OUT_KEY])
+        forged = build_tx_prefix_outkeys(
+            vout_keys=[_ATTACKER_OUT_KEY], tx_pubkey=state["tx_pub_key"]
+        )
         with pytest.raises(ExceptionRAPDU) as exc_info:
             monero.prefix_hash_update(index=1, payload=forged, is_last=True)
         assert exc_info.value.status == SW_SECURITY_OUTKEYS_CHAIN_CONTROL, (
@@ -206,6 +211,8 @@ class TestLegitimateOutKeys:
             test_name, device, navigator=None, version=0, timelock=0
         )
 
-        honest = build_tx_prefix_outkeys(vout_keys=[state["p_device"]])
+        honest = build_tx_prefix_outkeys(
+            vout_keys=[state["p_device"]], tx_pubkey=state["tx_pub_key"]
+        )
         prefix_hash = monero.prefix_hash_update(index=1, payload=honest, is_last=True)
         assert len(prefix_hash) == 32

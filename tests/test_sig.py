@@ -115,7 +115,7 @@ class TestSignature:
         version: int = 0
         timelock: int = 2147483650
         assert len(state["eph_keys"]) == state["receiver_number"]
-        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"])
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"], tx_pubkey=state["tx_pub_key"])
         init_payload = encode_varint(version) + encode_varint(timelock)
         expected: bytes = keccak.new(digest_bits=256,
                                      data=init_payload + prefix).digest()
