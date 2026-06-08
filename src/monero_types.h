@@ -134,6 +134,10 @@ struct monero_v_state_s {
     unsigned char tx_change_cnt;
     unsigned char clsag_match_history;
     unsigned int tx_sign_cnt;
+    /* Set only when the user confirms the on-device review
+     * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
+     * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
+    unsigned char user_approved_tx;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -316,6 +320,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
 #define SW_SECURITY_CHANGE_ADDRESS           0x691C
+#define SW_SECURITY_USER_NOT_APPROVED        0x691D
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980
