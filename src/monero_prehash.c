@@ -305,6 +305,14 @@ int monero_apdu_mlsag_prehash_finalize() {
             return error;
         }
     } else {
+        // Terminal step: produces the pre-MLSAG signing hash and marks the tx
+        // signed. Refuse it unless the user confirmed the review -- a host that
+        // never triggers the final review (e.g. keeps IN_OPTION_MORE_COMMAND set
+        // on every output) leaves user_approved_tx clear and is rejected here.
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
+            !G_monero_vstate.user_approved_tx) {
+            return SW_SECURITY_USER_NOT_APPROVED;
+        }
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
             error = monero_sha256_commitment_final(H);

@@ -82,6 +82,10 @@ static void ui_menu_validation_action_confirm(void) {
 
 static void ui_menu_validation_action(bool value) {
     if (value) {
+        // Only place the tx is marked user-approved: this callback fires when the
+        // user confirms the final review (start_signature). The signing path
+        // refuses to proceed without it.
+        G_monero_vstate.user_approved_tx = 1;
         reset_context();
         ui_menu_validation_action_confirm();
     } else {

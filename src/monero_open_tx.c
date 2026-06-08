@@ -44,6 +44,8 @@ int monero_reset_tx(int reset_tx_cnt) {
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
     G_monero_vstate.tx_change_cnt = 0;
+    // A fresh transaction has not been reviewed/approved by the user yet.
+    G_monero_vstate.user_approved_tx = 0;
     if (reset_tx_cnt) {
         G_monero_vstate.tx_cnt = 0;
     }
