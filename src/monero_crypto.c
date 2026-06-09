@@ -105,13 +105,18 @@ end:
 }
 
 /* ----------------------------------------------------------------------- */
-/* --- assert: max_len>0                                               --- */
+/* --- max_len==0 and overflow are handled internally                  --- */
 /* ----------------------------------------------------------------------- */
 unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, uint64_t value,
                                   unsigned int *out_len) {
     if (!varint || !out_len) {
         PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return SW_WRONG_DATA;
+    }
+    // Reject max_len==0 up front: otherwise (max_len - 1) underflows and the
+    // bound check below never fires, allowing an out-of-bounds write.
+    if (max_len == 0) {
+        return SW_WRONG_DATA_RANGE;
     }
 
     *out_len = 0;
@@ -129,30 +134,39 @@ unsigned int monero_encode_varint(unsigned char *varint, unsigned int max_len, u
 }
 
 /* ----------------------------------------------------------------------- */
-/* --- assert: max_len>0                                               --- */
+/* --- length-driven varint decoder: never reads past max_len bytes,    --- */
+/* --- rejects max_len==0, and caps at a canonical 10-byte uint64 to     --- */
+/* --- avoid a (len*7) shift past 63 bits                                --- */
 /* ----------------------------------------------------------------------- */
 unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len, uint64_t *value,
                                   unsigned int *out_len) {
-    uint64_t v;
-    size_t len;
-    v = 0;
-    len = 0;
-    if (!varint || !out_len) {
+    if (!varint || !value || !out_len) {
         PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return SW_WRONG_DATA;
     }
-    while ((varint[len]) & 0x80) {
-        if (len == (max_len - 1)) {
+    if (max_len == 0) {
+        return SW_WRONG_DATA_RANGE;
+    }
+    uint64_t v   = 0;
+    size_t   len = 0;
+    while (len < max_len) {
+        unsigned char byte = varint[len];
+        // A uint64 varint is at most 10 bytes; the 10th byte (index 9) may only
+        // carry bit 63, i.e. its value must be 0 or 1. Reject anything longer or
+        // non-canonical so the shift below never exceeds 63.
+        if (len >= 10 || (len == 9 && (byte & 0xFE) != 0)) {
             return SW_WRONG_DATA_RANGE;
         }
-        v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
+        v |= ((uint64_t)(byte & 0x7f)) << (len * 7);
         len++;
+        if ((byte & 0x80) == 0) {
+            *value   = v;
+            *out_len = (unsigned int) len;
+            return 0;
+        }
     }
-
-    v = v + ((uint64_t)((varint[len]) & 0x7f) << (len * 7));
-    *value = v;
-    *out_len = len + 1;
-    return 0;
+    // Ran out of bytes before the terminator: truncated / unterminated varint.
+    return SW_WRONG_DATA_RANGE;
 }
 
 /* ----------------------------------------------------------------------- */
