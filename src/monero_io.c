@@ -343,6 +343,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
             if (error) {
                 return error;
             }
+            G_monero_vstate.io_offset += 32;  // consume the HMAC, as the view branch does
         }
         memcpy(buffer, G_monero_vstate.b, 32);
         return 0;
