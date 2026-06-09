@@ -159,6 +159,12 @@ struct monero_v_state_s {
 #endif
     unsigned int tx_change_major_indices[MONERO_TX_CHANGE_INDICES_MAX];
     unsigned int tx_change_minor_indices[MONERO_TX_CHANGE_INDICES_MAX];
+    /* The single main tx public key the wallet uses for every output of this tx
+     * (r.G, or r.D for a single subaddress destination). Recorded from the first
+     * output and enforced on the rest, so the change can't be derived under a
+     * different key than the one that lands on-chain (see monero_key.c). Reset
+     * per tx. */
+    unsigned char tx_main_txkey[KEY_SIZE];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
