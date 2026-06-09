@@ -43,7 +43,7 @@ int monero_apdu_mlsag_prehash_init() {
         unsigned int fee_max = G_monero_vstate.io_length - fee_off;
         uint64_t fee = 0;
         unsigned int fee_len = 0;
-        error = monero_decode_varint(G_monero_vstate.io_buffer + fee_off, MIN(8, fee_max), &fee,
+        error = monero_decode_varint(G_monero_vstate.io_buffer + fee_off, MIN(10, fee_max), &fee,
                                      &fee_len);
         if (error) {
             return error;
