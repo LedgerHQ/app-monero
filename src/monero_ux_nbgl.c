@@ -267,6 +267,7 @@ void display_account(void) {
             transactionContext.tagValuePair[0].value = "Integrated address";
 
             memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            (ADDR_ID)[16] = '\0';  // ADDR_ID is consumed as a C string below
 
             transactionContext.tagValuePair[1].item = "Payment ID";
             transactionContext.tagValuePair[1].value = ADDR_ID;

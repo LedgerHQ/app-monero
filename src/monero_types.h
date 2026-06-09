@@ -231,8 +231,8 @@ struct monero_v_state_s {
             // M.m address
             unsigned int disp_addr_M;
             unsigned int disp_addr_m;
-            // payment id
-            char payment_id[16];
+            // payment id: 16 hex chars + NUL terminator
+            char payment_id[17];
         };
         struct {
             unsigned char tmp[340];

@@ -554,6 +554,7 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
             memcpy(ADDR_TYPE, "Integrated", sizeof("Integrated"));
             memcpy(ADDR_IDSTR, "Payment ID", sizeof("Payment ID"));
             strncpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            (ADDR_ID)[16] = '\0';  // ADDR_ID is consumed as a C string below
             break;
     }
 
