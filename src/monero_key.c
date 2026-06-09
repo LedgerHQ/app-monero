@@ -882,6 +882,21 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
         }
     }
 
+    // Pin every output to one main tx public key. The wallet computes a single
+    // txkey_pub per tx and reuses it for all outputs -- r.G normally, or r.D for
+    // a single subaddress destination. Recording it from the first output and
+    // enforcing it on the rest stops a host from deriving the change under one
+    // key while a different R lands on-chain via a later output (which would burn
+    // the change), without assuming the key is r.G.
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        if (G_monero_vstate.tx_output_cnt == 0) {
+            memcpy(G_monero_vstate.tx_main_txkey, txkey_pub, KEY_SIZE);
+        } else if (memcmp(txkey_pub, G_monero_vstate.tx_main_txkey, KEY_SIZE) != 0) {
+            err = SW_WRONG_DATA;
+            goto end;
+        }
+    }
+
     // update outkeys hash control
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (G_monero_vstate.io_protocol_version >= 2) {
