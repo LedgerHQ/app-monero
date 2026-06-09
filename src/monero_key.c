@@ -25,13 +25,14 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-static void monero_payment_id_to_str(const unsigned char *payment_id, char *str) {
+static void monero_payment_id_to_str(const unsigned char *payment_id, char *str, size_t str_len) {
+    // 8 bytes -> 16 hex chars + NUL; the last snprintf writes the terminator at
+    // str[16], so the destination must hold at least 17 bytes.
+    if (str_len < 17) {
+        return;
+    }
     for (int i = 0; i < 8; i++) {
-        if (payment_id[i] <= 0xF) {
-            snprintf(str + i * 2, 3, "0%x", payment_id[i]);
-        } else {
-            snprintf(str + i * 2, 3, "%x", payment_id[i]);
-        }
+        snprintf(str + i * 2, str_len - (i * 2), "%02x", payment_id[i]);
     }
 }
 
@@ -73,7 +74,8 @@ int monero_apdu_display_address() {
         G_monero_vstate.disp_addr_mode = DISP_SUB;
     } else {
         if (G_monero_vstate.io_p1 == 1) {
-            monero_payment_id_to_str(payment_id, G_monero_vstate.payment_id);
+            monero_payment_id_to_str(payment_id, G_monero_vstate.payment_id,
+                                     sizeof(G_monero_vstate.payment_id));
             G_monero_vstate.disp_addr_mode = DISP_INTEGRATED;
         } else {
             G_monero_vstate.disp_addr_mode = DISP_MAIN;
