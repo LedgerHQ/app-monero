@@ -792,3 +792,140 @@ class TestSubaddressChangeAccountRoot:
             is_change_addr=True,
             is_subaddress=True,
         )
+
+
+# ---------------------------------------------------------------------------
+# TestChangeAccountDisplayed — a non-primary change account is shown to the user.
+# Change to account 1 must render "Change account 1" on the review, so a host
+# can't hide change in an undisclosed account.
+# NBGL-only: the text renders on one page (the Nano bold title scrolls).
+# ---------------------------------------------------------------------------
+@pytest.mark.incremental
+class TestChangeAccountDisplayed:
+
+    @staticmethod
+    @pytest.fixture(autouse=True, scope="class")
+    def nbgl_only(device):
+        if device.is_nano:
+            pytest.skip("change-account title scrolls on Nano; asserted on NBGL")
+
+    @staticmethod
+    @pytest.fixture(autouse=True, scope="class")
+    def state():
+        return {
+            "tx_pub_key": None, "_tx_priv_key": None, "fvk": None,
+            "_ak_amount": [[], []],
+            "blinded_amount": [[], []],
+            "blinded_mask": [[], []],
+            "y": [[], []],
+            "eph_keys": [],
+        }
+
+    @staticmethod
+    def test_reset(monero: MoneroCmd):
+        monero.reset_and_get_version(monero_client_version=b"0.18")
+
+    @staticmethod
+    def test_set_sig(monero: MoneroCmd):
+        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
+
+    @staticmethod
+    def test_open_tx(monero: MoneroCmd, state):
+        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
+        state["tx_pub_key"] = tx_pub_key
+        state["_tx_priv_key"] = _tx_priv_key
+        state["fvk"] = fvk
+
+    @staticmethod
+    def test_gen_txout_keys(monero: MoneroCmd, state):
+        # Whitelist account 1 (device records (1,0) as an allowed change dest).
+        _record_index(monero, state["fvk"], major=1, minor=0)
+        A_chg, B_chg = _compute_subaddress_keys(major=1, minor=0)
+        rv = [_USER.public_view_key, A_chg]
+        rs = [_USER.public_spend_key, B_chg]
+        is_change = [False, True]
+        is_sub = [False, True]
+        for i in range(2):
+            _ak, eph = monero.gen_txout_keys(
+                _tx_priv_key=state["_tx_priv_key"],
+                tx_pub_key=state["tx_pub_key"],
+                dst_pub_view_key=rv[i],
+                dst_pub_spend_key=rs[i],
+                output_index=i,
+                is_change_addr=is_change[i],
+                is_subaddress=is_sub[i],
+            )
+            state["_ak_amount"][i].append(_ak)
+            state["eph_keys"].append(eph)
+
+    @staticmethod
+    def test_prefix_hash(monero: MoneroCmd, device, test_name: str, state):
+        # Stream a real prefix carrying the device-derived one-time keys and R so
+        # the OUT_EPH / EXTRA_R binding is satisfied.
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"],
+                                         tx_pubkey=state["tx_pub_key"])
+        monero.prefix_hash_init(test_name, device, navigator=None, version=0, timelock=0)
+        monero.prefix_hash_update(index=1, payload=prefix, is_last=True)
+
+    @staticmethod
+    def test_gen_commitment_mask(monero: MoneroCmd, state):
+        for i in range(2):
+            state["y"][i].append(monero.gen_commitment_mask(state["_ak_amount"][i][0]))
+
+    @staticmethod
+    def test_blind(monero: MoneroCmd, state):
+        amounts = [_AMOUNT_DEST, _AMOUNT_CHANGE]
+        for i in range(2):
+            bm, ba = monero.blind(
+                _ak_amount=state["_ak_amount"][i][0], mask=state["y"][i][0],
+                amount=amounts[i], is_short=True,
+            )
+            state["blinded_mask"][i].append(bm)
+            state["blinded_amount"][i].append(ba)
+
+    @staticmethod
+    def test_validate_shows_change_account(
+        monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
+        device, test_name: str, state,
+    ):
+        A_chg, B_chg = _compute_subaddress_keys(major=1, minor=0)
+        monero.validate_prehash_init(test_name, device, navigator, 1, 0, _FEE)
+
+        # output 0: legitimate destination (amount + address), no navigation
+        monero.validate_prehash_update(
+            backend, test_name, navigator,
+            index=1, is_short=True, is_change_addr=False, is_subaddress=False,
+            dst_pub_view_key=_USER.public_view_key, dst_pub_spend_key=_USER.public_spend_key,
+            _ak_amount=state["_ak_amount"][0][0], commitment=bytes(32),
+            blinded_amount=state["blinded_amount"][0][0], blinded_mask=state["blinded_mask"][0][0],
+            is_last=False, do_navigation=False,
+        )
+
+        # output 1: change to subaddress account 1 (last). navigate_and_compare
+        # swipes through the review and screenshots each page; the golden snapshot
+        # for the change page captures the "Change account 1" title.
+        # Review pages: Fee, Amount(out0), Destination(out0), "Change account 1"
+        # (out1) + Hold-to-sign = 5 pages -> 3 swipes (N-1) before TAP + CONFIRM.
+        monero.validate_prehash_update(
+            backend, test_name, navigator,
+            index=2, is_short=True, is_change_addr=True, is_subaddress=True,
+            dst_pub_view_key=A_chg, dst_pub_spend_key=B_chg,
+            _ak_amount=state["_ak_amount"][1][0], commitment=bytes(32),
+            blinded_amount=state["blinded_amount"][1][0], blinded_mask=state["blinded_mask"][1][0],
+            is_last=True, swipe_count=3,
+        )
+
+        rv = [_USER.public_view_key, A_chg]
+        rs = [_USER.public_spend_key, B_chg]
+        for i in range(2):
+            monero.validate_prehash_finalize(
+                index=i + 1, is_short=False, is_change_addr=(i == 1), is_subaddress=(i == 1),
+                dst_pub_view_key=rv[i], dst_pub_spend_key=rs[i],
+                _ak_amount=state["_ak_amount"][i][0], commitment=bytes(32),
+                blinded_amount=state["blinded_amount"][i][0], blinded_mask=state["blinded_mask"][i][0],
+                is_last=(i == 1),
+            )
+
+    @staticmethod
+    def test_close_tx(monero: MoneroCmd):
+        monero.close_tx()
