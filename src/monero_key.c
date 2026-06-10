@@ -828,6 +828,34 @@ int monero_check_change_address(const unsigned char *Aout, const unsigned char *
         }
     }
 
+    /* The wallet sends change to the account root (M, 0) but never asks the
+     * device for it while signing, so the whitelist above is empty on a normal
+     * send and change to a non-primary account gets rejected. Re-derive each
+     * (M, 0) and match against (Aout, Bout). B can't be forged without the spend
+     * key, so substitution is still caught. Bound matches wallet2's default. */
+#define CHANGE_ACCOUNT_LOOKAHEAD 50
+    index[4] = 0;
+    index[5] = 0;
+    index[6] = 0;
+    index[7] = 0;
+    for (unsigned int M = 1; M < CHANGE_ACCOUNT_LOOKAHEAD; M++) {
+        index[0] = (unsigned char)(M & 0xFF);
+        index[1] = (unsigned char)((M >> 8) & 0xFF);
+        index[2] = (unsigned char)((M >> 16) & 0xFF);
+        index[3] = (unsigned char)((M >> 24) & 0xFF);
+        err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE, sizeof(index));
+        if (err) {
+            return err;
+        }
+        if ((memcmp(Aout, C, KEY_SIZE) == 0) && (memcmp(Bout, D, KEY_SIZE) == 0)) {
+            if (out_major != NULL) {
+                *out_major = M;
+            }
+            return 0;
+        }
+    }
+#undef CHANGE_ACCOUNT_LOOKAHEAD
+
     return SW_SECURITY_CHANGE_ADDRESS;
 }
 
