@@ -98,6 +98,7 @@ int monero_apdu_mlsag_prehash_update() {
     unsigned char *Aout;
     unsigned char *Bout;
     unsigned char is_change;
+    unsigned int  chg_major = 0;
     unsigned char AKout[KEY_SIZE];
     unsigned char C[32];
     unsigned char v[32];
@@ -150,7 +151,7 @@ int monero_apdu_mlsag_prehash_update() {
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         // reject spoofed change address before any state is mutated
         if (is_change) {
-            err = monero_check_change_address(Aout, Bout);
+            err = monero_check_change_address(Aout, Bout, &chg_major);
             if (err) {
                 goto end;
             }
@@ -259,13 +260,13 @@ int monero_apdu_mlsag_prehash_update() {
             if (!is_change) {
                 ui_menu_validation_display_last(0);
             } else {
-                ui_menu_change_validation_display_last(0);
+                ui_menu_change_validation_display_last(chg_major);
             }
         } else {
             if (!is_change) {
                 ui_menu_validation_display(0);
             } else {
-                ui_menu_change_validation_display(0);
+                ui_menu_change_validation_display(chg_major);
             }
         }
         err = 0;

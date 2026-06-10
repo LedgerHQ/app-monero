@@ -55,7 +55,6 @@ static TransactionContext_t transactionContext;
 
 /* -------------------------------- TITLES ---------------------------------- */
 const char feeTitle[] = "Fee";
-const char changeTitle[] = "Change";
 const char amountTitle[] = "Amount";
 const char dstTitle[] = "Destination";
 const char timelockTitle[] = "Timelock";
@@ -174,13 +173,19 @@ void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) 
     ui_menu_validation_action_confirm();
 }
 
-void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
-    add_amount(changeTitle, false);
+// value carries the change account index (0 = primary). Surface a non-primary
+// account so a host cannot silently route change to an undisplayed account.
+static char changeTitleBuf[32];
+
+void ui_menu_change_validation_display(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
+    add_amount(changeTitleBuf, false);
     ui_menu_validation_action_confirm();
 }
 
-void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
-    add_amount(changeTitle, true);
+void ui_menu_change_validation_display_last(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
+    add_amount(changeTitleBuf, true);
     start_signature();
 }
 
