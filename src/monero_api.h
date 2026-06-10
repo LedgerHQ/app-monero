@@ -194,7 +194,13 @@ int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *ind
                           size_t D_len, size_t index_len);
 int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
                                      size_t sub_s_len, size_t s_len, size_t index_len);
-int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout);
+// On a successful match, *out_major (if non-NULL) receives the change account
+// index (0 for the primary address). Change always lands on the account root
+// (minor 0), so only the account is reported.
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout,
+                                unsigned int *out_major);
+// Build the change-review title ("Change" or "Change account <major>").
+void monero_format_change_title(char *str, size_t str_len, unsigned int major);
 
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */

@@ -788,7 +788,8 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout) {
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout,
+                                unsigned int *out_major) {
     unsigned char C[KEY_SIZE];
     unsigned char D[KEY_SIZE];
     unsigned char index[8];
@@ -797,6 +798,9 @@ int monero_check_change_address(const unsigned char *Aout, const unsigned char *
     /* primary address (major=0, minor=0) */
     if ((memcmp(Aout, G_monero_vstate.A, KEY_SIZE) == 0) &&
         (memcmp(Bout, G_monero_vstate.B, KEY_SIZE) == 0)) {
+        if (out_major != NULL) {
+            *out_major = 0;
+        }
         return 0;
     }
 
@@ -822,6 +826,9 @@ int monero_check_change_address(const unsigned char *Aout, const unsigned char *
                 return err;
             }
             if ((memcmp(Aout, C, KEY_SIZE) == 0) && (memcmp(Bout, D, KEY_SIZE) == 0)) {
+                if (out_major != NULL) {
+                    *out_major = M;
+                }
                 return 0;
             }
         }
@@ -882,7 +889,7 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
 
     // reject spoofed change address before any state is mutated
     if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
-        err = monero_check_change_address(Aout, Bout);
+        err = monero_check_change_address(Aout, Bout, NULL);
         if (err) {
             goto end;
         }

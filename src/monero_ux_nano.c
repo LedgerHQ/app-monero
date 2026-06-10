@@ -127,9 +127,11 @@ UX_STEP_NOCB(ux_menu_validation_fee_1_step, bn,
                  G_monero_vstate.ux_amount,
              });
 
+// Holds "Change" or "Change account <N>" so a non-primary change account is shown to the user
+static char changeTitleBuf[32];
 UX_STEP_NOCB(ux_menu_validation_change_1_step, bn,
              {
-                 "Change",
+                 changeTitleBuf,
                  G_monero_vstate.ux_amount,
              });
 
@@ -177,11 +179,13 @@ void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) 
     ux_flow_init(0, ux_flow_fee, NULL);
 }
 
-void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
+void ui_menu_change_validation_display(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
     ux_flow_init(0, ux_flow_change, NULL);
 }
 
-void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
+void ui_menu_change_validation_display_last(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
     ux_flow_init(0, ux_flow_change, NULL);
 }
 
