@@ -172,8 +172,29 @@ class MoneroCmd(MoneroCryptoCmd):
                        dst_pub_spend_key: bytes,
                        output_index: int,
                        is_change_addr: bool,
-                       is_subaddress: bool) -> Tuple[bytes, bytes]:
+                       is_subaddress: bool,
+                       need_additional_txkeys: bool = False):
+        """Derive a one-time output key.
+
+        Returns (amount_key, out_ephemeral_pub_key) by default. When
+        need_additional_txkeys is True (subaddress destinations), the device
+        also derives and returns a per-output additional tx public key, and the
+        return becomes (amount_key, out_ephemeral_pub_key, additional_pub_key).
+
+        The additional secret just needs to be a key the device can decrypt, so we
+        reuse the encrypted tx private key from open_tx; the device derives the
+        additional public key from it and returns it.
+        """
         ins: InsType = InsType.INS_GEN_TXOUT_KEYS
+
+        if need_additional_txkeys:
+            additional_field = (b"\x01"  # need_additional_txkeys = true
+                                + _tx_priv_key
+                                + hmac_sha256(_tx_priv_key,
+                                              MoneroCryptoCmd.HMAC_KEY,
+                                              Type.SCALAR))
+        else:
+            additional_field = b"\x00" * 33
 
         payload: bytes = b"".join((
             struct.pack('>I', 0),  # tx_version
@@ -187,8 +208,8 @@ class MoneroCmd(MoneroCryptoCmd):
             struct.pack('>I', output_index),
             b"\x01" if is_change_addr else b"\x00",
             b"\x01" if is_subaddress else b"\x00",
-            b"\x00" * 33,  # additional_txkeys
-            b"\x00" * 33,  # use_view_tags
+            additional_field,
+            b"\x00",  # use_view_tags = false
         ))
 
         self.transport.send(cla=PROTOCOL_VERSION,
@@ -205,8 +226,6 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
 
-        assert len(response) == 96
-
         _ak_amount = response[:32]
         hmac_ak_amount = response[32:64]
         out_ephemeral_pub_key = response[64:96]
@@ -215,6 +234,12 @@ class MoneroCmd(MoneroCryptoCmd):
                                               MoneroCryptoCmd.HMAC_KEY,
                                               Type.AMOUNT_KEY))
 
+        if need_additional_txkeys:
+            assert len(response) == 128
+            additional_pub_key = response[96:128]
+            return _ak_amount, out_ephemeral_pub_key, additional_pub_key
+
+        assert len(response) == 96
         return _ak_amount, out_ephemeral_pub_key
 
     def prefix_hash_init(self,

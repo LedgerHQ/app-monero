@@ -34,6 +34,7 @@ def build_tx_prefix_outkeys(
     tx_pubkey: bytes,
     view_tags: Optional[Sequence[int]] = None,
     additional_pubkeys: Optional[Sequence[bytes]] = None,
+    extra_suffix: bytes = b"",
     n_inputs: int = 1,
     ring: int = 11,
 ) -> bytes:
@@ -52,6 +53,9 @@ def build_tx_prefix_outkeys(
         additional_pubkeys: optional additional tx public keys (tag 0x04), in
                     output order; bound by the device when the outputs use
                     subaddresses. Each must be 32 bytes.
+        extra_suffix: raw bytes appended to `extra` after the mandatory tx pub
+                    key (and any additional keys) -- e.g. a payment-id nonce
+                    (0x02) or padding (0x00). The device parser must skip these.
         n_inputs:   number of (dummy) ring inputs to emit.
         ring:       number of key offsets per input.
 
@@ -100,6 +104,7 @@ def build_tx_prefix_outkeys(
         extra += (b"\x04"
                   + encode_varint(len(additional_pubkeys))
                   + b"".join(additional_pubkeys))
+    extra += extra_suffix
     out += encode_varint(len(extra)) + extra
 
     return out
