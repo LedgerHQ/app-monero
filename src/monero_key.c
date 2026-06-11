@@ -168,7 +168,8 @@ int monero_apdu_get_key() {
                 (char *)G_monero_vstate.io_buffer + G_monero_vstate.io_offset, G_monero_vstate.A,
                 G_monero_vstate.B, 0, NULL);
             if (error) {
-                return 0;
+                // Return a real error SW
+                return error;
             }
             monero_io_inserted(95);
             break;
