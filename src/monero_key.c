@@ -872,13 +872,11 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
     use_view_tags = monero_io_fetch_u8();
 
-    // reject spoofed change address before any state is mutated
-    if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
-        err = monero_check_change_address(Aout, Bout);
-        if (err) {
-            goto end;
-        }
-    }
+    /*
+     * Change address check is done in INS_VALIDATE, after amount unblinding.
+     * Monero sweep_all/sweep_single transactions commonly keep two outputs by
+     * adding a dummy amount=0 change output, whose address is not wallet-owned.
+     */
 
     // update outkeys hash control
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
