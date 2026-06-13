@@ -99,9 +99,14 @@ int monero_apdu_mlsag_prehash_update() {
     unsigned char *Bout;
     unsigned char is_change;
     unsigned char AKout[KEY_SIZE];
+    unsigned char AKout_raw[KEY_SIZE];
     unsigned char C[32];
     unsigned char v[32];
+    unsigned char v_raw[32];
     unsigned char k[32];
+    unsigned char k_raw[32];
+    uint64_t amount;
+    unsigned int i;
 
 #define aH AKout
     unsigned char kG[32];
@@ -125,69 +130,38 @@ int monero_apdu_mlsag_prehash_update() {
     monero_io_fetch(C, 32);
     monero_io_fetch(k, 32);
     monero_io_fetch(v, 32);
+    memcpy(AKout_raw, AKout, KEY_SIZE);
+    memcpy(k_raw, k, 32);
+    memcpy(v_raw, v, 32);
 
     monero_io_discard(0);
 
-    // update MLSAG prehash
-    if ((G_monero_vstate.options & 0x03) == 0x02) {
-        err = monero_keccak_update_H(v, 8);
-        if (err) {
-            goto end;
-        }
-
-    } else {
-        err = monero_keccak_update_H(k, 32);
-        if (err) {
-            goto end;
-        }
-
-        err = monero_keccak_update_H(v, 32);
-        if (err) {
-            goto end;
-        }
-    }
-
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        // reject spoofed change address before any state is mutated
-        if (is_change) {
-            err = monero_check_change_address(Aout, Bout);
-            if (err) {
-                goto end;
-            }
-        }
-        if (is_change == 0) {
-            // encode dest adress
-            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
-                                           is_subaddress, NULL);
-            if (err) {
-                goto end;
-            }
-        }
-        // update destination hash control
-        if (G_monero_vstate.io_protocol_version >= 2) {
-            err = monero_sha256_outkeys_update(Aout, KEY_SIZE);
-            if (err) {
-                goto end;
-            }
-            err = monero_sha256_outkeys_update(Bout, KEY_SIZE);
-            if (err) {
-                goto end;
-            }
-            err = monero_sha256_outkeys_update(&is_change, 1);
-            if (err) {
-                goto end;
-            }
-            err = monero_sha256_outkeys_update(AKout, KEY_SIZE);
-            if (err) {
-                goto end;
-            }
-        }
-
         // check C = aH+kG
         err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
                              sizeof(AKout));
         if (err) {
             goto end;
+        }
+
+        // short amounts must be canonical before being displayed as uint64
+        if ((G_monero_vstate.options & 0x03) == 0x02) {
+            for (i = 8; i < 32; i++) {
+                if (v[i] != 0) {
+                    err = SW_SECURITY_AMOUNT_CHAIN_CONTROL;
+                    goto end;
+                }
+            }
+        }
+
+        amount = monero_bamount2uint64(v, sizeof(v));
+
+        // sweep_all/sweep_single may include a dummy amount=0 change output
+        if (is_change && !cx_math_is_zero(v, 32)) {
+            err = monero_check_change_address(Aout, Bout);
+            if (err) {
+                goto end;
+            }
         }
 
         err = monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
@@ -214,6 +188,56 @@ int monero_apdu_mlsag_prehash_update() {
             goto end;
 #endif
         }
+        if (is_change == 0) {
+            // encode dest adress
+            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
+                                           is_subaddress, NULL);
+            if (err) {
+                goto end;
+            }
+        }
+    }
+
+    // update MLSAG prehash
+    if ((G_monero_vstate.options & 0x03) == 0x02) {
+        err = monero_keccak_update_H(v_raw, 8);
+        if (err) {
+            goto end;
+        }
+
+    } else {
+        err = monero_keccak_update_H(k_raw, 32);
+        if (err) {
+            goto end;
+        }
+
+        err = monero_keccak_update_H(v_raw, 32);
+        if (err) {
+            goto end;
+        }
+    }
+
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        // update destination hash control
+        if (G_monero_vstate.io_protocol_version >= 2) {
+            err = monero_sha256_outkeys_update(Aout, KEY_SIZE);
+            if (err) {
+                goto end;
+            }
+            err = monero_sha256_outkeys_update(Bout, KEY_SIZE);
+            if (err) {
+                goto end;
+            }
+            err = monero_sha256_outkeys_update(&is_change, 1);
+            if (err) {
+                goto end;
+            }
+            err = monero_sha256_outkeys_update(AKout_raw, KEY_SIZE);
+            if (err) {
+                goto end;
+            }
+        }
+
         // update commitment hash control
         err = monero_sha256_commitment_update(C, 32);
         if (err) {
@@ -241,8 +265,6 @@ int monero_apdu_mlsag_prehash_update() {
         }
 
         // ask user
-        uint64_t amount;
-        amount = monero_bamount2uint64(v, sizeof(v));
         /* Rejecting signature for a non-change output with amount equal to 0.
          * Otherwise showing review sequence.
          */
@@ -275,8 +297,11 @@ int monero_apdu_mlsag_prehash_update() {
 
 end:
     explicit_bzero(AKout, sizeof(AKout));
+    explicit_bzero(AKout_raw, sizeof(AKout_raw));
     explicit_bzero(v, sizeof(v));
+    explicit_bzero(v_raw, sizeof(v_raw));
     explicit_bzero(k, sizeof(k));
+    explicit_bzero(k_raw, sizeof(k_raw));
     return err;
 
 #undef aH
