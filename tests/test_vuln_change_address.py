@@ -169,7 +169,7 @@ class TestChangeAddressVuln:
         is_change = [False, True]
 
         for i in range(2):
-            _ak, eph_key = monero.gen_txout_keys(
+            _ak, eph_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=receivers_view[i],
@@ -499,7 +499,7 @@ class TestChangeAddressFixed_Prehash:
         receivers_spend = [_USER.public_spend_key, _USER.public_spend_key]
         is_change = [False, True]
         for i in range(2):
-            _ak, eph_key = monero.gen_txout_keys(
+            _ak, eph_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=receivers_view[i],
@@ -846,7 +846,7 @@ class TestChangeAccountDisplayed:
         is_change = [False, True]
         is_sub = [False, True]
         for i in range(2):
-            _ak, eph = monero.gen_txout_keys(
+            _ak, eph, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=rv[i],

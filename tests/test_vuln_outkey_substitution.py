@@ -74,7 +74,7 @@ def _gen_single_output(monero: MoneroCmd, state) -> bytes:
     state["tx_pub_key"] = tx_pub_key
     state["_tx_priv_key"] = _tx_priv_key
 
-    _ak, p_device = monero.gen_txout_keys(
+    _ak, p_device, _ = monero.gen_txout_keys(
         _tx_priv_key=_tx_priv_key,
         tx_pub_key=tx_pub_key,
         dst_pub_view_key=_USER.public_view_key,

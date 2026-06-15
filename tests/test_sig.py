@@ -93,7 +93,7 @@ class TestSignature:
     @staticmethod
     def test_gen_txout_keys(monero: MoneroCmd, state):
         for index in range(state["receiver_number"]):
-            _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
+            _ak_amount, out_ephemeral_pub_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,

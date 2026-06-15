@@ -5,9 +5,11 @@ to the device over INS_PREFIX_HASH (P2 chunks), i.e. everything after the
 
     vin || vout || extra
 
-Only the vout one-time keys are security-relevant for the device's output-key
-binding check (SW_SECURITY_OUTKEYS_CHAIN_CONTROL); vin/extra content is skipped
-by the device parser, so we emit minimal but well-formed structures here.
+The vout one-time keys and the `extra` tx public keys (main key R via tag 0x01,
+per-output additional keys via tag 0x04) are what the device binds for its
+output-key check (SW_SECURITY_OUTKEYS_CHAIN_CONTROL). vin is walked but not bound,
+and other `extra` fields (padding, nonce, ...) are skipped, so we emit minimal
+but well-formed structures for those.
 
 Layout (Monero binary archive):
   vin  : varint count, then per txin_to_key:
@@ -17,7 +19,8 @@ Layout (Monero binary archive):
            varint amount (0 for RingCT),
            0x02 txout_to_key            -> 32-byte key
            0x03 txout_to_tagged_key     -> 32-byte key + 1-byte view tag
-  extra: varint len, then bytes (here: a single tx pub key entry 0x01 || R)
+  extra: varint len, then: main tx pub key (0x01 || R), optional additional keys
+           (0x04 || varint count || count*32 bytes), then any extra_suffix
 """
 
 from typing import Optional, Sequence

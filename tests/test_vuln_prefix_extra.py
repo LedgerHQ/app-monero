@@ -39,7 +39,7 @@ def _open_and_genkeys(monero: MoneroCmd, n_outputs: int):
     pub_view, pub_spend, _ = monero.get_public_keys()
     eph_keys = []
     for index in range(n_outputs):
-        _ak, eph = monero.gen_txout_keys(
+        _ak, eph, _ = monero.gen_txout_keys(
             _tx_priv_key=_tx_priv_key,
             tx_pub_key=tx_pub_key,
             dst_pub_view_key=pub_view,

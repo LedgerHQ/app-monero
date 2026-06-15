@@ -98,7 +98,7 @@ class TestSignatureRealAmountZero:
     def test_decoy1_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for TX1 decoy 1."""
         for index in range(state["receiver_number"]):
-            _, _ = monero.gen_txout_keys(
+            _, _, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["decoy1_tx_priv_key"],
                 tx_pub_key=state["decoy1_tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -141,7 +141,7 @@ class TestSignatureRealAmountZero:
     def test_decoy2_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for TX1 decoy 2."""
         for index in range(state["receiver_number"]):
-            _, _ = monero.gen_txout_keys(
+            _, _, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["decoy2_tx_priv_key"],
                 tx_pub_key=state["decoy2_tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -188,7 +188,7 @@ class TestSignatureRealAmountZero:
     def test_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for first transaction."""
         for index in range(state["receiver_number"]):
-            _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
+            _ak_amount, out_ephemeral_pub_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,

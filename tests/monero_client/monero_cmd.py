@@ -173,13 +173,14 @@ class MoneroCmd(MoneroCryptoCmd):
                        output_index: int,
                        is_change_addr: bool,
                        is_subaddress: bool,
-                       need_additional_txkeys: bool = False):
+                       need_additional_txkeys: bool = False
+                       ) -> Tuple[bytes, bytes, bytes | None]:
         """Derive a one-time output key.
 
-        Returns (amount_key, out_ephemeral_pub_key) by default. When
-        need_additional_txkeys is True (subaddress destinations), the device
-        also derives and returns a per-output additional tx public key, and the
-        return becomes (amount_key, out_ephemeral_pub_key, additional_pub_key).
+        Returns (amount_key, out_ephemeral_pub_key, additional_pub_key).
+        additional_pub_key is None unless need_additional_txkeys is True
+        (subaddress destinations), in which case the device also derives and
+        returns a per-output additional tx public key.
 
         The additional secret just needs to be a key the device can decrypt, so we
         reuse the encrypted tx private key from open_tx; the device derives the
@@ -240,7 +241,7 @@ class MoneroCmd(MoneroCryptoCmd):
             return _ak_amount, out_ephemeral_pub_key, additional_pub_key
 
         assert len(response) == 96
-        return _ak_amount, out_ephemeral_pub_key
+        return _ak_amount, out_ephemeral_pub_key, None
 
     def prefix_hash_init(self,
                          test_name: str,

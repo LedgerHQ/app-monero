@@ -112,7 +112,7 @@ def _setup_through_blind(monero: MoneroCmd, backend: BackendInterface,
 
     recv = [s, s]
     for i in range(2):
-        ak, eph = monero.gen_txout_keys(
+        ak, eph, _ = monero.gen_txout_keys(
             _tx_priv_key=tx_priv_key, tx_pub_key=tx_pub_key,
             dst_pub_view_key=recv[i].public_view_key,
             dst_pub_spend_key=recv[i].public_spend_key,
