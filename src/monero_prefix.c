@@ -20,22 +20,23 @@
  * Client: rctSigs.cpp.c -> get_pre_mlsag_hash
  */
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* --- Tx-prefix output-key verifier                                   --- */
 /* ----------------------------------------------------------------------- */
 /*
- * The host streams the tx prefix over INS_PREFIX_HASH and the device only hashes
- * it, so a tampered host could get attacker-chosen output keys signed while the
- * UI showed something else. To stop that, INS_GEN_TXOUT_KEYS chains the output
- * keys into OUT_EPH, the additional tx pubkeys into ADDK and the main tx pubkey
- * into EXTRA_R; the state machine below re-walks the signed prefix and checks
- * vout against OUT_EPH and the `extra` field against EXTRA_R/ADDK.
+ * The host streams the tx prefix over INS_PREFIX_HASH and the device only
+ * hashes it, so a tampered host could get attacker-chosen output keys signed
+ * while the UI showed something else. To stop that, INS_GEN_TXOUT_KEYS chains
+ * the output keys into OUT_EPH, the additional tx pubkeys into ADDK and the
+ * main tx pubkey into EXTRA_R; the state machine below re-walks the signed
+ * prefix and checks vout against OUT_EPH and the `extra` field against
+ * EXTRA_R/ADDK.
  *
  * Prefix layout after (version, unlock_time), which the init step handles
  * separately -- the concatenation streamed over the P2 chunks:
@@ -61,16 +62,16 @@
  * all progress lives in G_monero_vstate.prefix_*.
  */
 
-#define TXIN_TO_KEY_TAG          0x02
-#define TXOUT_TO_KEY_TAG         0x02
-#define TXOUT_TO_TAGGED_KEY_TAG  0x03
+#define TXIN_TO_KEY_TAG 0x02
+#define TXOUT_TO_KEY_TAG 0x02
+#define TXOUT_TO_TAGGED_KEY_TAG 0x03
 
 /* tx_extra field tags (cryptonote_basic/tx_extra.h) */
-#define TX_EXTRA_TAG_PADDING              0x00
-#define TX_EXTRA_TAG_PUBKEY               0x01
-#define TX_EXTRA_NONCE                    0x02
-#define TX_EXTRA_MERGE_MINING_TAG         0x03
-#define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS   0x04
+#define TX_EXTRA_TAG_PADDING 0x00
+#define TX_EXTRA_TAG_PUBKEY 0x01
+#define TX_EXTRA_NONCE 0x02
+#define TX_EXTRA_MERGE_MINING_TAG 0x03
+#define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS 0x04
 #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG 0xDE
 
 enum {
@@ -102,7 +103,8 @@ static int pfx_varint_byte(unsigned char c) {
     if (G_monero_vstate.prefix_vi_shift >= 64) {
         return -1;
     }
-    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f) << G_monero_vstate.prefix_vi_shift;
+    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f)
+                                     << G_monero_vstate.prefix_vi_shift;
     G_monero_vstate.prefix_vi_shift += 7;
     return (c & 0x80) ? 0 : 1;
 }
@@ -127,13 +129,15 @@ static int pfx_finalize_outkeys(void) {
     return 0;
 }
 
-/* End of `extra`: the main tx pubkey must have appeared (and matched), and if the
- * device made additional keys they must have too (checked inline at the 0x04 block). */
+/* End of `extra`: the main tx pubkey must have appeared (and matched), and if
+ * the device made additional keys they must have too (checked inline at the
+ * 0x04 block). */
 static int pfx_finalize_extra(void) {
     if (!G_monero_vstate.prefix_extra_r_found) {
         return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
     }
-    if (G_monero_vstate.prefix_addk_expected && !G_monero_vstate.prefix_extra_addk_found) {
+    if (G_monero_vstate.prefix_addk_expected &&
+        !G_monero_vstate.prefix_extra_addk_found) {
         return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
     }
     G_monero_vstate.prefix_outkeys_done = 1;
@@ -173,7 +177,7 @@ void monero_prefix_outkeys_reset(void) {
     G_monero_vstate.prefix_outkeys_done = 0;
 }
 
-int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
+int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
     int err;
     int r;
     size_t i = 0;
@@ -186,7 +190,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     return SW_WRONG_DATA;
                 }
                 if (r) {
-                    G_monero_vstate.prefix_vin_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_vin_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     if (G_monero_vstate.prefix_vin_remaining == 0) {
                         pfx_enter_varint(PFX_VOUT_CNT);
                     } else {
@@ -196,7 +201,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                 break;
 
             case PFX_VIN_TAG:
-                /* Wallet-built transactions only ever spend txin_to_key inputs. */
+                /* Wallet-built transactions only ever spend txin_to_key inputs.
+                 */
                 if (buf[i++] != TXIN_TO_KEY_TAG) {
                     return SW_WRONG_DATA;
                 }
@@ -219,7 +225,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     return SW_WRONG_DATA;
                 }
                 if (r) {
-                    G_monero_vstate.prefix_off_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_off_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     if (G_monero_vstate.prefix_off_remaining == 0) {
                         G_monero_vstate.prefix_field_off = 0;
                         G_monero_vstate.prefix_state = PFX_VIN_KIMG;
@@ -269,10 +276,12 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     return SW_WRONG_DATA;
                 }
                 if (r) {
-                    G_monero_vstate.prefix_vout_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_vout_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     /* The number of signed outputs must match what was reviewed
                      * (and chained into OUT_EPH) during INS_GEN_TXOUT_KEYS. */
-                    if (G_monero_vstate.prefix_vout_remaining != G_monero_vstate.tx_output_cnt) {
+                    if (G_monero_vstate.prefix_vout_remaining !=
+                        G_monero_vstate.tx_output_cnt) {
                         return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
                     }
                     if (G_monero_vstate.prefix_vout_remaining == 0) {
@@ -299,7 +308,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
 
             case PFX_VOUT_TAG: {
                 unsigned char tag = buf[i++];
-                if ((tag != TXOUT_TO_KEY_TAG) && (tag != TXOUT_TO_TAGGED_KEY_TAG)) {
+                if ((tag != TXOUT_TO_KEY_TAG) &&
+                    (tag != TXOUT_TO_TAGGED_KEY_TAG)) {
                     return SW_WRONG_DATA;
                 }
                 G_monero_vstate.prefix_outkey_tag = tag;
@@ -320,7 +330,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                 i += take;
                 G_monero_vstate.prefix_field_off += take;
                 if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
-                    if (G_monero_vstate.prefix_outkey_tag == TXOUT_TO_TAGGED_KEY_TAG) {
+                    if (G_monero_vstate.prefix_outkey_tag ==
+                        TXOUT_TO_TAGGED_KEY_TAG) {
                         G_monero_vstate.prefix_state = PFX_VOUT_VTAG;
                     } else {
                         err = pfx_finish_output();
@@ -351,9 +362,11 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     return SW_WRONG_DATA;
                 }
                 if (r) {
-                    G_monero_vstate.prefix_extra_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_extra_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     if (G_monero_vstate.prefix_extra_remaining == 0) {
-                        err = pfx_finalize_extra();  /* fails: no tx public key */
+                        err =
+                            pfx_finalize_extra(); /* fails: no tx public key */
                         if (err) {
                             return err;
                         }
@@ -369,7 +382,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                 switch (tag) {
                     case TX_EXTRA_TAG_PUBKEY:
                         if (G_monero_vstate.prefix_extra_r_found) {
-                            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* duplicate R */
+                            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* duplicate
+                                                                         R */
                         }
                         if (G_monero_vstate.prefix_extra_remaining < KEY_SIZE) {
                             return SW_WRONG_DATA;
@@ -403,20 +417,25 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
             }
 
             case PFX_EXTRA_PUBKEY: {
-                /* 32-byte main tx public key R: compare to EXTRA_R, resumable */
+                /* 32-byte main tx public key R: compare to EXTRA_R, resumable
+                 */
                 size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
                 size_t avail = len - i;
                 size_t take = (avail < need) ? avail : need;
                 for (size_t k = 0; k < take; k++) {
-                    G_monero_vstate.prefix_extra_acc |= (unsigned char)(
-                        buf[i + k] ^ G_monero_vstate.EXTRA_R[G_monero_vstate.prefix_field_off + k]);
+                    G_monero_vstate.prefix_extra_acc |=
+                        (unsigned char)(buf[i + k] ^
+                                        G_monero_vstate.EXTRA_R
+                                            [G_monero_vstate.prefix_field_off +
+                                             k]);
                 }
                 i += take;
                 G_monero_vstate.prefix_field_off += take;
                 G_monero_vstate.prefix_extra_remaining -= take;
                 if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
                     if (G_monero_vstate.prefix_extra_acc != 0) {
-                        return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs */
+                        return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs
+                                                                   */
                     }
                     G_monero_vstate.prefix_extra_r_found = 1;
                     if (G_monero_vstate.prefix_extra_remaining == 0) {
@@ -444,14 +463,16 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     /* when present, there is exactly one additional key per
                      * output, in output order (see construct_tx_with_tx_key) */
                     if (!G_monero_vstate.prefix_addk_expected ||
-                        (G_monero_vstate.prefix_vi_val != G_monero_vstate.tx_output_cnt)) {
+                        (G_monero_vstate.prefix_vi_val !=
+                         G_monero_vstate.tx_output_cnt)) {
                         return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
                     }
                     if (G_monero_vstate.prefix_extra_remaining <
                         G_monero_vstate.prefix_vi_val * KEY_SIZE) {
                         return SW_WRONG_DATA;
                     }
-                    G_monero_vstate.prefix_off_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_off_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     G_monero_vstate.prefix_field_off = 0;
                     G_monero_vstate.prefix_state = PFX_EXTRA_ADDK;
                 }
@@ -478,7 +499,8 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                         if (err) {
                             return err;
                         }
-                        if (memcmp(digest, G_monero_vstate.ADDK, KEY_SIZE) != 0) {
+                        if (memcmp(digest, G_monero_vstate.ADDK, KEY_SIZE) !=
+                            0) {
                             return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
                         }
                         G_monero_vstate.prefix_extra_addk_found = 1;
@@ -520,10 +542,12 @@ int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len) {
                     return SW_WRONG_DATA;
                 }
                 if (r) {
-                    if (G_monero_vstate.prefix_extra_remaining < G_monero_vstate.prefix_vi_val) {
+                    if (G_monero_vstate.prefix_extra_remaining <
+                        G_monero_vstate.prefix_vi_val) {
                         return SW_WRONG_DATA;
                     }
-                    G_monero_vstate.prefix_off_remaining = G_monero_vstate.prefix_vi_val;
+                    G_monero_vstate.prefix_off_remaining =
+                        G_monero_vstate.prefix_vi_val;
                     G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
                 }
                 break;
@@ -567,8 +591,9 @@ int monero_apdu_prefix_hash_init(void) {
     uint64_t timelock;
     int error = 0;
 
-    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    error = monero_keccak_update_H(
+        G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+        G_monero_vstate.io_length - G_monero_vstate.io_offset);
     if (error) {
         return error;
     }
@@ -626,8 +651,9 @@ int monero_apdu_prefix_hash_init(void) {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_prefix_hash_update(void) {
     int error;
-    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    error = monero_keccak_update_H(
+        G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+        G_monero_vstate.io_length - G_monero_vstate.io_offset);
     if (error) {
         return error;
     }
@@ -646,7 +672,8 @@ int monero_apdu_prefix_hash_update(void) {
 
     monero_io_discard(0);
     if ((G_monero_vstate.options & 0x80) == 0x00) {
-        /* last prefix chunk: every reviewed output key must have been matched */
+        /* last prefix chunk: every reviewed output key must have been matched
+         */
         if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
             (G_monero_vstate.io_protocol_version >= 2) &&
             (G_monero_vstate.prefix_outkeys_done == 0)) {

@@ -20,22 +20,25 @@
  * Client: rctSigs.cpp.c -> get_pre_mlsag_hash
  */
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_init() {
     int error = 0;
-    if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) && (G_monero_vstate.io_p2 == 1)) {
-        // The fee APDU must be exactly [u8 type] [varint fee]. Reject any trailing
-        // bytes so that host-controlled data cannot be silently absorbed into the
-        // transaction prehash while the UI displays only the fee (CWE-451).
-        unsigned int payload_len = G_monero_vstate.io_length - G_monero_vstate.io_offset;
+    if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+        (G_monero_vstate.io_p2 == 1)) {
+        // The fee APDU must be exactly [u8 type] [varint fee]. Reject any
+        // trailing bytes so that host-controlled data cannot be silently
+        // absorbed into the transaction prehash while the UI displays only the
+        // fee (CWE-451).
+        unsigned int payload_len =
+            G_monero_vstate.io_length - G_monero_vstate.io_offset;
         if (payload_len < 2) {
             return SW_WRONG_DATA;
         }
@@ -43,8 +46,8 @@ int monero_apdu_mlsag_prehash_init() {
         unsigned int fee_max = G_monero_vstate.io_length - fee_off;
         uint64_t fee = 0;
         unsigned int fee_len = 0;
-        error = monero_decode_varint(G_monero_vstate.io_buffer + fee_off, MIN(10, fee_max), &fee,
-                                     &fee_len);
+        error = monero_decode_varint(G_monero_vstate.io_buffer + fee_off,
+                                     MIN(10, fee_max), &fee, &fee_len);
         if (error) {
             return error;
         }
@@ -62,27 +65,31 @@ int monero_apdu_mlsag_prehash_init() {
         if (error) {
             return error;
         }
-        error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                       1 + fee_len);
+        error = monero_keccak_update_H(
+            G_monero_vstate.io_buffer + G_monero_vstate.io_offset, 1 + fee_len);
         if (error) {
             return error;
         }
         // skip type
         monero_io_fetch_u8();
         // fee str
-        monero_vamount2str(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                           G_monero_vstate.ux_amount, 15);
+        monero_vamount2str(
+            G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+            G_monero_vstate.ux_amount, 15);
 
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
-                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
+                 sizeof(G_monero_vstate.ux_amount) -
+                     strlen(G_monero_vstate.ux_amount),
+                 " XMR");
         // ask user
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
         return 0;
     }
 
-    error = monero_keccak_update_H(G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-                                   G_monero_vstate.io_length - G_monero_vstate.io_offset);
+    error = monero_keccak_update_H(
+        G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+        G_monero_vstate.io_length - G_monero_vstate.io_offset);
     if (error) {
         return error;
     }
@@ -95,10 +102,10 @@ int monero_apdu_mlsag_prehash_init() {
 /* ----------------------------------------------------------------------- */
 int monero_apdu_mlsag_prehash_update() {
     unsigned char is_subaddress;
-    unsigned char *Aout;
-    unsigned char *Bout;
+    unsigned char* Aout;
+    unsigned char* Bout;
     unsigned char is_change;
-    unsigned int  chg_major = 0;
+    unsigned int chg_major = 0;
     unsigned char AKout[KEY_SIZE];
     unsigned char C[32];
     unsigned char v[32];
@@ -158,8 +165,8 @@ int monero_apdu_mlsag_prehash_update() {
         }
         if (is_change == 0) {
             // encode dest adress
-            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
-                                           is_subaddress, NULL);
+            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout,
+                                           Bout, is_subaddress, NULL);
             if (err) {
                 goto end;
             }
@@ -185,8 +192,8 @@ int monero_apdu_mlsag_prehash_update() {
         }
 
         // check C = aH+kG
-        err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03, sizeof(v), sizeof(k),
-                             sizeof(AKout));
+        err = monero_unblind(v, k, AKout, G_monero_vstate.options & 0x03,
+                             sizeof(v), sizeof(k), sizeof(AKout));
         if (err) {
             goto end;
         }
@@ -254,7 +261,9 @@ int monero_apdu_mlsag_prehash_update() {
 
         monero_amount2str(amount, G_monero_vstate.ux_amount, 15);
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
-                 sizeof(G_monero_vstate.ux_amount) - strlen(G_monero_vstate.ux_amount), " XMR");
+                 sizeof(G_monero_vstate.ux_amount) -
+                     strlen(G_monero_vstate.ux_amount),
+                 " XMR");
 
         if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {
             if (!is_change) {
@@ -308,8 +317,9 @@ int monero_apdu_mlsag_prehash_finalize() {
     } else {
         // Terminal step: produces the pre-MLSAG signing hash and marks the tx
         // signed. Refuse it unless the user confirmed the review -- a host that
-        // never triggers the final review (e.g. keeps IN_OPTION_MORE_COMMAND set
-        // on every output) leaves user_approved_tx clear and is rejected here.
+        // never triggers the final review (e.g. keeps IN_OPTION_MORE_COMMAND
+        // set on every output) leaves user_approved_tx clear and is rejected
+        // here.
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
             !G_monero_vstate.user_approved_tx) {
             return SW_SECURITY_USER_NOT_APPROVED;

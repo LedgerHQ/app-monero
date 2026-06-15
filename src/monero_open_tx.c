@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -44,7 +44,8 @@ int monero_reset_tx(int reset_tx_cnt) {
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
     G_monero_vstate.tx_change_cnt = 0;
-    explicit_bzero(G_monero_vstate.tx_main_txkey, sizeof(G_monero_vstate.tx_main_txkey));
+    explicit_bzero(G_monero_vstate.tx_main_txkey,
+                   sizeof(G_monero_vstate.tx_main_txkey));
     // A fresh transaction has not been reviewed/approved by the user yet.
     G_monero_vstate.user_approved_tx = 0;
     if (reset_tx_cnt) {
@@ -89,8 +90,9 @@ int monero_apdu_open_tx_cont() {
         return error;
     }
 
-    error = monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r, sizeof(G_monero_vstate.R),
-                           sizeof(G_monero_vstate.r));
+    error =
+        monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r,
+                       sizeof(G_monero_vstate.R), sizeof(G_monero_vstate.r));
     if (error) {
         return error;
     }
@@ -98,9 +100,11 @@ int monero_apdu_open_tx_cont() {
     monero_io_insert(G_monero_vstate.R, KEY_SIZE);
     monero_io_insert_encrypt(G_monero_vstate.r, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void *)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, KEY_SIZE,
+                              TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void *)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, KEY_SIZE,
+                              TYPE_SCALAR);
     return SW_OK;
 }
 
@@ -110,7 +114,8 @@ int monero_apdu_open_tx_cont() {
 int monero_apdu_close_tx() {
     int error;
     monero_io_discard(1);
-    error = monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
+    error =
+        monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
     if (error) {
         return error;
     }

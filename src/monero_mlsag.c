@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -79,13 +79,15 @@ int monero_apdu_mlsag_prepare() {
 
     if (options) {
         // ai.Hi
-        err = monero_ecmul_k(mul, Hi, alpha, sizeof(mul), sizeof(Hi), sizeof(alpha));
+        err = monero_ecmul_k(mul, Hi, alpha, sizeof(mul), sizeof(Hi),
+                             sizeof(alpha));
         if (err) {
             goto end;
         }
         monero_io_insert(mul, 32);
         // IIi = xin.Hi
-        err = monero_ecmul_k(mul, Hi, xin, sizeof(mul), sizeof(Hi), sizeof(xin));
+        err =
+            monero_ecmul_k(mul, Hi, xin, sizeof(mul), sizeof(Hi), sizeof(xin));
         if (err) {
             goto end;
         }
@@ -180,7 +182,8 @@ int monero_apdu_mlsag_sign() {
         goto end;
     }
 
-    err = monero_reduce(ss, G_monero_vstate.c, sizeof(ss), sizeof(G_monero_vstate.c));
+    err = monero_reduce(ss, G_monero_vstate.c, sizeof(ss),
+                        sizeof(G_monero_vstate.c));
     if (err) {
         goto end;
     }

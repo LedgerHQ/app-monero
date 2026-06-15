@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -132,7 +132,8 @@ int monero_apdu_clsag_hash() {
     monero_io_fetch(msg, 32);
     monero_io_discard(1);
 
-    G_monero_vstate.clsag_match_history = (G_monero_vstate.clsag_match_history << 1) & 0x07;
+    G_monero_vstate.clsag_match_history =
+        (G_monero_vstate.clsag_match_history << 1) & 0x07;
     if (memcmp(msg, G_monero_vstate.mlsagH, 32) == 0) {
         G_monero_vstate.clsag_match_history |= 1;
     }
@@ -264,8 +265,8 @@ int monero_apdu_clsag_sign() {
         goto end;
     }
 
-    err = monero_reduce(G_monero_vstate.c, G_monero_vstate.c, sizeof(G_monero_vstate.c),
-                        sizeof(G_monero_vstate.c));
+    err = monero_reduce(G_monero_vstate.c, G_monero_vstate.c,
+                        sizeof(G_monero_vstate.c), sizeof(G_monero_vstate.c));
     if (err) {
         goto end;
     }
@@ -292,8 +293,8 @@ int monero_apdu_clsag_sign() {
         goto end;
     }
     // mu_P = c * (p*mu_P + mu_C*z)
-    err = monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P), sizeof(G_monero_vstate.c),
-                       sizeof(s));
+    err = monero_multm(mu_P, G_monero_vstate.c, s, sizeof(mu_P),
+                       sizeof(G_monero_vstate.c), sizeof(s));
     if (err) {
         goto end;
     }
