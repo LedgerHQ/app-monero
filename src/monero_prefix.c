@@ -177,6 +177,121 @@ void monero_prefix_outkeys_reset(void) {
     G_monero_vstate.prefix_outkeys_done = 0;
 }
 
+/* PFX_EXTRA_TAG: dispatch one tx_extra field tag (one byte already available at
+ * *i). Returns 0 to continue parsing, or an SW error code. */
+static int pfx_state_extra_tag(const unsigned char* buf, size_t* i) {
+    unsigned char tag = buf[(*i)++];
+    G_monero_vstate.prefix_extra_remaining--;
+    switch (tag) {
+        case TX_EXTRA_TAG_PUBKEY:
+            if (G_monero_vstate.prefix_extra_r_found) {
+                return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* duplicate R */
+            }
+            if (G_monero_vstate.prefix_extra_remaining < KEY_SIZE) {
+                return SW_WRONG_DATA;
+            }
+            G_monero_vstate.prefix_field_off = 0;
+            G_monero_vstate.prefix_extra_acc = 0;
+            G_monero_vstate.prefix_state = PFX_EXTRA_PUBKEY;
+            break;
+        case TX_EXTRA_TAG_ADDITIONAL_PUBKEYS:
+            pfx_enter_varint(PFX_EXTRA_ADDK_CNT);
+            break;
+        case TX_EXTRA_NONCE:
+            G_monero_vstate.prefix_state = PFX_EXTRA_NONCE_LEN;
+            break;
+        case TX_EXTRA_MERGE_MINING_TAG:
+        case TX_EXTRA_MYSTERIOUS_MINERGATE_TAG:
+            pfx_enter_varint(PFX_EXTRA_TLV_LEN);
+            break;
+        case TX_EXTRA_TAG_PADDING:
+        default:
+            /* padding (zeros to end) or an unknown tag with no decodable
+             * length: consume the remainder of `extra`. The mandatory main tx
+             * public key must already have been seen (verified in
+             * pfx_finalize_extra). */
+            G_monero_vstate.prefix_off_remaining =
+                G_monero_vstate.prefix_extra_remaining;
+            G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
+            break;
+    }
+    return 0;
+}
+
+/* PFX_EXTRA_ADDK: hash count*32 additional-key bytes into sha256_addk and, once
+ * all are consumed, compare the digest to ADDK. Resumable across chunks.
+ * Returns 0 to continue parsing, or an SW error code. */
+static int pfx_state_extra_addk(const unsigned char* buf, size_t len,
+                                size_t* i) {
+    size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
+    size_t avail = len - *i;
+    size_t take = (avail < need) ? avail : need;
+    int err = monero_sha256_addk_update(buf + *i, take);
+    if (err) {
+        return err;
+    }
+    *i += take;
+    G_monero_vstate.prefix_field_off += take;
+    G_monero_vstate.prefix_extra_remaining -= take;
+    if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
+        G_monero_vstate.prefix_field_off = 0;
+        G_monero_vstate.prefix_off_remaining--;
+        if (G_monero_vstate.prefix_off_remaining == 0) {
+            unsigned char digest[KEY_SIZE];
+            err = monero_sha256_addk_final(digest);
+            if (err) {
+                return err;
+            }
+            if (memcmp(digest, G_monero_vstate.ADDK, KEY_SIZE) != 0) {
+                return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
+            }
+            G_monero_vstate.prefix_extra_addk_found = 1;
+            if (G_monero_vstate.prefix_extra_remaining == 0) {
+                err = pfx_finalize_extra();
+                if (err) {
+                    return err;
+                }
+            } else {
+                G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
+            }
+        }
+    }
+    return 0;
+}
+
+/* PFX_EXTRA_PUBKEY: consume the 32-byte main tx public key R and compare it to
+ * EXTRA_R, byte-accumulating across chunks. Returns 0 to continue, or an SW. */
+static int pfx_state_extra_pubkey(const unsigned char* buf, size_t len,
+                                  size_t* i) {
+    size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
+    size_t avail = len - *i;
+    size_t take = (avail < need) ? avail : need;
+    for (size_t k = 0; k < take; k++) {
+        G_monero_vstate.prefix_extra_acc |=
+            (unsigned char)(buf[*i + k] ^
+                            G_monero_vstate
+                                .EXTRA_R[G_monero_vstate.prefix_field_off + k]);
+    }
+    *i += take;
+    G_monero_vstate.prefix_field_off += take;
+    G_monero_vstate.prefix_extra_remaining -= take;
+    if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
+        if (G_monero_vstate.prefix_extra_acc != 0) {
+            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs */
+        }
+        G_monero_vstate.prefix_extra_r_found = 1;
+        if (G_monero_vstate.prefix_extra_remaining == 0) {
+            int err = pfx_finalize_extra();
+            if (err) {
+                return err;
+            }
+        } else {
+            G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
+        }
+    }
+    return 0;
+}
+
 int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
     int err;
     int r;
@@ -376,79 +491,19 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                 }
                 break;
 
-            case PFX_EXTRA_TAG: {
-                unsigned char tag = buf[i++];
-                G_monero_vstate.prefix_extra_remaining--;
-                switch (tag) {
-                    case TX_EXTRA_TAG_PUBKEY:
-                        if (G_monero_vstate.prefix_extra_r_found) {
-                            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* duplicate
-                                                                         R */
-                        }
-                        if (G_monero_vstate.prefix_extra_remaining < KEY_SIZE) {
-                            return SW_WRONG_DATA;
-                        }
-                        G_monero_vstate.prefix_field_off = 0;
-                        G_monero_vstate.prefix_extra_acc = 0;
-                        G_monero_vstate.prefix_state = PFX_EXTRA_PUBKEY;
-                        break;
-                    case TX_EXTRA_TAG_ADDITIONAL_PUBKEYS:
-                        pfx_enter_varint(PFX_EXTRA_ADDK_CNT);
-                        break;
-                    case TX_EXTRA_NONCE:
-                        G_monero_vstate.prefix_state = PFX_EXTRA_NONCE_LEN;
-                        break;
-                    case TX_EXTRA_MERGE_MINING_TAG:
-                    case TX_EXTRA_MYSTERIOUS_MINERGATE_TAG:
-                        pfx_enter_varint(PFX_EXTRA_TLV_LEN);
-                        break;
-                    case TX_EXTRA_TAG_PADDING:
-                    default:
-                        /* padding (zeros to end) or an unknown tag with no
-                         * decodable length: consume the remainder of `extra`.
-                         * The mandatory main tx public key must already have
-                         * been seen (verified in pfx_finalize_extra). */
-                        G_monero_vstate.prefix_off_remaining =
-                            G_monero_vstate.prefix_extra_remaining;
-                        G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
-                        break;
+            case PFX_EXTRA_TAG:
+                err = pfx_state_extra_tag(buf, &i);
+                if (err) {
+                    return err;
                 }
                 break;
-            }
 
-            case PFX_EXTRA_PUBKEY: {
-                /* 32-byte main tx public key R: compare to EXTRA_R, resumable
-                 */
-                size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
-                size_t avail = len - i;
-                size_t take = (avail < need) ? avail : need;
-                for (size_t k = 0; k < take; k++) {
-                    G_monero_vstate.prefix_extra_acc |=
-                        (unsigned char)(buf[i + k] ^
-                                        G_monero_vstate.EXTRA_R
-                                            [G_monero_vstate.prefix_field_off +
-                                             k]);
-                }
-                i += take;
-                G_monero_vstate.prefix_field_off += take;
-                G_monero_vstate.prefix_extra_remaining -= take;
-                if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
-                    if (G_monero_vstate.prefix_extra_acc != 0) {
-                        return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs
-                                                                   */
-                    }
-                    G_monero_vstate.prefix_extra_r_found = 1;
-                    if (G_monero_vstate.prefix_extra_remaining == 0) {
-                        err = pfx_finalize_extra();
-                        if (err) {
-                            return err;
-                        }
-                    } else {
-                        G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
-                    }
+            case PFX_EXTRA_PUBKEY:
+                err = pfx_state_extra_pubkey(buf, len, &i);
+                if (err) {
+                    return err;
                 }
                 break;
-            }
 
             case PFX_EXTRA_ADDK_CNT:
                 if (G_monero_vstate.prefix_extra_remaining == 0) {
@@ -478,44 +533,12 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                 }
                 break;
 
-            case PFX_EXTRA_ADDK: {
-                /* count*32 bytes: hash into sha256_addk, compare to ADDK */
-                size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
-                size_t avail = len - i;
-                size_t take = (avail < need) ? avail : need;
-                err = monero_sha256_addk_update(buf + i, take);
+            case PFX_EXTRA_ADDK:
+                err = pfx_state_extra_addk(buf, len, &i);
                 if (err) {
                     return err;
                 }
-                i += take;
-                G_monero_vstate.prefix_field_off += take;
-                G_monero_vstate.prefix_extra_remaining -= take;
-                if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
-                    G_monero_vstate.prefix_field_off = 0;
-                    G_monero_vstate.prefix_off_remaining--;
-                    if (G_monero_vstate.prefix_off_remaining == 0) {
-                        unsigned char digest[KEY_SIZE];
-                        err = monero_sha256_addk_final(digest);
-                        if (err) {
-                            return err;
-                        }
-                        if (memcmp(digest, G_monero_vstate.ADDK, KEY_SIZE) !=
-                            0) {
-                            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
-                        }
-                        G_monero_vstate.prefix_extra_addk_found = 1;
-                        if (G_monero_vstate.prefix_extra_remaining == 0) {
-                            err = pfx_finalize_extra();
-                            if (err) {
-                                return err;
-                            }
-                        } else {
-                            G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
-                        }
-                    }
-                }
                 break;
-            }
 
             case PFX_EXTRA_NONCE_LEN: {
                 unsigned char n;
