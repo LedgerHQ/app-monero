@@ -104,6 +104,10 @@ struct monero_v_state_s {
     unsigned char io_p2;
     unsigned char io_lc;
     unsigned char io_le;
+    /* Set while a received command still owes its reply. app_main uses it to
+     * refuse a second command that arrives while a confirmation is on screen,
+     * so the host cannot mutate tx state behind the user's back. */
+    unsigned char io_reply_pending;
     unsigned short io_length;
     unsigned short io_offset;
     unsigned short io_mark;

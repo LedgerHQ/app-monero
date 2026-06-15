@@ -447,6 +447,10 @@ int monero_io_do(unsigned int io_flags) {
     }
     // else send data now
     else {
+        // A reply is going out, so the command it answers no longer owes one.
+        // (Covers both synchronous replies and the deferred IO_RETURN_AFTER_TX
+        // sent from a confirmation callback.)
+        G_monero_vstate.io_reply_pending = 0;
         G_monero_vstate.io_offset = 0;
         if (G_monero_vstate.io_length > MAX_OUT) {
             return SW_IO_FULL;
