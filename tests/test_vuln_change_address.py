@@ -630,7 +630,7 @@ def _record_index(monero: MoneroCmd, fake_view_key: bytes, major: int, minor: in
 
 def _drive_change_through_prehash(monero, backend, navigator, test_name,
                                   chg_view, chg_spend, is_subaddress, amount,
-                                  is_last):
+                                  is_last, corrupt_amount_high_byte=False):
     """Run a REAL-tx flow up to a single change prehash_update; return the SW.
 
     Both gen_txout_keys outputs use the user's primary address (so the flow is
@@ -670,6 +670,11 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
 
     y = monero.gen_commitment_mask(ak[1])
     bm, ba = monero.blind(_ak_amount=ak[1], mask=y, amount=amount, is_short=True)
+    if corrupt_amount_high_byte:
+        # Make the short amount non-canonical: set a byte past the low 8. The
+        # device's short unblind only XORs v[0:8], so this byte survives into
+        # v[8:32] and must be rejected (SW_SECURITY_AMOUNT_CHAIN_CONTROL).
+        ba = ba[:8] + b"\x01" + ba[9:]
 
     monero.validate_prehash_init(test_name, device, navigator, 1, 0, _FEE)
 
