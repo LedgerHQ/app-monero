@@ -132,6 +132,7 @@ int monero_base58_public_key(char* str_b58, unsigned char* view,
                              unsigned char* spend, unsigned char is_subbadress,
                              unsigned char* paymanetID) {
     unsigned char data[72 + 8];
+    unsigned char hash[32];
     unsigned int offset;
     unsigned int prefix;
     int error = 0;
@@ -185,11 +186,12 @@ int monero_base58_public_key(char* str_b58, unsigned char* view,
         memcpy(data + offset, paymanetID, 8);
         offset += 8;
     }
-    error = monero_keccak_F(data, offset, G_monero_vstate.mlsagH);
+    // Hash into a local digest, not G_monero_vstate.mlsagH
+    error = monero_keccak_F(data, offset, hash);
     if (error) {
-        return error;
+        goto end;
     }
-    memcpy(data + offset, G_monero_vstate.mlsagH, 4);
+    memcpy(data + offset, hash, 4);
     offset += 4;
 
     unsigned int full_block_count = (offset) / FULL_BLOCK_SIZE;
@@ -210,5 +212,7 @@ int monero_base58_public_key(char* str_b58, unsigned char* view,
         str_b58[ADDR_LEN] = '\0';
     }
 
-    return 0;
+end:
+    explicit_bzero(hash, sizeof(hash));
+    return error;
 }
