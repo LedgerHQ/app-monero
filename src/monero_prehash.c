@@ -184,6 +184,18 @@ int monero_apdu_mlsag_prehash_update() {
             goto end;
         }
 
+        // A short amount carries only 8 meaningful bytes, and the value shown
+        // to the user is read from those low bytes. Reject a non-canonical
+        // encoding so the displayed amount matches what the commitment binds.
+        if ((G_monero_vstate.options & 0x03) == 0x02) {
+            for (unsigned int i = 8; i < 32; i++) {
+                if (v[i] != 0) {
+                    err = SW_SECURITY_AMOUNT_CHAIN_CONTROL;
+                    goto end;
+                }
+            }
+        }
+
         err = monero_ecmul_G(kG, k, sizeof(kG), sizeof(k));
         if (err) {
             goto end;
