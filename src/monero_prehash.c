@@ -149,13 +149,6 @@ int monero_apdu_mlsag_prehash_update() {
     }
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        // reject spoofed change address before any state is mutated
-        if (is_change) {
-            err = monero_check_change_address(Aout, Bout, &chg_major);
-            if (err) {
-                goto end;
-            }
-        }
         if (is_change == 0) {
             // encode dest adress
             err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout, Bout,
@@ -219,6 +212,21 @@ int monero_apdu_mlsag_prehash_update() {
         err = monero_sha256_commitment_update(C, 32);
         if (err) {
             goto end;
+        }
+
+        // Change-address check, now that the amount is unblinded and
+        // the commitment verified: non-zero change must be wallet-owned. A
+        // zero-amount dummy change (the 2nd output of sweep_all/sweep_single)
+        // diverts no value, so it is accepted without the address match.
+        if (is_change) {
+            if (!cx_math_is_zero(v, 32)) {
+                err = monero_check_change_address(Aout, Bout, &chg_major);
+                if (err) {
+                    goto end;
+                }
+            } else {
+                chg_major = 0;
+            }
         }
 
         if ((G_monero_vstate.options & IN_OPTION_MORE_COMMAND) == 0) {

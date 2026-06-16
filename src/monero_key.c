@@ -915,13 +915,10 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
     use_view_tags = monero_io_fetch_u8();
 
-    // reject spoofed change address before any state is mutated
-    if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
-        err = monero_check_change_address(Aout, Bout, NULL);
-        if (err) {
-            goto end;
-        }
-    }
+    // The change address is validated in INS_VALIDATE / prehash_update, once
+    // the amount has been unblinded: sweep_all/sweep_single add a zero-amount
+    // dummy change whose address isn't wallet-owned, and it can only be told
+    // apart from a spoofed real change once the amount is known.
 
     // Pin every output to one main tx public key. The wallet computes a single
     // txkey_pub per tx and reuses it for all outputs -- r.G normally, or r.D for
