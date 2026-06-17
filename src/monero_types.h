@@ -107,6 +107,10 @@ struct monero_v_state_s {
     unsigned char io_p2;
     unsigned char io_lc;
     unsigned char io_le;
+    /* Set while a received command still owes its reply. app_main uses it to
+     * refuse a second command that arrives while a confirmation is on screen,
+     * so the host cannot mutate tx state behind the user's back. */
+    unsigned char io_reply_pending;
     unsigned short io_length;
     unsigned short io_offset;
     unsigned short io_mark;
@@ -134,6 +138,10 @@ struct monero_v_state_s {
     unsigned char tx_state_p2;
     unsigned char tx_output_cnt;
     unsigned int tx_sign_cnt;
+    /* Set only when the user confirms the on-device review
+     * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
+     * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
+    unsigned char user_approved_tx;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -143,6 +151,12 @@ struct monero_v_state_s {
     unsigned int tx_change_major_indices[8];
     unsigned int tx_change_minor_indices[8];
     unsigned char tx_change_cnt;
+    /* The single main tx public key the wallet uses for every output of this tx
+     * (r.G, or r.D for a single subaddress destination). Recorded from the first
+     * output and enforced on the rest, so the change can't be derived under a
+     * different key than the one that lands on-chain (see monero_key.c). Reset
+     * per tx. */
+    unsigned char tx_main_txkey[KEY_SIZE];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -175,6 +189,33 @@ struct monero_v_state_s {
     cx_sha256_t sha256_commitment;
     unsigned char C[32];
 
+    /* -- bind the signed outputs to the reviewed destinations -- */
+    /* sha256_out_eph/OUT_EPH chain the output keys derived in INS_GEN_TXOUT_KEYS,
+     * then get re-checked while parsing the signed prefix. sha256_addk/ADDK do the
+     * same for additional tx pubkeys; EXTRA_R holds the expected main tx pubkey.
+     * All three are checked against the prefix's vout and extra fields. */
+    cx_sha256_t sha256_out_eph;
+    unsigned char OUT_EPH[KEY_SIZE];
+    cx_sha256_t sha256_addk;
+    unsigned char ADDK[KEY_SIZE];
+    unsigned char EXTRA_R[KEY_SIZE];
+    /* Resumable state machine that walks vin/vout/extra of the tx prefix streamed
+     * over INS_PREFIX_HASH (chunks split at arbitrary byte boundaries). */
+    uint64_t prefix_vi_val;                /* in-progress varint accumulator         */
+    uint64_t prefix_vin_remaining;         /* inputs left to parse                   */
+    uint64_t prefix_off_remaining;         /* key_offsets left / extra skip / addk keys */
+    uint64_t prefix_vout_remaining;        /* outputs left to parse                  */
+    uint64_t prefix_extra_remaining;       /* bytes left to consume inside `extra`   */
+    unsigned char prefix_vi_shift;         /* in-progress varint bit shift           */
+    unsigned char prefix_state;            /* parser state (see PFX_* in monero_prefix.c) */
+    unsigned char prefix_field_off;        /* byte progress within a 32-byte field   */
+    unsigned char prefix_outkey_tag;       /* current vout target tag (0x02/0x03)    */
+    unsigned char prefix_extra_acc;        /* diff accumulator while matching EXTRA_R */
+    unsigned char prefix_addk_expected;    /* build: an output produced additional keys */
+    unsigned char prefix_extra_r_found;    /* verify: tag 0x01 seen & matched     */
+    unsigned char prefix_extra_addk_found; /* verify: tag 0x04 seen & matched     */
+    unsigned char prefix_outkeys_done;     /* set once vout AND extra are verified   */
+
     /* ------------------------------------------ */
     /* ---               UI/UX                --- */
     /* ------------------------------------------ */
@@ -196,8 +237,8 @@ struct monero_v_state_s {
             // M.m address
             unsigned int disp_addr_M;
             unsigned int disp_addr_m;
-            // payment id
-            char payment_id[16];
+            // payment id: 16 hex chars + NUL terminator
+            char payment_id[17];
         };
         struct {
             unsigned char tmp[340];
@@ -309,6 +350,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
 #define SW_SECURITY_CHANGE_ADDRESS           0x691C
+#define SW_SECURITY_USER_NOT_APPROVED        0x691D
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

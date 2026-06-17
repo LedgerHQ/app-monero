@@ -16,28 +16,26 @@
 
 #ifdef HAVE_NBGL
 
-#include "os.h"
-#include "ux.h"
 #include "cx.h"
+#include "glyphs.h"
 #include "monero_api.h"
 #include "monero_types.h"
 #include "monero_ui.h"
 #include "monero_vars.h"
-
+#include "nbgl_use_case.h"
+#include "os.h"
 #include "os_io_seproxyhal.h"
 #include "string.h"
-#include "glyphs.h"
+#include "ux.h"
 
-#include "nbgl_use_case.h"
-
-#define QUIT_TOKEN     0
+#define QUIT_TOKEN 0
 #define CONTINUE_TOKEN 1
 /* ----------------------------------------------------------------------- */
 /* ---                         Stax  UI layout                         --- */
 /* ----------------------------------------------------------------------- */
 #define MAX_TAGVALUE_NUMBER 9
-#define MAX_AMOUNT_NUMBER   6
-#define MAX_ADDR_NUMBER     3  //  MAX_AMOUNT_NUMBER - timelock - fee - change
+#define MAX_AMOUNT_NUMBER 6
+#define MAX_ADDR_NUMBER 3  //  MAX_AMOUNT_NUMBER - timelock - fee - change
 
 typedef struct {
     nbgl_contentTagValue_t tagValuePair[MAX_TAGVALUE_NUMBER];
@@ -55,7 +53,6 @@ static TransactionContext_t transactionContext;
 
 /* -------------------------------- TITLES ---------------------------------- */
 const char feeTitle[] = "Fee";
-const char changeTitle[] = "Change";
 const char amountTitle[] = "Amount";
 const char dstTitle[] = "Destination";
 const char timelockTitle[] = "Timelock";
@@ -82,6 +79,10 @@ static void ui_menu_validation_action_confirm(void) {
 
 static void ui_menu_validation_action(bool value) {
     if (value) {
+        // Only place the tx is marked user-approved: this callback fires when
+        // the user confirms the final review (start_signature). The signing
+        // path refuses to proceed without it.
+        G_monero_vstate.user_approved_tx = 1;
         reset_context();
         ui_menu_validation_action_confirm();
     } else {
@@ -91,7 +92,8 @@ static void ui_menu_validation_action(bool value) {
 
 static void add_amount(const char* title, bool forcePageStart) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
-    if ((transactionContext.amountNum >= MAX_AMOUNT_NUMBER) || (nbPairs >= MAX_TAGVALUE_NUMBER)) {
+    if ((transactionContext.amountNum >= MAX_AMOUNT_NUMBER) ||
+        (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
         return;
     }
@@ -102,7 +104,8 @@ static void add_amount(const char* title, bool forcePageStart) {
     transactionContext.tagValuePair[nbPairs].item = title;
     transactionContext.tagValuePair[nbPairs].value =
         transactionContext.amountBuffer[transactionContext.amountNum];
-    if (forcePageStart) transactionContext.tagValuePair[nbPairs].forcePageStart = 1;
+    if (forcePageStart)
+        transactionContext.tagValuePair[nbPairs].forcePageStart = 1;
 
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
@@ -113,13 +116,14 @@ static void add_amount(const char* title, bool forcePageStart) {
 static void add_address(void) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
 
-    if ((transactionContext.addrNum >= MAX_ADDR_NUMBER) || (nbPairs >= MAX_TAGVALUE_NUMBER)) {
+    if ((transactionContext.addrNum >= MAX_ADDR_NUMBER) ||
+        (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
         return;
     }
 
-    strncpy(transactionContext.dstBuffer[transactionContext.addrNum], G_monero_vstate.ux_address,
-            MAX_ADDR_LENGTH);
+    strncpy(transactionContext.dstBuffer[transactionContext.addrNum],
+            G_monero_vstate.ux_address, MAX_ADDR_LENGTH);
 
     transactionContext.tagValuePair[nbPairs].item = dstTitle;
     transactionContext.tagValuePair[nbPairs].value =
@@ -139,7 +143,8 @@ unsigned int ui_menu_transaction_start(void) {
 }
 
 unsigned int ui_menu_transaction_signed(void) {
-    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_SIGNED, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_SIGNED,
+                             ui_menu_main_display);
     return 0;
 }
 
@@ -154,36 +159,46 @@ void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
 /* -------------------------------- INFO UX --------------------------------- */
 
 void ui_menu_show_tx_aborted(void) {
-    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED,
+                             ui_menu_main_display);
 }
 
 /* --------------------- FEE/CHANGE/TIMELOCK VALIDATION --------------------- */
 
 static void start_signature(void) {
-    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList, &ICON_APP_MAIN,
-                       "Review Transaction\nto send Monero", NULL, "Sign transaction?",
-                       ui_menu_validation_action);
+    nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList,
+                       &ICON_APP_MAIN, "Review Transaction\nto send Monero",
+                       NULL, "Sign transaction?", ui_menu_validation_action);
 }
 
-void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) {
+void ui_menu_fee_validation_display(unsigned int value
+                                    __attribute__((unused))) {
     add_amount(feeTitle, false);
     ui_menu_validation_action_confirm();
 }
 
-void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
-    add_amount(changeTitle, false);
+// value carries the change account index (0 = primary). Surface a non-primary
+// account so a host cannot silently route change to an undisplayed account.
+static char changeTitleBuf[32];
+
+void ui_menu_change_validation_display(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
+    add_amount(changeTitleBuf, false);
     ui_menu_validation_action_confirm();
 }
 
-void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
-    add_amount(changeTitle, true);
+void ui_menu_change_validation_display_last(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
+    add_amount(changeTitleBuf, true);
     start_signature();
 }
 
-void ui_menu_timelock_validation_display(unsigned int value __attribute__((unused))) {
+void ui_menu_timelock_validation_display(unsigned int value
+                                         __attribute__((unused))) {
     reset_context();
     if (transactionContext.addrNum == 0) {
-        /* If no yet receivers addresses let us add the change on the same page */
+        /* If no yet receivers addresses let us add the change on the same page
+         */
         add_amount(timelockTitle, false);
     } else {
         /* In the other case let us for new page */
@@ -200,15 +215,17 @@ void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
     ui_menu_validation_action_confirm();
 }
 
-void ui_menu_validation_display_last(unsigned int value __attribute__((unused))) {
+void ui_menu_validation_display_last(unsigned int value
+                                     __attribute__((unused))) {
     add_amount(amountTitle, true);
     add_address();
     start_signature();
 }
-/* ---------------------------- PUBLIC ADDRESS UX ---------------------------- */
+/* ---------------------------- PUBLIC ADDRESS UX ----------------------------
+ */
 #define ADDR_MAJOR G_monero_vstate.ux_address + 124
 #define ADDR_MINOR G_monero_vstate.ux_address + 140
-#define ADDR_ID    G_monero_vstate.ux_address + 140
+#define ADDR_ID G_monero_vstate.ux_address + 140
 
 static void ui_menu_pubaddr_action_cancelled(void) {
     if (G_monero_vstate.disp_addr_mode) {
@@ -216,7 +233,8 @@ static void ui_menu_pubaddr_action_cancelled(void) {
         monero_io_do(IO_RETURN_AFTER_TX);
     }
     G_monero_vstate.disp_addr_mode = 0;
-    nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED, ui_menu_main_display);
+    nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED,
+                             ui_menu_main_display);
 }
 
 void ui_menu_pubaddr_action(bool confirm) {
@@ -226,7 +244,8 @@ void ui_menu_pubaddr_action(bool confirm) {
             monero_io_do(IO_RETURN_AFTER_TX);
         }
         G_monero_vstate.disp_addr_mode = 0;
-        nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED, ui_menu_main_display);
+        nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED,
+                                 ui_menu_main_display);
     } else {
         ui_menu_pubaddr_action_cancelled();
     }
@@ -263,6 +282,7 @@ void display_account(void) {
             transactionContext.tagValuePair[0].value = "Integrated address";
 
             memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            (ADDR_ID)[16] = '\0';  // ADDR_ID is consumed as a C string below
 
             transactionContext.tagValuePair[1].item = "Payment ID";
             transactionContext.tagValuePair[1].value = ADDR_ID;
@@ -273,19 +293,22 @@ void display_account(void) {
 
     transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
 
-    nbgl_useCaseAddressReview(G_monero_vstate.ux_address, &transactionContext.tagValueList,
-                              &ICON_APP_MAIN, "Verify Monero\naddress", NULL,
-                              ui_menu_pubaddr_action);
+    nbgl_useCaseAddressReview(
+        G_monero_vstate.ux_address, &transactionContext.tagValueList,
+        &ICON_APP_MAIN, "Verify Monero\naddress", NULL, ui_menu_pubaddr_action);
 }
 
-int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsigned char* pub_view,
-                                unsigned char* pub_spend, unsigned char is_subbadress,
+int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
+                                unsigned char* pub_view,
+                                unsigned char* pub_spend,
+                                unsigned char is_subbadress,
                                 unsigned char* paymanetID) {
     int error;
-    explicit_bzero(G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address));
+    explicit_bzero(G_monero_vstate.ux_address,
+                   sizeof(G_monero_vstate.ux_address));
 
-    error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view, pub_spend, is_subbadress,
-                                     paymanetID);
+    error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view,
+                                     pub_spend, is_subbadress, paymanetID);
     if (error) {
         return error;
     }
@@ -321,8 +344,8 @@ static void ui_menu_export_viewkey_action(bool value) {
 }
 
 void ui_export_viewkey_display(unsigned int value __attribute__((unused))) {
-    nbgl_useCaseChoice(&ICON_APP_MAIN, "Export\nview key", "", "Accept", "Reject if not sure",
-                       ui_menu_export_viewkey_action);
+    nbgl_useCaseChoice(&ICON_APP_MAIN, "Export\nview key", "", "Accept",
+                       "Reject if not sure", ui_menu_export_viewkey_action);
 }
 
 #endif

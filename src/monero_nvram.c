@@ -16,10 +16,10 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 const monero_nv_state_t N_state_pic;

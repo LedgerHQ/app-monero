@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 static void update_protocol(void) {
     G_monero_vstate.tx_state_ins = G_monero_vstate.io_ins;
@@ -43,7 +43,8 @@ static int check_protocol(void) {
             if (G_monero_vstate.protocol == 0xff) {
                 G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
             }
-            if (G_monero_vstate.protocol == G_monero_vstate.io_protocol_version) {
+            if (G_monero_vstate.protocol ==
+                G_monero_vstate.io_protocol_version) {
                 break;
             }
             // unknown protocol or hot protocol switch is not allowed
@@ -255,7 +256,8 @@ int monero_dispatch() {
                     (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
                     return SW_COMMAND_NOT_ALLOWED;
                 }
-                if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
+                if ((G_monero_vstate.io_p1 != 0) ||
+                    (G_monero_vstate.io_p2 != 0)) {
                     return SW_WRONG_P1P2;
                 }
             }
@@ -307,12 +309,14 @@ int monero_dispatch() {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else if (G_monero_vstate.tx_state_p1 == 1) {
-                if ((G_monero_vstate.io_p1 != 2) || (G_monero_vstate.io_p2 != 1)) {
+                if ((G_monero_vstate.io_p1 != 2) ||
+                    (G_monero_vstate.io_p2 != 1)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else if (G_monero_vstate.tx_state_p1 == 2) {
                 if ((G_monero_vstate.io_p1 != 2) ||
-                    (G_monero_vstate.io_p2 - 1 != G_monero_vstate.tx_state_p2)) {
+                    (G_monero_vstate.io_p2 - 1 !=
+                     G_monero_vstate.tx_state_p2)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
@@ -390,7 +394,8 @@ int monero_dispatch() {
                 G_monero_vstate.tx_state_ins = INS_VALIDATE;
                 G_monero_vstate.tx_state_p1 = 1;
                 G_monero_vstate.tx_state_p2 = 0;
-                if ((G_monero_vstate.io_p1 != 1) || (G_monero_vstate.io_p2 != 1)) {
+                if ((G_monero_vstate.io_p1 != 1) ||
+                    (G_monero_vstate.io_p2 != 1)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             }
@@ -399,7 +404,8 @@ int monero_dispatch() {
                 if (G_monero_vstate.tx_state_p2 != G_monero_vstate.io_p2 - 1) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
-            } else if (G_monero_vstate.tx_state_p1 == G_monero_vstate.io_p1 - 1) {
+            } else if (G_monero_vstate.tx_state_p1 ==
+                       G_monero_vstate.io_p1 - 1) {
                 if (1 != G_monero_vstate.io_p2) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
@@ -425,7 +431,8 @@ int monero_dispatch() {
         /* --- MLSAG --- */
         case INS_MLSAG:
             // 1. state machine check
-            if ((G_monero_vstate.protocol != 3) && (G_monero_vstate.protocol != 4)) {
+            if ((G_monero_vstate.protocol != 3) &&
+                (G_monero_vstate.protocol != 4)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
             if ((G_monero_vstate.tx_state_ins != INS_VALIDATE) &&
@@ -433,22 +440,26 @@ int monero_dispatch() {
                 return SW_COMMAND_NOT_ALLOWED;
             }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
-                if ((G_monero_vstate.tx_state_p1 != 3) || (G_monero_vstate.io_p1 != 1) ||
+                if ((G_monero_vstate.tx_state_p1 != 3) ||
+                    (G_monero_vstate.io_p1 != 1) ||
                     (G_monero_vstate.io_p2 != 0)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
                 if (G_monero_vstate.tx_state_p1 == 1) {
-                    if ((2 != G_monero_vstate.io_p1) || (1 != G_monero_vstate.io_p2)) {
+                    if ((2 != G_monero_vstate.io_p1) ||
+                        (1 != G_monero_vstate.io_p2)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 2) {
                     if (2 == G_monero_vstate.io_p1) {
                         if ((0 == G_monero_vstate.io_p2) ||
-                            ((G_monero_vstate.tx_state_p2 != 0) && (1 != G_monero_vstate.io_p2))) {
+                            ((G_monero_vstate.tx_state_p2 != 0) &&
+                             (1 != G_monero_vstate.io_p2))) {
                             return SW_SUBCOMMAND_NOT_ALLOWED;
                         }
-                    } else if ((3 != G_monero_vstate.io_p1) || (G_monero_vstate.tx_state_p2 == 0)) {
+                    } else if ((3 != G_monero_vstate.io_p1) ||
+                               (G_monero_vstate.tx_state_p2 == 0)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 3) {
@@ -474,7 +485,8 @@ int monero_dispatch() {
                 return sw;
             }
             update_protocol();
-            if ((G_monero_vstate.io_p1 == 2) && ((G_monero_vstate.options & 0x80) != 0)) {
+            if ((G_monero_vstate.io_p1 == 2) &&
+                ((G_monero_vstate.options & 0x80) != 0)) {
                 G_monero_vstate.tx_state_p2 = 0;
             }
             break;
@@ -490,22 +502,26 @@ int monero_dispatch() {
                 return SW_COMMAND_NOT_ALLOWED;
             }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
-                if ((G_monero_vstate.tx_state_p1 != 3) || (G_monero_vstate.io_p1 != 1) ||
+                if ((G_monero_vstate.tx_state_p1 != 3) ||
+                    (G_monero_vstate.io_p1 != 1) ||
                     (G_monero_vstate.io_p2 != 0)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
                 if (G_monero_vstate.tx_state_p1 == 1) {
-                    if ((2 != G_monero_vstate.io_p1) || (1 != G_monero_vstate.io_p2)) {
+                    if ((2 != G_monero_vstate.io_p1) ||
+                        (1 != G_monero_vstate.io_p2)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 2) {
                     if (2 == G_monero_vstate.io_p1) {
                         if ((0 == G_monero_vstate.io_p2) ||
-                            ((G_monero_vstate.tx_state_p2 != 0) && (1 != G_monero_vstate.io_p2))) {
+                            ((G_monero_vstate.tx_state_p2 != 0) &&
+                             (1 != G_monero_vstate.io_p2))) {
                             return SW_SUBCOMMAND_NOT_ALLOWED;
                         }
-                    } else if ((3 != G_monero_vstate.io_p1) || (G_monero_vstate.tx_state_p2 == 0)) {
+                    } else if ((3 != G_monero_vstate.io_p1) ||
+                               (G_monero_vstate.tx_state_p2 == 0)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 3) {
@@ -531,7 +547,8 @@ int monero_dispatch() {
                 return sw;
             }
             update_protocol();
-            if ((G_monero_vstate.io_p1 == 2) && ((G_monero_vstate.options & 0x80) != 0)) {
+            if ((G_monero_vstate.io_p1 == 2) &&
+                ((G_monero_vstate.options & 0x80) != 0)) {
                 G_monero_vstate.tx_state_p2 = 0;
             }
             break;

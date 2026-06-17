@@ -16,28 +16,28 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_apdu_get_tx_proof() {
-    unsigned char *msg;
-    unsigned char *R;
-    unsigned char *A;
-    unsigned char *B;
-    unsigned char *D;
+    unsigned char* msg;
+    unsigned char* R;
+    unsigned char* A;
+    unsigned char* B;
+    unsigned char* D;
     unsigned char r[32];
     unsigned char XY[32];
     unsigned char sig_c[32];
     unsigned char sig_r[32];
     unsigned char sep[32];
     int err = 0;
-#define k     (G_monero_vstate.tmp + 256)
+#define k (G_monero_vstate.tmp + 256)
 #define k_len (sizeof(G_monero_vstate.tmp) - 256)
 
     msg = G_monero_vstate.io_buffer + G_monero_vstate.io_offset;
@@ -91,7 +91,7 @@ int monero_apdu_get_tx_proof() {
     }
     // tmp = msg || D || X || Y
     memcpy(G_monero_vstate.tmp + 32 * 3, XY, 32);
-    err = monero_keccak_H((unsigned char *)"TXPROOF_V2", 10, sep);
+    err = monero_keccak_H((unsigned char*)"TXPROOF_V2", 10, sep);
     if (err) {
         goto end;
     }
@@ -105,7 +105,8 @@ int monero_apdu_get_tx_proof() {
     memcpy(G_monero_vstate.tmp + 32 * 7, B, 32);
 
     // sig_c = H_n(tmp)
-    err = monero_hash_to_scalar(sig_c, &G_monero_vstate.tmp[0], sizeof(sig_c), 32 * 8);
+    err = monero_hash_to_scalar(sig_c, &G_monero_vstate.tmp[0], sizeof(sig_c),
+                                32 * 8);
     if (err) {
         goto end;
     }

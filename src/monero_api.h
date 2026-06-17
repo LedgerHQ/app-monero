@@ -194,7 +194,13 @@ int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *ind
                           size_t D_len, size_t index_len);
 int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
                                      size_t sub_s_len, size_t s_len, size_t index_len);
-int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout);
+// On a successful match, *out_major (if non-NULL) receives the change account
+// index (0 for the primary address). Change always lands on the account root
+// (minor 0), so only the account is reported.
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout,
+                                unsigned int *out_major);
+// Build the change-review title ("Change" or "Change account <major>").
+void monero_format_change_title(char *str, size_t str_len, unsigned int major);
 
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
@@ -256,6 +262,38 @@ static inline int monero_sha256_outkeys_update(const unsigned char *buf, size_t 
 static inline int monero_sha256_outkeys_final(unsigned char *out) {
     return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_keys, out);
 }
+
+static inline void monero_sha256_out_eph_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_out_eph);
+}
+
+static inline int monero_sha256_out_eph_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, buf, len);
+}
+
+static inline int monero_sha256_out_eph_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_eph, out);
+}
+
+static inline void monero_sha256_addk_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_addk);
+}
+
+static inline int monero_sha256_addk_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_addk, buf, len);
+}
+
+static inline int monero_sha256_addk_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_addk, out);
+}
+
+/* Reset the tx-prefix output-key parser before streaming a new prefix. */
+void monero_prefix_outkeys_reset(void);
+
+/* Feed the next tx-prefix chunk (vin/vout/extra, as streamed over
+ * INS_PREFIX_HASH P2) to the output-key check. Returns an error if the signed
+ * outputs don't match the ones derived in INS_GEN_TXOUT_KEYS. */
+int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len);
 
 /*
  *  check 1<s<N, else throw

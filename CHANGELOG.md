@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## 2.2.1 - 2026-06-11
+
+- Different security and bug fixes
+
 ## 2.2.0 - 2026-05-11
 
 - Different security fixes

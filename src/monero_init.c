@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------*/
 /* -- A Kind of Magic -- */
@@ -28,11 +28,13 @@
 const unsigned char C_MAGIC[8] = {'M', 'O', 'N', 'E', 'R', 'O', 'H', 'W'};
 
 const unsigned char C_FAKE_SEC_VIEW_KEY[KEY_SIZE] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const unsigned char C_FAKE_SEC_SPEND_KEY[KEY_SIZE] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 /* ----------------------------------------------------------------------- */
 /* --- Boot                                                            --- */
@@ -41,7 +43,8 @@ unsigned int monero_init() {
     explicit_bzero(&G_monero_vstate, sizeof(monero_v_state_t));
 
     // first init ?
-    if (memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC)) != 0) {
+    if (memcmp((void*)N_monero_pstate->magic, (void*)C_MAGIC,
+               sizeof(C_MAGIC)) != 0) {
 #if defined(MONERO_ALPHA) || defined(MONERO_BETA)
         monero_install(STAGENET);
 #else
@@ -97,18 +100,21 @@ int monero_init_private_key(void) {
                 goto end;
             }
 
-            error = monero_reduce(G_monero_vstate.b, G_monero_vstate.b, sizeof(G_monero_vstate.b),
+            error = monero_reduce(G_monero_vstate.b, G_monero_vstate.b,
+                                  sizeof(G_monero_vstate.b),
                                   sizeof(G_monero_vstate.b));
             if (error) {
                 goto end;
             }
 
-            error = monero_keccak_F(G_monero_vstate.b, KEY_SIZE, G_monero_vstate.a);
+            error =
+                monero_keccak_F(G_monero_vstate.b, KEY_SIZE, G_monero_vstate.a);
             if (error) {
                 goto end;
             }
 
-            error = monero_reduce(G_monero_vstate.a, G_monero_vstate.a, sizeof(G_monero_vstate.a),
+            error = monero_reduce(G_monero_vstate.a, G_monero_vstate.a,
+                                  sizeof(G_monero_vstate.a),
                                   sizeof(G_monero_vstate.a));
             if (error) {
                 goto end;
@@ -124,19 +130,22 @@ int monero_init_private_key(void) {
             error = SW_SECURITY_LOAD_KEY;
             goto end;
     }
-    error = monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a, sizeof(G_monero_vstate.A),
-                           sizeof(G_monero_vstate.a));
+    error =
+        monero_ecmul_G(G_monero_vstate.A, G_monero_vstate.a,
+                       sizeof(G_monero_vstate.A), sizeof(G_monero_vstate.a));
     if (error) {
         goto end;
     }
-    error = monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b, sizeof(G_monero_vstate.B),
-                           sizeof(G_monero_vstate.b));
+    error =
+        monero_ecmul_G(G_monero_vstate.B, G_monero_vstate.b,
+                       sizeof(G_monero_vstate.B), sizeof(G_monero_vstate.b));
     if (error) {
         goto end;
     }
 
     // generate key protection
-    error = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a, G_monero_vstate.b);
+    error = monero_aes_derive(&G_monero_vstate.spk, chain, G_monero_vstate.a,
+                              G_monero_vstate.b);
     if (error) {
         goto end;
     }
@@ -154,8 +163,9 @@ end:
 /* ---  Set up ui/ux                                                   --- */
 /* ----------------------------------------------------------------------- */
 int monero_init_ux() {
-    int error = monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
-                                         G_monero_vstate.B, 0, NULL);
+    int error =
+        monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
+                                 G_monero_vstate.B, 0, NULL);
     if (error) {
         return error;
     }
@@ -163,11 +173,13 @@ int monero_init_ux() {
     memset(G_monero_vstate.ux_wallet_public_short_address, '.',
            sizeof(G_monero_vstate.ux_wallet_public_short_address));
 
-    snprintf(G_monero_vstate.ux_wallet_account_name, sizeof(G_monero_vstate.ux_wallet_account_name),
-             "XMR / %d", N_monero_pstate->account_id);
-    memcpy(G_monero_vstate.ux_wallet_public_short_address, G_monero_vstate.ux_address, 5);
-    memcpy(G_monero_vstate.ux_wallet_public_short_address + 7, G_monero_vstate.ux_address + 95 - 5,
-           5);
+    snprintf(G_monero_vstate.ux_wallet_account_name,
+             sizeof(G_monero_vstate.ux_wallet_account_name), "XMR / %d",
+             N_monero_pstate->account_id);
+    memcpy(G_monero_vstate.ux_wallet_public_short_address,
+           G_monero_vstate.ux_address, 5);
+    memcpy(G_monero_vstate.ux_wallet_public_short_address + 7,
+           G_monero_vstate.ux_address + 95 - 5, 5);
     G_monero_vstate.ux_wallet_public_short_address[12] = 0;
 
     return 0;
@@ -190,7 +202,8 @@ void monero_install(unsigned char netId) {
     monero_nvm_write((void*)&N_monero_pstate->network_id, &netId, 1);
 
     // write magic
-    monero_nvm_write((void*)N_monero_pstate->magic, (void*)C_MAGIC, sizeof(C_MAGIC));
+    monero_nvm_write((void*)N_monero_pstate->magic, (void*)C_MAGIC,
+                     sizeof(C_MAGIC));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -198,11 +211,13 @@ void monero_install(unsigned char netId) {
 /* ----------------------------------------------------------------------- */
 // Accept the following versions and their derivates
 const char* const supported_clients[] = {"0.18."};
-#define MONERO_SUPPORTED_CLIENT_SIZE (sizeof(supported_clients) / sizeof(supported_clients[0]))
+#define MONERO_SUPPORTED_CLIENT_SIZE \
+    (sizeof(supported_clients) / sizeof(supported_clients[0]))
 
 // Explicitly refuse the following versions
 const char* const refused_clients[] = {"0.18.0.0."};
-#define MONERO_REFUSED_CLIENT_SIZE (sizeof(refused_clients) / sizeof(refused_clients[0]))
+#define MONERO_REFUSED_CLIENT_SIZE \
+    (sizeof(refused_clients) / sizeof(refused_clients[0]))
 
 static bool is_client_version_valid(const char* client_version) {
     // Check if version is explicitly refused
@@ -215,7 +230,8 @@ static bool is_client_version_valid(const char* client_version) {
     for (uint32_t i = 0; i < MONERO_SUPPORTED_CLIENT_SIZE; ++i) {
         // Use strncmp to allow supported version prefixing client version
         unsigned int supported_clients_len = strlen(PIC(supported_clients[i]));
-        if (strncmp(PIC(supported_clients[i]), client_version, supported_clients_len) == 0) {
+        if (strncmp(PIC(supported_clients[i]), client_version,
+                    supported_clients_len) == 0) {
             return true;
         }
     }

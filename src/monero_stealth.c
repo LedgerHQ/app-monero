@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -46,7 +46,8 @@ int monero_apdu_stealth() {
     monero_io_discard(0);
 
     // Compute Dout
-    err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv), sizeof(pub), sizeof(sec));
+    err = monero_generate_key_derivation(drv, pub, sec, sizeof(drv),
+                                         sizeof(pub), sizeof(sec));
     if (err) {
         goto end;
     }

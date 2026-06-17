@@ -29,7 +29,7 @@ APPNAME = "Monero"
 # Application version
 APPVERSION_M = 2
 APPVERSION_N = 2
-APPVERSION_P = 0
+APPVERSION_P = 1
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
 SPECVERSION = "1.0"
@@ -79,9 +79,11 @@ DEFINES   += HAVE_LEGACY_PID
 DEFINES   += U2F_PROXY_MAGIC=\"MOON\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
 
-# Enabling debug PRINTF
-ifneq ($(DEBUG),0)
-  # Debug options
+# The gate is opt-in: a bare `make` (DEBUG unset) or `make DEBUG=0`
+# builds the secure configuration, and only an explicit `make DEBUG=1`
+# enables them (used by functional tests)
+ifeq ($(DEBUG),1)
+  # Enabling debug PRINTF
   DEFINES += DEBUG_HWDEVICE
   DEFINES += BYPASS_COMMITMENT_FOR_TESTS
   DEFINES += IODUMMYCRYPT  # or IONOCRYPT
