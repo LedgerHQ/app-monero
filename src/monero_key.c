@@ -961,6 +961,24 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
             err = SW_WRONG_DATA;
             goto end;
         }
+
+        // The main tx public key must be one the device can vouch for
+        if (is_change == 0) {
+            if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
+                unsigned char expected[KEY_SIZE];
+                err = monero_ecmul_k(expected, Bout, tx_key, sizeof(expected),
+                                     KEY_SIZE, sizeof(tx_key));
+                if (err) {
+                    goto end;
+                }
+                if (memcmp(txkey_pub, expected, KEY_SIZE) != 0) {
+                    explicit_bzero(expected, sizeof(expected));
+                    err = SW_WRONG_DATA;
+                    goto end;
+                }
+                explicit_bzero(expected, sizeof(expected));
+            }
+        }
     }
 
     // update outkeys hash control
