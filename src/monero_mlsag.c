@@ -149,6 +149,13 @@ int monero_apdu_mlsag_sign() {
     unsigned char ss2[32];
     int err = 0;
 
+    // Never sign a real transaction the user did not approve on screen.
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
+        !G_monero_vstate.user_approved_tx) {
+        err = SW_SECURITY_USER_NOT_APPROVED;
+        goto end;
+    }
+
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin, 32);
         monero_io_fetch(alpha, 32);

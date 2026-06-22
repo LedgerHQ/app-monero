@@ -25,13 +25,14 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-static void monero_payment_id_to_str(const unsigned char *payment_id, char *str) {
+static void monero_payment_id_to_str(const unsigned char *payment_id, char *str, size_t str_len) {
+    // 8 bytes -> 16 hex chars + NUL; the last snprintf writes the terminator at
+    // str[16], so the destination must hold at least 17 bytes.
+    if (str_len < 17) {
+        return;
+    }
     for (int i = 0; i < 8; i++) {
-        if (payment_id[i] <= 0xF) {
-            snprintf(str + i * 2, 3, "0%x", payment_id[i]);
-        } else {
-            snprintf(str + i * 2, 3, "%x", payment_id[i]);
-        }
+        snprintf(str + i * 2, str_len - (i * 2), "%02x", payment_id[i]);
     }
 }
 
@@ -73,7 +74,8 @@ int monero_apdu_display_address() {
         G_monero_vstate.disp_addr_mode = DISP_SUB;
     } else {
         if (G_monero_vstate.io_p1 == 1) {
-            monero_payment_id_to_str(payment_id, G_monero_vstate.payment_id);
+            monero_payment_id_to_str(payment_id, G_monero_vstate.payment_id,
+                                     sizeof(G_monero_vstate.payment_id));
             G_monero_vstate.disp_addr_mode = DISP_INTEGRATED;
         } else {
             G_monero_vstate.disp_addr_mode = DISP_MAIN;
@@ -786,7 +788,8 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout) {
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout,
+                                unsigned int *out_major) {
     unsigned char C[KEY_SIZE];
     unsigned char D[KEY_SIZE];
     unsigned char index[8];
@@ -795,6 +798,9 @@ int monero_check_change_address(const unsigned char *Aout, const unsigned char *
     /* primary address (major=0, minor=0) */
     if ((memcmp(Aout, G_monero_vstate.A, KEY_SIZE) == 0) &&
         (memcmp(Bout, G_monero_vstate.B, KEY_SIZE) == 0)) {
+        if (out_major != NULL) {
+            *out_major = 0;
+        }
         return 0;
     }
 
@@ -820,10 +826,41 @@ int monero_check_change_address(const unsigned char *Aout, const unsigned char *
                 return err;
             }
             if ((memcmp(Aout, C, KEY_SIZE) == 0) && (memcmp(Bout, D, KEY_SIZE) == 0)) {
+                if (out_major != NULL) {
+                    *out_major = M;
+                }
                 return 0;
             }
         }
     }
+
+    /* The wallet sends change to the account root (M, 0) but never asks the
+     * device for it while signing, so the whitelist above is empty on a normal
+     * send and change to a non-primary account gets rejected. Re-derive each
+     * (M, 0) and match against (Aout, Bout). B can't be forged without the spend
+     * key, so substitution is still caught. Bound matches wallet2's default. */
+#define CHANGE_ACCOUNT_LOOKAHEAD 50
+    index[4] = 0;
+    index[5] = 0;
+    index[6] = 0;
+    index[7] = 0;
+    for (unsigned int M = 1; M < CHANGE_ACCOUNT_LOOKAHEAD; M++) {
+        index[0] = (unsigned char)(M & 0xFF);
+        index[1] = (unsigned char)((M >> 8) & 0xFF);
+        index[2] = (unsigned char)((M >> 16) & 0xFF);
+        index[3] = (unsigned char)((M >> 24) & 0xFF);
+        err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE, sizeof(index));
+        if (err) {
+            return err;
+        }
+        if ((memcmp(Aout, C, KEY_SIZE) == 0) && (memcmp(Bout, D, KEY_SIZE) == 0)) {
+            if (out_major != NULL) {
+                *out_major = M;
+            }
+            return 0;
+        }
+    }
+#undef CHANGE_ACCOUNT_LOOKAHEAD
 
     return SW_SECURITY_CHANGE_ADDRESS;
 }
@@ -878,11 +915,41 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
     use_view_tags = monero_io_fetch_u8();
 
-    // reject spoofed change address before any state is mutated
-    if (is_change && (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
-        err = monero_check_change_address(Aout, Bout);
-        if (err) {
+    // The change address is validated in INS_VALIDATE / prehash_update, once
+    // the amount has been unblinded: sweep_all/sweep_single add a zero-amount
+    // dummy change whose address isn't wallet-owned, and it can only be told
+    // apart from a spoofed real change once the amount is known.
+
+    // Pin every output to one main tx public key. The wallet computes a single
+    // txkey_pub per tx and reuses it for all outputs -- r.G normally, or r.D for
+    // a single subaddress destination. Recording it from the first output and
+    // enforcing it on the rest stops a host from deriving the change under one
+    // key while a different R lands on-chain via a later output (which would burn
+    // the change), without assuming the key is r.G.
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        if (G_monero_vstate.tx_output_cnt == 0) {
+            memcpy(G_monero_vstate.tx_main_txkey, txkey_pub, KEY_SIZE);
+        } else if (memcmp(txkey_pub, G_monero_vstate.tx_main_txkey, KEY_SIZE) != 0) {
+            err = SW_WRONG_DATA;
             goto end;
+        }
+
+        // The main tx public key must be one the device can vouch for
+        if (is_change == 0) {
+            if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
+                unsigned char expected[KEY_SIZE];
+                err = monero_ecmul_k(expected, Bout, tx_key, sizeof(expected),
+                                     KEY_SIZE, sizeof(tx_key));
+                if (err) {
+                    goto end;
+                }
+                if (memcmp(txkey_pub, expected, KEY_SIZE) != 0) {
+                    explicit_bzero(expected, sizeof(expected));
+                    err = SW_WRONG_DATA;
+                    goto end;
+                }
+                explicit_bzero(expected, sizeof(expected));
+            }
         }
     }
 

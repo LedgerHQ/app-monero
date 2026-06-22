@@ -127,9 +127,11 @@ UX_STEP_NOCB(ux_menu_validation_fee_1_step, bn,
                  G_monero_vstate.ux_amount,
              });
 
+// Holds "Change" or "Change account <N>" so a non-primary change account is shown to the user
+static char changeTitleBuf[32];
 UX_STEP_NOCB(ux_menu_validation_change_1_step, bn,
              {
-                 "Change",
+                 changeTitleBuf,
                  G_monero_vstate.ux_amount,
              });
 
@@ -177,11 +179,13 @@ void ui_menu_fee_validation_display(unsigned int value __attribute__((unused))) 
     ux_flow_init(0, ux_flow_fee, NULL);
 }
 
-void ui_menu_change_validation_display(unsigned int value __attribute__((unused))) {
+void ui_menu_change_validation_display(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
     ux_flow_init(0, ux_flow_change, NULL);
 }
 
-void ui_menu_change_validation_display_last(unsigned int value __attribute__((unused))) {
+void ui_menu_change_validation_display_last(unsigned int value) {
+    monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
     ux_flow_init(0, ux_flow_change, NULL);
 }
 
@@ -221,6 +225,10 @@ void ui_menu_validation_display_last(unsigned int value __attribute__((unused)))
 void ui_menu_validation_action(unsigned int value) {
     unsigned short sw;
     if (value == ACCEPT) {
+        // User confirmed an output review: mark the tx approved. The signing
+        // path refuses to proceed without it. On BAGL every output is reviewed
+        // and blocks, so this is reached.
+        G_monero_vstate.user_approved_tx = 1;
         sw = SW_OK;
     } else {
         monero_abort_tx();
@@ -582,6 +590,7 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)), unsi
             memcpy(ADDR_TYPE, "Integrated", sizeof("Integrated"));
             memcpy(ADDR_IDSTR, "Payment ID", sizeof("Payment ID"));
             strncpy(ADDR_ID, G_monero_vstate.payment_id, 16);
+            (ADDR_ID)[16] = '\0';  // ADDR_ID is consumed as a C string below
             break;
     }
 

@@ -23,7 +23,7 @@ jobs:
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
     with:
       upload_app_binaries_artifact: "compiled_app_binaries"
-      flags: "DEBUG=1"
+      flags: "DEBUG=1 APP_STACK_MIN_SIZE=900"
 
   ragger_tests:
     name: Run ragger tests using the reusable workflow

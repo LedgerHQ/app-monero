@@ -59,6 +59,14 @@ void app_main(void) {
     for (;;) {
         volatile unsigned short sw = 0;
         monero_io_do(io_flags);
+        // A command just arrived. If the previous one hasn't replied yet, a
+        // confirmation is still on screen: refuse this one instead of letting
+        // it run behind the user's back.
+        if (G_monero_vstate.io_reply_pending) {
+            send_error_and_kill_app(SW_COMMAND_NOT_ALLOWED);
+        }
+        // This command now owes a reply; cleared by monero_io_do when it is sent.
+        G_monero_vstate.io_reply_pending = 1;
         sw = monero_dispatch();
         if (sw == 0) {
             io_flags = IO_ASYNCH_REPLY;

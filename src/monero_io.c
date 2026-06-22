@@ -343,6 +343,7 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
             if (error) {
                 return error;
             }
+            G_monero_vstate.io_offset += 32;  // consume the HMAC, as the view branch does
         }
         memcpy(buffer, G_monero_vstate.b, 32);
         return 0;
@@ -354,15 +355,21 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
 }
 
 int monero_io_fetch_varint(uint64_t* out_v64) {
-    if (!out_v64) {
-        return SW_WRONG_DATA;
+    int available = monero_io_fetch_available();
+    // Refuse to decode when no APDU bytes remain: otherwise max_len would be 0
+    // and the decoder could read past the payload.
+    if (!out_v64 || available <= 0) {
+        return SW_WRONG_DATA_RANGE;
     }
     unsigned int out_len = 0;
-    unsigned int error = monero_decode_varint(
+    unsigned int error   = monero_decode_varint(
         G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-        MIN(8, G_monero_vstate.io_length - G_monero_vstate.io_offset), out_v64, &out_len);
+        MIN(10, (size_t) available), out_v64, &out_len);
+    if (error) {
+        return error;
+    }
     G_monero_vstate.io_offset += out_len;
-    return error;
+    return 0;
 }
 
 unsigned int monero_io_fetch_u32(void) {
@@ -440,6 +447,10 @@ int monero_io_do(unsigned int io_flags) {
     }
     // else send data now
     else {
+        // A reply is going out, so the command it answers no longer owes one.
+        // (Covers both synchronous replies and the deferred IO_RETURN_AFTER_TX
+        // sent from a confirmation callback.)
+        G_monero_vstate.io_reply_pending = 0;
         G_monero_vstate.io_offset = 0;
         if (G_monero_vstate.io_length > MAX_OUT) {
             return SW_IO_FULL;

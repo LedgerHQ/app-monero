@@ -104,6 +104,10 @@ struct monero_v_state_s {
     unsigned char io_p2;
     unsigned char io_lc;
     unsigned char io_le;
+    /* Set while a received command still owes its reply. app_main uses it to
+     * refuse a second command that arrives while a confirmation is on screen,
+     * so the host cannot mutate tx state behind the user's back. */
+    unsigned char io_reply_pending;
     unsigned short io_length;
     unsigned short io_offset;
     unsigned short io_mark;
@@ -134,6 +138,10 @@ struct monero_v_state_s {
     unsigned char tx_change_cnt;
     unsigned char clsag_match_history;
     unsigned int tx_sign_cnt;
+    /* Set only when the user confirms the on-device review
+     * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
+     * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
+    unsigned char user_approved_tx;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -151,6 +159,12 @@ struct monero_v_state_s {
 #endif
     unsigned int tx_change_major_indices[MONERO_TX_CHANGE_INDICES_MAX];
     unsigned int tx_change_minor_indices[MONERO_TX_CHANGE_INDICES_MAX];
+    /* The single main tx public key the wallet uses for every output of this tx
+     * (r.G, or r.D for a single subaddress destination). Recorded from the first
+     * output and enforced on the rest, so the change can't be derived under a
+     * different key than the one that lands on-chain (see monero_key.c). Reset
+     * per tx. */
+    unsigned char tx_main_txkey[KEY_SIZE];
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -203,8 +217,8 @@ struct monero_v_state_s {
             // M.m address
             unsigned int disp_addr_M;
             unsigned int disp_addr_m;
-            // payment id
-            char payment_id[16];
+            // payment id: 16 hex chars + NUL terminator
+            char payment_id[17];
         };
         struct {
             unsigned char tmp[340];
@@ -316,6 +330,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_MAX_SIGNATURE_REACHED    0x691A
 #define SW_SECURITY_PREFIX_HASH              0x691B
 #define SW_SECURITY_CHANGE_ADDRESS           0x691C
+#define SW_SECURITY_USER_NOT_APPROVED        0x691D
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980
