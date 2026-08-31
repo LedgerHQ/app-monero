@@ -157,6 +157,12 @@ int monero_apdu_mlsag_sign() {
         err = SW_SECURITY_USER_NOT_APPROVED;
         goto end;
     }
+    // Approval says nothing about which hash ended up in mlsagH.
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
+        !G_monero_vstate.prehash_finalized) {
+        err = SW_SECURITY_PREHASH_NOT_FINALIZED;
+        goto end;
+    }
 
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_FAKE) {
         monero_io_fetch(xin, 32);

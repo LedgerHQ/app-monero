@@ -142,6 +142,10 @@ struct monero_v_state_s {
      * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
      * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
     unsigned char user_approved_tx;
+    /* Set only at the end of the terminal INS_VALIDATE/P1=3 branch, once mlsagH
+     * has been recomputed for this tx. The non-terminal branch also advances
+     * tx_state_p1 to 3, so the state machine alone proves nothing. Reset per tx. */
+    unsigned char prehash_finalized;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -351,6 +355,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_PREFIX_HASH              0x691B
 #define SW_SECURITY_CHANGE_ADDRESS           0x691C
 #define SW_SECURITY_USER_NOT_APPROVED        0x691D
+#define SW_SECURITY_PREHASH_NOT_FINALIZED    0x691E
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

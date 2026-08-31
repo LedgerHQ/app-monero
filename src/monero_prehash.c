@@ -396,6 +396,9 @@ int monero_apdu_mlsag_prehash_finalize() {
         if (error) {
             return error;
         }
+        // Every check above passed and mlsagH was just recomputed for this
+        // transaction. Only here may signing unlock.
+        G_monero_vstate.prehash_finalized = 1;
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
 

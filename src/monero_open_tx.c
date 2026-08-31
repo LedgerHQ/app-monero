@@ -48,6 +48,11 @@ int monero_reset_tx(int reset_tx_cnt) {
                    sizeof(G_monero_vstate.tx_main_txkey));
     // A fresh transaction has not been reviewed/approved by the user yet.
     G_monero_vstate.user_approved_tx = 0;
+    // Nor does it carry a signing transcript; this is the only open/close/abort
+    // boundary, so drop the previous one here.
+    G_monero_vstate.prehash_finalized = 0;
+    explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));
+    explicit_bzero(G_monero_vstate.c, sizeof(G_monero_vstate.c));
     if (reset_tx_cnt) {
         G_monero_vstate.tx_cnt = 0;
     }

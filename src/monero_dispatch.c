@@ -439,6 +439,12 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_MLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // Both branches of INS_VALIDATE/P1=3 reach tx_state_p1 == 3, so it
+            // proves nothing about mlsagH.
+            if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+                (G_monero_vstate.prehash_finalized != 1)) {
+                return SW_SECURITY_PREHASH_NOT_FINALIZED;
+            }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
                 if ((G_monero_vstate.tx_state_p1 != 3) ||
                     (G_monero_vstate.io_p1 != 1) ||
@@ -500,6 +506,11 @@ int monero_dispatch() {
             if ((G_monero_vstate.tx_state_ins != INS_VALIDATE) &&
                 (G_monero_vstate.tx_state_ins != INS_CLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
+            }
+            // As for INS_MLSAG: tx_state_p1 == 3 proves nothing about mlsagH.
+            if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+                (G_monero_vstate.prehash_finalized != 1)) {
+                return SW_SECURITY_PREHASH_NOT_FINALIZED;
             }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
                 if ((G_monero_vstate.tx_state_p1 != 3) ||
