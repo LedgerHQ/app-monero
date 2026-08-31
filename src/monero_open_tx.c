@@ -25,6 +25,37 @@
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
+/*
+ * SW_OK if every stage in `required` has completed, else the status word of the
+ * first missing one. Fake transactions sign with host-supplied secrets, so
+ * nothing is gated there. The test order sets which code a caller sees when
+ * several stages are missing at once -- keep it.
+ */
+int monero_tx_stages_check(unsigned char required) {
+    unsigned char missing;
+
+    if (G_monero_vstate.tx_sig_mode != TRANSACTION_CREATE_REAL) {
+        return SW_OK;
+    }
+    missing = required & (unsigned char)~G_monero_vstate.tx_stages;
+    if (missing & TX_STAGE_USER_APPROVED) {
+        return SW_SECURITY_USER_NOT_APPROVED;
+    }
+    if (missing & TX_STAGE_PREFIX_FINALIZED) {
+        return SW_SECURITY_PREFIX_NOT_FINALIZED;
+    }
+    if (missing & TX_STAGE_OUTPUTS_REVIEWED) {
+        return SW_SECURITY_OUTPUTS_NOT_REVIEWED;
+    }
+    if (missing & TX_STAGE_PREHASH_FINALIZED) {
+        return SW_SECURITY_PREHASH_NOT_FINALIZED;
+    }
+    return SW_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 int monero_reset_tx(int reset_tx_cnt) {
     int error;
     explicit_bzero(G_monero_vstate.r, sizeof(G_monero_vstate.r));
@@ -46,13 +77,8 @@ int monero_reset_tx(int reset_tx_cnt) {
     G_monero_vstate.tx_change_cnt = 0;
     explicit_bzero(G_monero_vstate.tx_main_txkey,
                    sizeof(G_monero_vstate.tx_main_txkey));
-    // A fresh transaction has not been reviewed/approved by the user yet.
-    G_monero_vstate.user_approved_tx = 0;
-    // Nor does it carry a signing transcript; this is the only open/close/abort
-    // boundary, so drop the previous one here.
-    G_monero_vstate.prehash_finalized = 0;
-    G_monero_vstate.prefix_finalized = 0;
-    G_monero_vstate.outputs_reviewed = 0;
+    // No stage completed and no signing transcript yet. Only boundary for both.
+    G_monero_vstate.tx_stages = 0;
     explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));
     explicit_bzero(G_monero_vstate.C, sizeof(G_monero_vstate.C));
     explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));

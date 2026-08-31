@@ -233,7 +233,7 @@ void ui_menu_validation_action(unsigned int value) {
         // User confirmed an output review: mark the tx approved. The signing
         // path refuses to proceed without it. On BAGL every output is reviewed
         // and blocks, so this is reached.
-        G_monero_vstate.user_approved_tx = 1;
+        G_monero_vstate.tx_stages |= TX_STAGE_USER_APPROVED;
         sw = SW_OK;
     } else {
         monero_abort_tx();

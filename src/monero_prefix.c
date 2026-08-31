@@ -615,7 +615,7 @@ int monero_apdu_prefix_hash_init(void) {
     int error = 0;
 
     // A new stream begins, so any previously finalized prefixH is stale.
-    G_monero_vstate.prefix_finalized = 0;
+    G_monero_vstate.tx_stages &= (unsigned char)~TX_STAGE_PREFIX_FINALIZED;
 
     error = monero_keccak_update_H(
         G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
@@ -710,7 +710,7 @@ int monero_apdu_prefix_hash_update(void) {
             return error;
         }
         // The whole prefix was streamed and checked; prefixH describes this tx.
-        G_monero_vstate.prefix_finalized = 1;
+        G_monero_vstate.tx_stages |= TX_STAGE_PREFIX_FINALIZED;
         monero_io_insert(G_monero_vstate.prefixH, 32);
     }
 

@@ -138,23 +138,15 @@ struct monero_v_state_s {
     unsigned char tx_state_p2;
     unsigned char tx_output_cnt;
     unsigned int tx_sign_cnt;
-    /* Set only when the user confirms the on-device review
-     * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
-     * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
-    unsigned char user_approved_tx;
-    /* Set only at the end of the terminal INS_VALIDATE/P1=3 branch, once mlsagH
-     * has been recomputed for this tx. The non-terminal branch also advances
-     * tx_state_p1 to 3, so the state machine alone proves nothing. Reset per tx. */
-    unsigned char prehash_finalized;
-    /* Set only on the last INS_PREFIX_HASH/P1=2 chunk, once the prefix has been
-     * matched against the derived output keys and hashed into prefixH. P1=1 alone
-     * already releases the next command, so it proves nothing. Reset per tx. */
-    unsigned char prefix_finalized;
-    /* Set only when an INS_VALIDATE/P1=2 output clears IN_OPTION_MORE_COMMAND and
-     * the whole output set matches OUTK. That branch is also the only writer of
-     * the commitment digest C, so a host that never clears it reaches neither.
-     * Reset per tx. */
-    unsigned char outputs_reviewed;
+/* Stages of a real transaction. The host picks the P1/P2 discriminants the state
+ * machine keys off, so the APDU sequence proves none of them. Each bit is set at
+ * one place only -- the end of the work it names -- and monero_reset_tx() clears
+ * the set. Test with monero_tx_stages_check(). */
+#define TX_STAGE_PREFIX_FINALIZED  0x01 /* last P1=2 chunk    -> prefixH */
+#define TX_STAGE_OUTPUTS_REVIEWED  0x02 /* P1=2, MORE clear   -> C       */
+#define TX_STAGE_USER_APPROVED     0x04 /* review confirmed             */
+#define TX_STAGE_PREHASH_FINALIZED 0x08 /* terminal P1=3      -> mlsagH  */
+    unsigned char tx_stages;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];

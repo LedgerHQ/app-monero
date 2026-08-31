@@ -57,6 +57,7 @@ int monero_apdu_get_tx_proof(void);
 int monero_apdu_open_tx(void);
 int monero_apdu_open_tx_cont(void);
 int monero_reset_tx(int reset_tx_cnt);
+int monero_tx_stages_check(unsigned char required);
 int monero_apdu_open_subtx(void);
 int monero_apdu_set_signature_mode(void);
 int monero_apdu_stealth(void);

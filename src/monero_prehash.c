@@ -267,7 +267,7 @@ int monero_apdu_mlsag_prehash_update() {
             }
             monero_sha256_commitment_init();
             // The output set matched OUTK and C now holds its digest.
-            G_monero_vstate.outputs_reviewed = 1;
+            G_monero_vstate.tx_stages |= TX_STAGE_OUTPUTS_REVIEWED;
         }
 
         // ask user
@@ -337,24 +337,13 @@ int monero_apdu_mlsag_prehash_finalize() {
             return error;
         }
     } else {
-        // Terminal step: produces the pre-MLSAG signing hash and marks the tx
-        // signed. Refuse it unless the user confirmed the review -- a host that
-        // never triggers the final review (e.g. keeps IN_OPTION_MORE_COMMAND
-        // set on every output) leaves user_approved_tx clear and is rejected
-        // here.
-        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
-            !G_monero_vstate.user_approved_tx) {
-            return SW_SECURITY_USER_NOT_APPROVED;
-        }
-        // The prefixH compared below must come from this transaction.
-        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
-            !G_monero_vstate.prefix_finalized) {
-            return SW_SECURITY_PREFIX_NOT_FINALIZED;
-        }
-        // Same for C below: only the output boundary writes it.
-        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
-            !G_monero_vstate.outputs_reviewed) {
-            return SW_SECURITY_OUTPUTS_NOT_REVIEWED;
+        // Terminal step: produces mlsagH and marks the tx signed. The review,
+        // prefixH and C it relies on must all belong to this transaction.
+        error = monero_tx_stages_check(TX_STAGE_USER_APPROVED |
+                                       TX_STAGE_PREFIX_FINALIZED |
+                                       TX_STAGE_OUTPUTS_REVIEWED);
+        if (error != SW_OK) {
+            return error;
         }
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
@@ -410,7 +399,7 @@ int monero_apdu_mlsag_prehash_finalize() {
         }
         // Every check above passed and mlsagH was just recomputed for this
         // transaction. Only here may signing unlock.
-        G_monero_vstate.prehash_finalized = 1;
+        G_monero_vstate.tx_stages |= TX_STAGE_PREHASH_FINALIZED;
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
 
