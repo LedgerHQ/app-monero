@@ -141,7 +141,8 @@ struct monero_v_state_s {
 /* Stages of a real transaction. The host picks the P1/P2 discriminants the state
  * machine keys off, so the APDU sequence proves none of them. Each bit is set at
  * one place only -- the end of the work it names -- and monero_reset_tx() clears
- * the set. Test with monero_tx_stages_check(). */
+ * the set. Fake transactions verify nothing, so they set no bit: a raised bit
+ * always means real work really happened. Test with monero_tx_stages_check(). */
 #define TX_STAGE_PREFIX_FINALIZED  0x01 /* last P1=2 chunk    -> prefixH */
 #define TX_STAGE_OUTPUTS_REVIEWED  0x02 /* P1=2, MORE clear   -> C       */
 #define TX_STAGE_USER_APPROVED     0x04 /* review confirmed             */

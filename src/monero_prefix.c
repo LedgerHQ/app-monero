@@ -710,7 +710,9 @@ int monero_apdu_prefix_hash_update(void) {
             return error;
         }
         // The whole prefix was streamed and checked; prefixH describes this tx.
-        G_monero_vstate.tx_stages |= TX_STAGE_PREFIX_FINALIZED;
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+            G_monero_vstate.tx_stages |= TX_STAGE_PREFIX_FINALIZED;
+        }
         monero_io_insert(G_monero_vstate.prefixH, 32);
     }
 

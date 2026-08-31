@@ -267,7 +267,9 @@ int monero_apdu_mlsag_prehash_update() {
             }
             monero_sha256_commitment_init();
             // The output set matched OUTK and C now holds its digest.
-            G_monero_vstate.tx_stages |= TX_STAGE_OUTPUTS_REVIEWED;
+            if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+                G_monero_vstate.tx_stages |= TX_STAGE_OUTPUTS_REVIEWED;
+            }
         }
 
         // ask user
@@ -399,7 +401,9 @@ int monero_apdu_mlsag_prehash_finalize() {
         }
         // Every check above passed and mlsagH was just recomputed for this
         // transaction. Only here may signing unlock.
-        G_monero_vstate.tx_stages |= TX_STAGE_PREHASH_FINALIZED;
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+            G_monero_vstate.tx_stages |= TX_STAGE_PREHASH_FINALIZED;
+        }
 
         monero_io_insert(G_monero_vstate.mlsagH, 32);
 
