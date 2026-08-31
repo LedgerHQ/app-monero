@@ -343,6 +343,11 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // tx_state_ins == INS_PREFIX_HASH only means P1=1 ran.
+            if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+                (G_monero_vstate.prefix_finalized != 1)) {
+                return SW_SECURITY_PREFIX_NOT_FINALIZED;
+            }
 
             if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
                 return SW_WRONG_P1P2;

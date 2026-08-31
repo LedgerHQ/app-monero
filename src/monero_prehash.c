@@ -344,6 +344,11 @@ int monero_apdu_mlsag_prehash_finalize() {
             !G_monero_vstate.user_approved_tx) {
             return SW_SECURITY_USER_NOT_APPROVED;
         }
+        // The prefixH compared below must come from this transaction.
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
+            !G_monero_vstate.prefix_finalized) {
+            return SW_SECURITY_PREFIX_NOT_FINALIZED;
+        }
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
             error = monero_sha256_commitment_final(H);
