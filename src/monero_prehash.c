@@ -266,6 +266,8 @@ int monero_apdu_mlsag_prehash_update() {
                 goto end;
             }
             monero_sha256_commitment_init();
+            // The output set matched OUTK and C now holds its digest.
+            G_monero_vstate.outputs_reviewed = 1;
         }
 
         // ask user
@@ -348,6 +350,11 @@ int monero_apdu_mlsag_prehash_finalize() {
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
             !G_monero_vstate.prefix_finalized) {
             return SW_SECURITY_PREFIX_NOT_FINALIZED;
+        }
+        // Same for C below: only the output boundary writes it.
+        if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
+            !G_monero_vstate.outputs_reviewed) {
+            return SW_SECURITY_OUTPUTS_NOT_REVIEWED;
         }
         // Finalize and check commitment hash control
         if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {

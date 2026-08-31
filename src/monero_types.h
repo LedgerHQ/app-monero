@@ -150,6 +150,11 @@ struct monero_v_state_s {
      * matched against the derived output keys and hashed into prefixH. P1=1 alone
      * already releases the next command, so it proves nothing. Reset per tx. */
     unsigned char prefix_finalized;
+    /* Set only when an INS_VALIDATE/P1=2 output clears IN_OPTION_MORE_COMMAND and
+     * the whole output set matches OUTK. That branch is also the only writer of
+     * the commitment digest C, so a host that never clears it reaches neither.
+     * Reset per tx. */
+    unsigned char outputs_reviewed;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -361,6 +366,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_USER_NOT_APPROVED        0x691D
 #define SW_SECURITY_PREHASH_NOT_FINALIZED    0x691E
 #define SW_SECURITY_PREFIX_NOT_FINALIZED     0x691F
+#define SW_SECURITY_OUTPUTS_NOT_REVIEWED     0x6920
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

@@ -52,7 +52,9 @@ int monero_reset_tx(int reset_tx_cnt) {
     // boundary, so drop the previous one here.
     G_monero_vstate.prehash_finalized = 0;
     G_monero_vstate.prefix_finalized = 0;
+    G_monero_vstate.outputs_reviewed = 0;
     explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));
+    explicit_bzero(G_monero_vstate.C, sizeof(G_monero_vstate.C));
     explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));
     explicit_bzero(G_monero_vstate.c, sizeof(G_monero_vstate.c));
     if (reset_tx_cnt) {
