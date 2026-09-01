@@ -962,21 +962,25 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
             goto end;
         }
 
-        // The main tx public key must be one the device can vouch for
+        // The main tx public key must be one the device can vouch for, in the
+        // one form the recipient can scan with: a lone subaddress destination
+        // carries r.Bout, every other shape r.G. Accepting either form for any
+        // output burns it.
         if (is_change == 0) {
-            if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
+            if (is_subaddress && !need_additional_txkeys) {
                 unsigned char expected[KEY_SIZE];
                 err = monero_ecmul_k(expected, Bout, tx_key, sizeof(expected),
                                      KEY_SIZE, sizeof(tx_key));
+                if (err == 0 && memcmp(txkey_pub, expected, KEY_SIZE) != 0) {
+                    err = SW_WRONG_DATA;
+                }
+                explicit_bzero(expected, sizeof(expected));
                 if (err) {
                     goto end;
                 }
-                if (memcmp(txkey_pub, expected, KEY_SIZE) != 0) {
-                    explicit_bzero(expected, sizeof(expected));
-                    err = SW_WRONG_DATA;
-                    goto end;
-                }
-                explicit_bzero(expected, sizeof(expected));
+            } else if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
+                err = SW_WRONG_DATA;
+                goto end;
             }
         }
     }
