@@ -51,7 +51,7 @@ from monero_client.utils.varint import encode_varint
 SW_SECURITY_USER_NOT_APPROVED = 0x691D
 # SW the app's IO gate (send_error_and_kill_app) answers when a command arrives
 # while a confirmation is on screen; the app then exits to the dashboard (fail-closed).
-SW_COMMAND_NOT_ALLOWED = 0x6980
+SW_COMMAND_NOT_ACCEPTED = 0x6901
 
 
 def _raw_apdu(ins: InsType, p1: int, p2: int, option: int, payload: bytes) -> bytes:
@@ -76,7 +76,7 @@ def _send_during_review(backend: BackendInterface, apdu: bytes,
     """Send `apdu` while a review is pending, in a daemon thread, and observe the
     device. Returns ``(sw, processed)``:
 
-      * ``(sw, False)``: the device ANSWERED (a fixed build's gate replies 0x6980
+      * ``(sw, False)``: the device ANSWERED (a fixed build's gate replies 0x6901
         and then exits to the dashboard).
       * ``(None, True)``: the exchange blocked AND ``review_marker`` is gone from
         screen — a vulnerable build dispatched the APDU and moved on to the
@@ -108,7 +108,7 @@ def _send_during_review(backend: BackendInterface, apdu: bytes,
 _NOT_DELIVERED_SKIP = ("the concurrent APDU was not delivered to the device — the ragger speculos "
                        "client serialized it behind the pending review's deferred reply. This "
                        "happens with ragger < 1.45.2; use ragger >= 1.45.2 (pinned in "
-                       "tests/requirements.txt) so the 0x6980 rejection can be verified.")
+                       "tests/requirements.txt) so the 0x6901 rejection can be verified.")
 
 # Title shown on the FIRST page of the real review flow
 # (start_signature -> nbgl_useCaseReview, finishTitle "Sign transaction?" is only
@@ -419,7 +419,7 @@ class TestNanoReviewCannotBeSkipped:
     review — the 'skip all reviews' attack can't even begin.
 
     This test holds the device on the fee review and shows the very next signing
-    step (an output) is rejected with 0x6980, after which the app exits
+    step (an output) is rejected with 0x6901, after which the app exits
     (fail-closed). (The app-side user_approved_tx gate, verified for NBGL in
     TestNbglReviewEnforced, is belt-and-suspenders here since the IO gate already
     blocks reaching finalize unreviewed.)
@@ -483,14 +483,14 @@ class TestNanoReviewCannotBeSkipped:
                         "the injected output was processed and its review replaced the fee one.")
         if sw is None:
             pytest.skip(_NOT_DELIVERED_SKIP)
-        assert sw == SW_COMMAND_NOT_ALLOWED, (
-            f"expected the review to be mandatory (reject {SW_COMMAND_NOT_ALLOWED:#06x}), "
+        assert sw == SW_COMMAND_NOT_ACCEPTED, (
+            f"expected the review to be mandatory (reject {SW_COMMAND_NOT_ACCEPTED:#06x}), "
             f"got {sw:#06x}"
         )
-        # 0x6980 is emitted only by send_error_and_kill_app, so it already means
+        # 0x6901 is emitted only by send_error_and_kill_app, so it already means
         # "rejected and exited fail-closed". We can't probe the screen afterwards:
         # on speculos app_exit() tears the emulator down, on hardware it returns to
         # the dashboard.
         print("\n[FIXED on BAGL] the host cannot advance past an unacknowledged "
-              f"review: the next signing step was rejected with {SW_COMMAND_NOT_ALLOWED:#06x} "
+              f"review: the next signing step was rejected with {SW_COMMAND_NOT_ACCEPTED:#06x} "
               "and the app exited.")
