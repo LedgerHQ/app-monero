@@ -996,6 +996,12 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
             if (err) {
                 goto end;
             }
+            // is_subaddress picks the derivation below and the address prefix
+            // shown at review, so the two commands must agree on it.
+            err = monero_sha256_outkeys_update(&is_subaddress, 1);
+            if (err) {
+                goto end;
+            }
         }
     }
 

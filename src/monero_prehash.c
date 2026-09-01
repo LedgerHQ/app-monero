@@ -178,6 +178,10 @@ int monero_apdu_mlsag_prehash_update() {
             if (err) {
                 goto end;
             }
+            err = monero_sha256_outkeys_update(&is_subaddress, 1);
+            if (err) {
+                goto end;
+            }
             err = monero_sha256_outkeys_update(AKout, KEY_SIZE);
             if (err) {
                 goto end;
