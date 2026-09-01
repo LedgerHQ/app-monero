@@ -116,13 +116,25 @@ def _open_real_tx(monero: MoneroCmd, state):
                            secret_view_key=None, secret_spend_key=None, addr=addr)
     assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
     tx_pub_key, tx_priv_key, _, _ = monero.open_tx()
+    state["R"] = tx_pub_key
     state["tx_pub_key"] = tx_pub_key
     state["tx_priv_key"] = tx_priv_key
 
 
 def _derive_two_outputs(monero: MoneroCmd, state, gen_is_subaddress: bool):
     """Derive the destination and the change output, telling the device
-    `gen_is_subaddress` for the destination."""
+    `gen_is_subaddress` for the destination.
+
+    A destination declared a subaddress with no additional key legitimately
+    carries txkey_pub = r*Bout rather than r*G, and the device now requires that
+    form (monero_key.c:965-985). Send the matching one, or the derivation is
+    refused 0x6984 long before the OUTK chain is reached. Computed on-device, as
+    the wallet does -- the host never sees r."""
+    if gen_is_subaddress:
+        state["tx_pub_key"] = monero.secret_scalar_mul_key(
+            pub_key=state["victim"].public_spend_key,
+            _scalar=state["tx_priv_key"])
+        assert state["tx_pub_key"] != state["R"], "r*Bout must differ from r*G"
     state["ak"], state["eph"] = [], []
     for index, (is_change, is_sub) in enumerate(
             ((False, gen_is_subaddress), (True, False))):
