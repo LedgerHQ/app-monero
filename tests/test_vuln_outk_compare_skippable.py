@@ -83,6 +83,7 @@ L = 2 ** 252 + 27742317777372353535851937790883648493
 SW_SECURITY_COMMITMENT_CHAIN_CONTROL = 0x6914
 # Raised once the output boundary that compares OUTK and captures C never ran.
 SW_SECURITY_OUTPUTS_NOT_REVIEWED = 0x6920
+SW_SECURITY_USER_NOT_APPROVED = 0x691D
 
 ZERO_COMMITMENT = bytes(32)
 ATTACKER_PROOF = b"\xad" * 32
@@ -123,8 +124,8 @@ def _setup_mismatched_tx(monero: MoneroCmd, device, test_name: str, state):
     """REAL tx up to (not including) INS_VALIDATE/P1=2, output keys derived for the
     ATTACKER while the review will show the VICTIM.
 
-    One non-change output on purpose: on BAGL the change and fee flows go through
-    ui_menu_amount_validation_action, which does not set user_approved_tx."""
+    One non-change output on purpose: it is the destination flow that draws a
+    review here."""
     monero.reset_and_get_version(monero_client_version=b"0.18")
     view, spend, addr = monero.get_public_keys()
     state["victim"] = Keys(public_view_key=view, public_spend_key=spend,
@@ -256,8 +257,13 @@ class TestOutputsReviewedEnforced:
     """Fix verification: the same attack must now be refused at the terminal step.
 
     outputs_reviewed is set only in the MORE-clear branch of INS_VALIDATE/P1=2, so a
-    host that never clears MORE cannot finalize -- regardless of BAGL having marked
-    the transaction approved from a non-terminal review.
+    host that never clears MORE cannot finalize.
+
+    The refusal is 0x691D, not 0x6920: BAGL approval is now terminal-only too, so
+    skipping the boundary also skips approval, and monero_tx_stages_check reports
+    the first missing stage. Both gates are missing here and only one code can come
+    back -- the outputs gate is no longer separately observable from outside, on
+    either UI. It stays as defense in depth.
 
     Last class in the file: the refusal exits the app."""
 
@@ -299,6 +305,6 @@ class TestOutputsReviewedEnforced:
             backend.exchange_raw(
                 _raw_apdu(InsType.INS_VALIDATE, 3, 1, 0x00,
                           state["prefixh"] + ATTACKER_PROOF))
-        assert exc.value.status == SW_SECURITY_OUTPUTS_NOT_REVIEWED, (
-            f"expected {SW_SECURITY_OUTPUTS_NOT_REVIEWED:#06x} when the output "
+        assert exc.value.status == SW_SECURITY_USER_NOT_APPROVED, (
+            f"expected {SW_SECURITY_USER_NOT_APPROVED:#06x} when the output "
             f"boundary never ran, got {exc.value.status:#06x}")
