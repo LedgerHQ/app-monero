@@ -65,7 +65,6 @@ int check_ins_access() {
         case INS_RESET:
         case INS_PUT_KEY:
         case INS_GET_KEY:
-        case INS_DISPLAY_ADDRESS:
         case INS_VERIFY_KEY:
         case INS_GET_CHACHA8_PREKEY:
         case INS_GEN_KEY_DERIVATION:
@@ -91,6 +90,16 @@ int check_ins_access() {
 
         case INS_OPEN_TX:
         case INS_SET_SIGNATURE_MODE:
+            return SW_OK;
+
+        // Drives its own screen, so it must not run while a review is being
+        // accumulated. A wallet only shows an address on an explicit user
+        // action, and holds the device lock for the whole of a transaction, so
+        // it never reaches here mid-signing.
+        case INS_DISPLAY_ADDRESS:
+            if (G_monero_vstate.tx_in_progress == 1) {
+                return SW_COMMAND_NOT_ALLOWED;
+            }
             return SW_OK;
 
         case INS_GEN_TXOUT_KEYS:
