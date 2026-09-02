@@ -51,7 +51,11 @@ from monero_client.utils.varint import encode_varint
 SW_SECURITY_USER_NOT_APPROVED = 0x691D
 # SW the app's IO gate (send_error_and_kill_app) answers when a command arrives
 # while a confirmation is on screen; the app then exits to the dashboard (fail-closed).
-SW_COMMAND_NOT_ALLOWED = 0x6980
+SW_COMMAND_NOT_ALLOWED = 0x6980    # the app's own io_reply_pending gate
+SWO_COMMAND_NOT_ACCEPTED = 0x6901  # the SDK's pending-APDU latch, which pre-empts it
+# Which layer answers depends on the SDK the app was built against, so accept
+# either: the property under test is that the command is refused, not who refused.
+SW_REFUSED_MID_REVIEW = (SW_COMMAND_NOT_ALLOWED, SWO_COMMAND_NOT_ACCEPTED)
 
 
 def _raw_apdu(ins: InsType, p1: int, p2: int, option: int, payload: bytes) -> bytes:
@@ -483,12 +487,13 @@ class TestNanoReviewCannotBeSkipped:
                         "the injected output was processed and its review replaced the fee one.")
         if sw is None:
             pytest.skip(_NOT_DELIVERED_SKIP)
-        assert sw == SW_COMMAND_NOT_ALLOWED, (
-            f"expected the review to be mandatory (reject {SW_COMMAND_NOT_ALLOWED:#06x}), "
-            f"got {sw:#06x}"
+        assert sw in SW_REFUSED_MID_REVIEW, (
+            f"expected the review to be mandatory (reject one of "
+            f"{[hex(c) for c in SW_REFUSED_MID_REVIEW]}), got {sw:#06x}"
         )
-        # 0x6980 is emitted only by send_error_and_kill_app, so it already means
-        # "rejected and exited fail-closed". We can't probe the screen afterwards:
+        # Either code means "rejected"; 0x6980 additionally means the app exited
+        # fail-closed via send_error_and_kill_app, while the SDK's 0x6901 answers
+        # without exiting. We can't probe the screen afterwards:
         # on speculos app_exit() tears the emulator down, on hardware it returns to
         # the dashboard.
         print("\n[FIXED on BAGL] the host cannot advance past an unacknowledged "
