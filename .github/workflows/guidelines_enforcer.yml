@@ -21,3 +21,5 @@ jobs:
   guidelines_enforcer:
     name: Call Ledger guidelines_enforcer
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_guidelines_enforcer.yml@v1
+    secrets:
+      git_token: ${{ secrets.GITHUB_TOKEN }}
