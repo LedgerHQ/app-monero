@@ -27,7 +27,7 @@ that diff would be meaningless. The proof is the in-session mid-review acceptanc
 Needs a DEBUG=1 build and ragger >= 1.45.2 (older ragger serializes the injected
 APDU, so the test skips rather than false-pass). Coverage:
   * NBGL (Stax/Flex): TestAsyncReviewTotouVuln (exploit, @skip on fixed build) and
-    TestAsyncReviewLocked (fix check: asserts 0x6980 + app exit).
+    TestAsyncReviewLocked (fix check: asserts the injection is refused).
   * BAGL (Nano S+/X): TestAsyncReviewLockedNano -- same check via the fee review.
 
 The fix verified here is the local app-side gate (app_main + monero_io_do), not
@@ -67,7 +67,11 @@ ZERO_COMMITMENT = bytes(32)
 # SW returned by the app's IO gate (send_error_and_kill_app) when a command
 # arrives while a confirmation is still on screen. The app answers this, then
 # exits to the dashboard (fail-closed), so the pending review is torn down.
-SW_COMMAND_NOT_ALLOWED = 0x6980
+SW_COMMAND_NOT_ALLOWED = 0x6980    # the app's own io_reply_pending gate
+SWO_COMMAND_NOT_ACCEPTED = 0x6901  # the SDK's pending-APDU latch, which pre-empts it
+# Which layer answers depends on the SDK the app was built against, so accept
+# either: the property under test is that the command is refused, not who refused.
+SW_REFUSED_MID_REVIEW = (SW_COMMAND_NOT_ALLOWED, SWO_COMMAND_NOT_ACCEPTED)
 
 
 def _output_payload(recv: Keys, ak: bytes, blinded_mask: bytes, blinded_amount: bytes,
@@ -391,13 +395,14 @@ class TestAsyncReviewLocked:
         sw, _ = _inject_during_review(backend, injected_apdu)
         if sw is None:
             pytest.skip(_NOT_DELIVERED_SKIP)
-        assert sw == SW_COMMAND_NOT_ALLOWED, (
-            f"expected the app IO gate to reject the injection with "
-            f"{SW_COMMAND_NOT_ALLOWED:#06x}, got {sw:#06x} (0x9000 = injection accepted = vulnerable)"
+        assert sw in SW_REFUSED_MID_REVIEW, (
+            f"expected the injection to be rejected with one of "
+            f"{[hex(c) for c in SW_REFUSED_MID_REVIEW]}, got {sw:#06x} "
+            f"(0x9000 = injection accepted = vulnerable)"
         )
 
-        # 0x6980 is emitted only by send_error_and_kill_app, so it already means
-        # "rejected and exited fail-closed" (review torn down, tx not mutated) --
+        # Either code means "rejected". 0x6980 also means the app exited
+        # fail-closed (review torn down, tx not mutated); the SDK's 0x6901 --
         # the visible difference from the SDK lock, which keeps the review on
         # screen. We can't probe the screen afterwards: on speculos app_exit()
         # tears the emulator down (its HTTP API goes away), and on hardware it
@@ -467,13 +472,12 @@ class TestAsyncReviewLockedNano:
                         "review was replaced by the injected output's review (tx mutated).")
         if sw is None:
             pytest.skip(_NOT_DELIVERED_SKIP)
-        assert sw == SW_COMMAND_NOT_ALLOWED, (
-            f"expected the app IO gate to reject the injection with "
-            f"{SW_COMMAND_NOT_ALLOWED:#06x}, got {sw:#06x}"
+        assert sw in SW_REFUSED_MID_REVIEW, (
+            f"expected the injection to be rejected with one of "
+            f"{[hex(c) for c in SW_REFUSED_MID_REVIEW]}, got {sw:#06x}"
         )
-        # As on NBGL, 0x6980 (emitted only by send_error_and_kill_app) is the
-        # definitive signal: rejected and exited fail-closed. We can't probe the
-        # screen after the exit -- speculos tears the emulator down, hardware
-        # returns to the dashboard.
+        # As on NBGL, either code means rejected; 0x6980 also means the app
+        # exited fail-closed. We can't probe the screen after an exit -- speculos
+        # tears the emulator down, hardware returns to the dashboard.
         print("\n[FIXED on BAGL] output injected during the fee review was "
-              f"rejected with {SW_COMMAND_NOT_ALLOWED:#06x}; app exited fail-closed, tx not mutated.")
+              f"rejected with {sw:#06x}; tx not mutated.")

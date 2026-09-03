@@ -65,7 +65,6 @@ int check_ins_access() {
         case INS_RESET:
         case INS_PUT_KEY:
         case INS_GET_KEY:
-        case INS_DISPLAY_ADDRESS:
         case INS_VERIFY_KEY:
         case INS_GET_CHACHA8_PREKEY:
         case INS_GEN_KEY_DERIVATION:
@@ -91,6 +90,16 @@ int check_ins_access() {
 
         case INS_OPEN_TX:
         case INS_SET_SIGNATURE_MODE:
+            return SW_OK;
+
+        // Drives its own screen, so it must not run while a review is being
+        // accumulated. A wallet only shows an address on an explicit user
+        // action, and holds the device lock for the whole of a transaction, so
+        // it never reaches here mid-signing.
+        case INS_DISPLAY_ADDRESS:
+            if (G_monero_vstate.tx_in_progress == 1) {
+                return SW_COMMAND_NOT_ALLOWED;
+            }
             return SW_OK;
 
         case INS_GEN_TXOUT_KEYS:
@@ -343,6 +352,11 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // tx_state_ins == INS_PREFIX_HASH only means P1=1 ran.
+            sw = monero_tx_stages_check(TX_STAGE_PREFIX_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
+            }
 
             if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
                 return SW_WRONG_P1P2;
@@ -439,6 +453,12 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_MLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // Both branches of INS_VALIDATE/P1=3 reach tx_state_p1 == 3, so it
+            // proves nothing about mlsagH.
+            sw = monero_tx_stages_check(TX_STAGE_PREHASH_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
+            }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
                 if ((G_monero_vstate.tx_state_p1 != 3) ||
                     (G_monero_vstate.io_p1 != 1) ||
@@ -500,6 +520,11 @@ int monero_dispatch() {
             if ((G_monero_vstate.tx_state_ins != INS_VALIDATE) &&
                 (G_monero_vstate.tx_state_ins != INS_CLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
+            }
+            // As for INS_MLSAG: tx_state_p1 == 3 proves nothing about mlsagH.
+            sw = monero_tx_stages_check(TX_STAGE_PREHASH_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
             }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
                 if ((G_monero_vstate.tx_state_p1 != 3) ||

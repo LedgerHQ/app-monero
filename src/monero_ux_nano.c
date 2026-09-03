@@ -166,9 +166,21 @@ UX_FLOW(ux_flow_change, &ux_menu_validation_change_1_step,
 UX_FLOW(ux_flow_timelock, &ux_menu_validation_timelock_1_step,
         &ux_menu_validation_cf_2_step, &ux_menu_validation_cf_3_step);
 
+/* Only the review that closed the output set may approve the transaction. The
+ * MORE-clear branch raises OUTPUTS_REVIEWED before drawing that review, so the
+ * bit tells a terminal accept from a per-output one. Both accept callbacks need
+ * it: the last review is the destination flow for a plain send, and the change
+ * flow whenever change comes last. */
+static void approve_if_terminal_review(void) {
+    if (G_monero_vstate.tx_stages & TX_STAGE_OUTPUTS_REVIEWED) {
+        G_monero_vstate.tx_stages |= TX_STAGE_USER_APPROVED;
+    }
+}
+
 void ui_menu_amount_validation_action(unsigned int value) {
     unsigned short sw;
     if (value == ACCEPT) {
+        approve_if_terminal_review();
         sw = SW_OK;
     } else {
         monero_abort_tx();
@@ -230,10 +242,7 @@ void ui_menu_validation_display_last(unsigned int value
 void ui_menu_validation_action(unsigned int value) {
     unsigned short sw;
     if (value == ACCEPT) {
-        // User confirmed an output review: mark the tx approved. The signing
-        // path refuses to proceed without it. On BAGL every output is reviewed
-        // and blocks, so this is reached.
-        G_monero_vstate.user_approved_tx = 1;
+        approve_if_terminal_review();
         sw = SW_OK;
     } else {
         monero_abort_tx();

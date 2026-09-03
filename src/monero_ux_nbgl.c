@@ -51,6 +51,19 @@ typedef struct {
 
 static TransactionContext_t transactionContext;
 
+/* The address screen keeps its own pairs. The review above is filled across
+ * several APDUs and drawn only at the end, and an address can be shown at any
+ * point in that window; one shared struct would let it reset nbPairs and drop
+ * the rows queued so far. */
+#define MAX_ADDR_TAGVALUE_NUMBER 3  // type + major/minor, or type + payment ID
+
+typedef struct {
+    nbgl_contentTagValue_t tagValuePair[MAX_ADDR_TAGVALUE_NUMBER];
+    nbgl_contentTagValueList_t tagValueList;
+} AddressContext_t;
+
+static AddressContext_t addressContext;
+
 /* -------------------------------- TITLES ---------------------------------- */
 const char feeTitle[] = "Fee";
 const char amountTitle[] = "Amount";
@@ -82,7 +95,7 @@ static void ui_menu_validation_action(bool value) {
         // Only place the tx is marked user-approved: this callback fires when
         // the user confirms the final review (start_signature). The signing
         // path refuses to proceed without it.
-        G_monero_vstate.user_approved_tx = 1;
+        G_monero_vstate.tx_stages |= TX_STAGE_USER_APPROVED;
         reset_context();
         ui_menu_validation_action_confirm();
     } else {
@@ -255,46 +268,46 @@ void display_account(void) {
     switch (G_monero_vstate.disp_addr_mode) {
         case 0:
         case DISP_MAIN:
-            transactionContext.tagValuePair[0].item = "Type";
-            transactionContext.tagValuePair[0].value = "Main address";
+            addressContext.tagValuePair[0].item = "Type";
+            addressContext.tagValuePair[0].value = "Main address";
 
-            transactionContext.tagValueList.nbPairs = 1;
+            addressContext.tagValueList.nbPairs = 1;
             break;
 
         case DISP_SUB:
-            transactionContext.tagValuePair[0].item = "Type";
-            transactionContext.tagValuePair[0].value = "Sub address";
+            addressContext.tagValuePair[0].item = "Type";
+            addressContext.tagValuePair[0].value = "Sub address";
 
             snprintf(ADDR_MAJOR, 16, "%d", G_monero_vstate.disp_addr_M);
             snprintf(ADDR_MINOR, 16, "%d", G_monero_vstate.disp_addr_m);
 
-            transactionContext.tagValuePair[1].item = "Major";
-            transactionContext.tagValuePair[1].value = ADDR_MAJOR;
+            addressContext.tagValuePair[1].item = "Major";
+            addressContext.tagValuePair[1].value = ADDR_MAJOR;
 
-            transactionContext.tagValuePair[2].item = "Minor";
-            transactionContext.tagValuePair[2].value = ADDR_MINOR;
+            addressContext.tagValuePair[2].item = "Minor";
+            addressContext.tagValuePair[2].value = ADDR_MINOR;
 
-            transactionContext.tagValueList.nbPairs = 3;
+            addressContext.tagValueList.nbPairs = 3;
             break;
 
         case DISP_INTEGRATED:
-            transactionContext.tagValuePair[0].item = "Type";
-            transactionContext.tagValuePair[0].value = "Integrated address";
+            addressContext.tagValuePair[0].item = "Type";
+            addressContext.tagValuePair[0].value = "Integrated address";
 
             memcpy(ADDR_ID, G_monero_vstate.payment_id, 16);
             (ADDR_ID)[16] = '\0';  // ADDR_ID is consumed as a C string below
 
-            transactionContext.tagValuePair[1].item = "Payment ID";
-            transactionContext.tagValuePair[1].value = ADDR_ID;
+            addressContext.tagValuePair[1].item = "Payment ID";
+            addressContext.tagValuePair[1].value = ADDR_ID;
 
-            transactionContext.tagValueList.nbPairs = 2;
+            addressContext.tagValueList.nbPairs = 2;
             break;
     }
 
-    transactionContext.tagValueList.pairs = transactionContext.tagValuePair;
+    addressContext.tagValueList.pairs = addressContext.tagValuePair;
 
     nbgl_useCaseAddressReview(
-        G_monero_vstate.ux_address, &transactionContext.tagValueList,
+        G_monero_vstate.ux_address, &addressContext.tagValueList,
         &ICON_APP_MAIN, "Verify Monero\naddress", NULL, ui_menu_pubaddr_action);
 }
 

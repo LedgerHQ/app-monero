@@ -192,10 +192,10 @@ int monero_apdu_clsag_sign() {
     unsigned char mu_C[32];
     int err = 0;
 
-    // Never sign a real transaction the user did not approve on screen.
-    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL &&
-        !G_monero_vstate.user_approved_tx) {
-        err = SW_SECURITY_USER_NOT_APPROVED;
+    // Never sign unapproved, nor a hash the approval doesn't belong to.
+    err = monero_tx_stages_check(TX_STAGE_USER_APPROVED |
+                                 TX_STAGE_PREHASH_FINALIZED);
+    if (err != SW_OK) {
         goto end;
     }
 

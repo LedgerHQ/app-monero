@@ -138,10 +138,16 @@ struct monero_v_state_s {
     unsigned char tx_state_p2;
     unsigned char tx_output_cnt;
     unsigned int tx_sign_cnt;
-    /* Set only when the user confirms the on-device review
-     * (ui_menu_validation_action). Checked before the pre-MLSAG hash and before
-     * MLSAG/CLSAG signing, so a host can't skip the review. Reset per tx. */
-    unsigned char user_approved_tx;
+/* Stages of a real transaction. The host picks the P1/P2 discriminants the state
+ * machine keys off, so the APDU sequence proves none of them. Each bit is set at
+ * one place only -- the end of the work it names -- and monero_reset_tx() clears
+ * the set. Fake transactions verify nothing, so they set no bit: a raised bit
+ * always means real work really happened. Test with monero_tx_stages_check(). */
+#define TX_STAGE_PREFIX_FINALIZED  0x01 /* last P1=2 chunk    -> prefixH */
+#define TX_STAGE_OUTPUTS_REVIEWED  0x02 /* P1=2, MORE clear   -> C       */
+#define TX_STAGE_USER_APPROVED     0x04 /* review confirmed             */
+#define TX_STAGE_PREHASH_FINALIZED 0x08 /* terminal P1=3      -> mlsagH  */
+    unsigned char tx_stages;
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];
@@ -351,6 +357,9 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_PREFIX_HASH              0x691B
 #define SW_SECURITY_CHANGE_ADDRESS           0x691C
 #define SW_SECURITY_USER_NOT_APPROVED        0x691D
+#define SW_SECURITY_PREHASH_NOT_FINALIZED    0x691E
+#define SW_SECURITY_PREFIX_NOT_FINALIZED     0x691F
+#define SW_SECURITY_OUTPUTS_NOT_REVIEWED     0x6920
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980
