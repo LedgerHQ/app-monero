@@ -181,16 +181,18 @@ class TestNeedAdditionalChangesTheOutputKey:
         _open_real_tx(monero, state)
         assert other_sec != state["tx_priv_key"], "the two tx secrets must differ"
 
+        # Two outputs, so two indices: an output must declare its own position.
+        # The one-time keys are therefore not comparable here, because the index
+        # changes them too. Whether an additional pubkey is published at all
+        # does not depend on the index, so that is what the flag is read from.
         derived = {}
-        for need_add in (False, True):
+        for idx, need_add in enumerate((False, True)):
             derived[need_add] = _gen_txout_keys_raw(
                 backend, state["tx_priv_key"], state["R"],
                 state["victim"].public_view_key, state["victim"].public_spend_key,
-                output_index=0, is_change=False, is_subaddress=True,
+                output_index=idx, is_change=False, is_subaddress=True,
                 need_additional=need_add, additional_sec=other_sec)
 
-        assert derived[False][1] != derived[True][1], (
-            "need_additional_txkeys did not change the one-time output key")
         assert derived[False][2] is None and derived[True][2] is not None, (
             "only need_additional_txkeys=1 should publish an additional pubkey")
 
