@@ -954,6 +954,15 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // one key while a different R lands on-chain via a later output (which
     // would burn the change), without assuming the key is r.G.
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        // An output has no index of its own. Its index is its place in vout,
+        // and these calls come in that order. Use any other index and the
+        // recipient computes a different key, so the output is lost. The
+        // OUT_EPH chain and the prefix walk see keys, never indexes.
+        if (output_index != G_monero_vstate.tx_output_cnt) {
+            err = SW_WRONG_DATA;
+            goto end;
+        }
+
         if (G_monero_vstate.tx_output_cnt == 0) {
             memcpy(G_monero_vstate.tx_main_txkey, txkey_pub, KEY_SIZE);
         } else if (memcmp(txkey_pub, G_monero_vstate.tx_main_txkey, KEY_SIZE) !=

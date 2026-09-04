@@ -136,7 +136,10 @@ struct monero_v_state_s {
     unsigned char tx_state_ins;
     unsigned char tx_state_p1;
     unsigned char tx_state_p2;
-    unsigned char tx_output_cnt;
+    /* How many outputs are derived so far. It is also the index the next
+     * output must send. Not a char: a char wraps after 256 outputs, and a
+     * wrapped count can match the wrong number of outputs. */
+    unsigned int tx_output_cnt;
     unsigned int tx_sign_cnt;
 /* Stages of a real transaction. The host picks the P1/P2 discriminants the state
  * machine keys off, so the APDU sequence proves none of them. Each bit is set at
