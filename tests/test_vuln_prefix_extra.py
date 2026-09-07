@@ -27,16 +27,27 @@ from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import SigType
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 
+# The device now requires the prefix to carry the encrypted payment ID it made
+# itself, so a test that streams one has to ask for it first.
+from test_vuln_payment_id_unbound import _stealth
 
-def _open_and_genkeys(monero: MoneroCmd, n_outputs: int):
+
+def _open_and_genkeys(monero: MoneroCmd, n_outputs: int, backend=None,
+                      payment_id: bytes = None):
     """Reset, enter REAL mode, open a tx and derive n one-time output keys to
-    the primary address. Returns (tx_pub_key, [eph_keys])."""
+    the primary address. Returns (tx_pub_key, [eph_keys], enc_payment_id).
+
+    Pass a payment_id to have the device encrypt one, as a wallet does before it
+    puts the value in the prefix. INS_STEALTH has to follow INS_OPEN_TX, so the
+    call goes here rather than in the test. enc_payment_id is None otherwise."""
     monero.reset_and_get_version(monero_client_version=b"0.18")
     assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
     tx_pub_key, _tx_priv_key, fvk, fsk = monero.open_tx()
     assert fvk == b"\x00" * 32 and fsk == b"\xff" * 32
 
     pub_view, pub_spend, _ = monero.get_public_keys()
+    enc_pid = (None if payment_id is None
+               else _stealth(backend, pub_view, _tx_priv_key, payment_id))
     eph_keys = []
     for index in range(n_outputs):
         _ak, eph, _ = monero.gen_txout_keys(
@@ -49,7 +60,7 @@ def _open_and_genkeys(monero: MoneroCmd, n_outputs: int):
             is_subaddress=False,
         )
         eph_keys.append(eph)
-    return tx_pub_key, eph_keys
+    return tx_pub_key, eph_keys, enc_pid
 
 
 def _stream_prefix(monero: MoneroCmd, device, test_name: str,
@@ -79,9 +90,11 @@ class TestExtraIntegratedPaymentId:
     """Integrated address send: an 8-byte encrypted payment ID in a nonce."""
 
     @staticmethod
-    def test_integrated_payment_id_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph = _open_and_genkeys(monero, n_outputs=2)
-        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + bytes(8))
+    def test_integrated_payment_id_accepted(monero: MoneroCmd, backend,
+                                            device, test_name: str):
+        tx_pub_key, eph, enc_pid = _open_and_genkeys(
+            monero, n_outputs=2, backend=backend, payment_id=bytes.fromhex("1122334455667788"))
+        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + enc_pid)
         h = _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
         assert len(h) == 32
 
@@ -92,7 +105,7 @@ class TestExtraLongPaymentId:
 
     @staticmethod
     def test_long_payment_id_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph = _open_and_genkeys(monero, n_outputs=2)
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
         suffix = _nonce_field(_NONCE_PAYMENT_ID + bytes(32))
         h = _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
         assert len(h) == 32
@@ -104,7 +117,7 @@ class TestExtraPadding:
 
     @staticmethod
     def test_padding_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph = _open_and_genkeys(monero, n_outputs=2)
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
         suffix = b"\x00" * 8  # first 0x00 = padding tag, rest consumed as padding
         h = _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
         assert len(h) == 32
@@ -116,7 +129,7 @@ class TestExtraMultiDestination:
 
     @staticmethod
     def test_three_outputs_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph = _open_and_genkeys(monero, n_outputs=3)
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=3)
         h = _stream_prefix(monero, device, test_name, tx_pub_key, eph)
         assert len(h) == 32
 
@@ -126,22 +139,29 @@ class TestExtraPaymentIdMultiDestination:
     """Combined: 3 outputs plus an integrated payment ID nonce."""
 
     @staticmethod
-    def test_combined_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph = _open_and_genkeys(monero, n_outputs=3)
-        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + bytes(8))
+    def test_combined_accepted(monero: MoneroCmd, backend, device,
+                               test_name: str):
+        tx_pub_key, eph, enc_pid = _open_and_genkeys(
+            monero, n_outputs=3, backend=backend, payment_id=bytes.fromhex("1122334455667788"))
+        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + enc_pid)
         h = _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
         assert len(h) == 32
 
 
-def _open_and_genkeys_additional(monero: MoneroCmd, n_outputs: int):
+def _open_and_genkeys_additional(monero: MoneroCmd, n_outputs: int,
+                                 backend=None, payment_id: bytes = None):
     """Like _open_and_genkeys, but each output requests an additional tx key
-    (the subaddress path). Returns (tx_pub_key, [eph_keys], [additional_pubs])."""
+    (the subaddress path).
+
+    Returns (tx_pub_key, [eph_keys], [additional_pubs], enc_payment_id)."""
     monero.reset_and_get_version(monero_client_version=b"0.18")
     assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
     tx_pub_key, _tx_priv_key, fvk, fsk = monero.open_tx()
     assert fvk == b"\x00" * 32 and fsk == b"\xff" * 32
 
     pub_view, pub_spend, _ = monero.get_public_keys()
+    enc_pid = (None if payment_id is None
+               else _stealth(backend, pub_view, _tx_priv_key, payment_id))
     eph_keys, add_pubs = [], []
     for index in range(n_outputs):
         _ak, eph, add_pub = monero.gen_txout_keys(
@@ -156,7 +176,7 @@ def _open_and_genkeys_additional(monero: MoneroCmd, n_outputs: int):
         )
         eph_keys.append(eph)
         add_pubs.append(add_pub)
-    return tx_pub_key, eph_keys, add_pubs
+    return tx_pub_key, eph_keys, add_pubs, enc_pid
 
 
 @pytest.mark.incremental
@@ -170,7 +190,7 @@ class TestExtraAdditionalKeys:
 
     @staticmethod
     def test_additional_keys_accepted(monero: MoneroCmd, device, test_name: str):
-        tx_pub_key, eph, add_pubs = _open_and_genkeys_additional(monero, n_outputs=2)
+        tx_pub_key, eph, add_pubs, _ = _open_and_genkeys_additional(monero, n_outputs=2)
         prefix = build_tx_prefix_outkeys(
             vout_keys=eph, tx_pubkey=tx_pub_key, additional_pubkeys=add_pubs,
         )
@@ -185,10 +205,11 @@ class TestExtraAdditionalKeysWithPaymentId:
 
     @staticmethod
     def test_additional_keys_and_payment_id_accepted(
-        monero: MoneroCmd, device, test_name: str
+        monero: MoneroCmd, backend, device, test_name: str
     ):
-        tx_pub_key, eph, add_pubs = _open_and_genkeys_additional(monero, n_outputs=2)
-        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + bytes(8))
+        tx_pub_key, eph, add_pubs, enc_pid = _open_and_genkeys_additional(
+            monero, n_outputs=2, backend=backend, payment_id=bytes.fromhex("1122334455667788"))
+        suffix = _nonce_field(_NONCE_ENCRYPTED_PAYMENT_ID + enc_pid)
         prefix = build_tx_prefix_outkeys(
             vout_keys=eph, tx_pubkey=tx_pub_key,
             additional_pubkeys=add_pubs, extra_suffix=suffix,
