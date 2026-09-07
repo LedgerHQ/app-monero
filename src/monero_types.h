@@ -166,13 +166,20 @@ struct monero_v_state_s {
      * different key than the one that lands on-chain (see monero_key.c). Reset
      * per tx. */
     unsigned char tx_main_txkey[KEY_SIZE];
-    /* The extra nonce this device built in INS_STEALTH: subtype 0x01 then the
-     * 8 encrypted bytes, held in the shape the prefix carries them so the
-     * parser can compare it byte for byte. A real transaction must carry this
-     * exact value, so a host cannot pay one customer of a service and label
-     * the payment for another. One per transaction: a second INS_STEALTH is
-     * refused, because otherwise the host could pick which value to keep. */
+    /* The payment ID of this transaction, kept by INS_STEALTH in both forms.
+     *
+     * Every customer of one service shares a base address, so the payment ID
+     * is the only field that says who is being paid.
+     *
+     * _nonce is the extra nonce, subtype 0x01 then the 8 encrypted bytes. The
+     * prefix must carry this exact value.
+     * tx_payment_id is the plaintext. The review shows it, because the device
+     * got it from the host and only the user can say it is right.
+     *
+     * One per transaction. A second INS_STEALTH is refused, or the host would
+     * choose which value is checked and shown. */
     unsigned char tx_payment_id_nonce[9];
+    unsigned char tx_payment_id[8];
     unsigned char tx_payment_id_set;
 
     /* ------------------------------------------ */

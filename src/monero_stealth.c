@@ -32,6 +32,10 @@ int monero_apdu_stealth() {
     unsigned char drv[33];
     unsigned char payID[8];
     int err = 0;
+    // Keep the payment ID only for a real transaction. Nothing checks or shows
+    // a fake one.
+    int retain = G_monero_vstate.tx_in_progress &&
+                 (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
 
     // fetch pub
     monero_io_fetch(pub, KEY_SIZE);
@@ -59,20 +63,24 @@ int monero_apdu_stealth() {
         goto end;
     }
 
+    // One payment ID per transaction. Allow a second call and the host picks
+    // which value is checked and shown.
+    if (retain) {
+        if (G_monero_vstate.tx_payment_id_set) {
+            err = SW_SECURITY_PAYMENT_ID;
+            goto end;
+        }
+        // Copy the plaintext now. The loop below overwrites payID.
+        memcpy(G_monero_vstate.tx_payment_id, payID, 8);
+    }
+
     // stealth!
     for (i = 0; i < 8; i++) {
         payID[i] = payID[i] ^ sec[i];
     }
 
-    // Remember it, so the prefix parser can require this exact value. Only one
-    // per real transaction: if the host could call again it would choose which
-    // value the check compares against, whichever way we picked.
-    if (G_monero_vstate.tx_in_progress &&
-        (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
-        if (G_monero_vstate.tx_payment_id_set) {
-            err = SW_SECURITY_PAYMENT_ID;
-            goto end;
-        }
+    // Now the nonce, in the shape the prefix must carry.
+    if (retain) {
         G_monero_vstate.tx_payment_id_nonce[0] =
             TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID;
         memcpy(G_monero_vstate.tx_payment_id_nonce + 1, payID, 8);

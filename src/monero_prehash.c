@@ -97,6 +97,30 @@ int monero_apdu_mlsag_prehash_init() {
     return SW_OK;
 }
 
+/* The payment ID to show with a destination, or NULL for none.
+ *
+ * All zeros means none. A wallet puts that filler in most transactions so they
+ * look alike on chain; showing it would make every plain send look integrated.
+ *
+ * A subaddress cannot have a payment ID. base58 would still build an
+ * integrated address from it, which nobody can pay, so refuse instead. */
+static int payment_id_to_display(unsigned char is_subaddress,
+                                 unsigned char** payment_id) {
+    *payment_id = NULL;
+
+    if (!G_monero_vstate.tx_payment_id_set ||
+        cx_math_is_zero(G_monero_vstate.tx_payment_id,
+                        sizeof(G_monero_vstate.tx_payment_id))) {
+        return 0;
+    }
+    if (is_subaddress) {
+        return SW_SECURITY_PAYMENT_ID;
+    }
+
+    *payment_id = G_monero_vstate.tx_payment_id;
+    return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -158,8 +182,16 @@ int monero_apdu_mlsag_prehash_update() {
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
         if (is_change == 0) {
             // encode dest adress
+            //
+            // A payment ID makes this the integrated address. That is the only
+            // form that says which customer of a shared address gets the money.
+            unsigned char* payment_id;
+            err = payment_id_to_display(is_subaddress, &payment_id);
+            if (err) {
+                goto end;
+            }
             err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout,
-                                           Bout, is_subaddress, NULL);
+                                           Bout, is_subaddress, payment_id);
             if (err) {
                 goto end;
             }
