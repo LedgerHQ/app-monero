@@ -64,6 +64,21 @@ int monero_apdu_stealth() {
         payID[i] = payID[i] ^ sec[i];
     }
 
+    // Remember it, so the prefix parser can require this exact value. Only one
+    // per real transaction: if the host could call again it would choose which
+    // value the check compares against, whichever way we picked.
+    if (G_monero_vstate.tx_in_progress &&
+        (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL)) {
+        if (G_monero_vstate.tx_payment_id_set) {
+            err = SW_SECURITY_PAYMENT_ID;
+            goto end;
+        }
+        G_monero_vstate.tx_payment_id_nonce[0] =
+            TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID;
+        memcpy(G_monero_vstate.tx_payment_id_nonce + 1, payID, 8);
+        G_monero_vstate.tx_payment_id_set = 1;
+    }
+
     monero_io_insert(payID, 8);
 
     err = SW_OK;

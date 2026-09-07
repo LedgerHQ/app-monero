@@ -79,6 +79,9 @@ int monero_reset_tx(int reset_tx_cnt) {
                    sizeof(G_monero_vstate.tx_main_txkey));
     // No stage completed and no signing transcript yet. Only boundary for both.
     G_monero_vstate.tx_stages = 0;
+    G_monero_vstate.tx_payment_id_set = 0;
+    explicit_bzero(G_monero_vstate.tx_payment_id_nonce,
+                   sizeof(G_monero_vstate.tx_payment_id_nonce));
     explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));
     explicit_bzero(G_monero_vstate.C, sizeof(G_monero_vstate.C));
     explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));

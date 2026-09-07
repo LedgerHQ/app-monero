@@ -166,6 +166,14 @@ struct monero_v_state_s {
      * different key than the one that lands on-chain (see monero_key.c). Reset
      * per tx. */
     unsigned char tx_main_txkey[KEY_SIZE];
+    /* The extra nonce this device built in INS_STEALTH: subtype 0x01 then the
+     * 8 encrypted bytes, held in the shape the prefix carries them so the
+     * parser can compare it byte for byte. A real transaction must carry this
+     * exact value, so a host cannot pay one customer of a service and label
+     * the payment for another. One per transaction: a second INS_STEALTH is
+     * refused, because otherwise the host could pick which value to keep. */
+    unsigned char tx_payment_id_nonce[9];
+    unsigned char tx_payment_id_set;
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -223,6 +231,7 @@ struct monero_v_state_s {
     unsigned char prefix_addk_expected;    /* build: an output produced additional keys */
     unsigned char prefix_extra_r_found;    /* verify: tag 0x01 seen & matched     */
     unsigned char prefix_extra_addk_found; /* verify: tag 0x04 seen & matched     */
+    unsigned char prefix_extra_pid_found;  /* verify: tag 0x02 seen & matched     */
     unsigned char prefix_outkeys_done;     /* set once vout AND extra are verified   */
 
     /* ------------------------------------------ */
@@ -271,6 +280,11 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define IO_OFFSET_MARK (unsigned int)-2
 
 #define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
+
+/* What an extra nonce holding an encrypted payment ID looks like: this subtype
+ * byte then the 8 bytes. INS_STEALTH builds one, the prefix parser checks it. */
+#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID      0x01
+#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID_SIZE 9
 
 /* ---  Errors  --- */
 #define ERROR(x) ((x) << 16)
@@ -363,6 +377,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_PREHASH_NOT_FINALIZED    0x691E
 #define SW_SECURITY_PREFIX_NOT_FINALIZED     0x691F
 #define SW_SECURITY_OUTPUTS_NOT_REVIEWED     0x6920
+#define SW_SECURITY_PAYMENT_ID               0x6921
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980
