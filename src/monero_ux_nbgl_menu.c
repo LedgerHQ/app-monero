@@ -259,8 +259,9 @@ static void display_home_and_settings(bool displayHome) {
     snprintf(transactionContext.buffer, sizeof(transactionContext.buffer),
              "Show %s", G_monero_vstate.ux_wallet_account_name);
 
-    monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
-                             G_monero_vstate.B, 0, NULL);
+    monero_base58_public_key(G_monero_vstate.ux_address,
+                             sizeof(G_monero_vstate.ux_address),
+                             G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
 
     homeAction.callback = display_account;
     homeAction.icon = NULL;

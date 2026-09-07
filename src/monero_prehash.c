@@ -190,8 +190,10 @@ int monero_apdu_mlsag_prehash_update() {
             if (err) {
                 goto end;
             }
-            err = monero_base58_public_key(&G_monero_vstate.ux_address[0], Aout,
-                                           Bout, is_subaddress, payment_id);
+            err =
+                monero_base58_public_key(&G_monero_vstate.ux_address[0],
+                                         sizeof(G_monero_vstate.ux_address),
+                                         Aout, Bout, is_subaddress, payment_id);
             if (err) {
                 goto end;
             }

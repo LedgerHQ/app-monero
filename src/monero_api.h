@@ -101,8 +101,12 @@ unsigned int ui_menu_transaction_signed(void);
 /* ----------------------------------------------------------------------- */
 #define OFFSETOF(type, field) ((unsigned int)&(((type *)NULL)->field))
 
-int monero_base58_public_key(char *str_b58, unsigned char *view, unsigned char *spend,
-                             unsigned char is_subbadress, unsigned char *paymanetID);
+/** Encode an address into str_b58, at most str_b58_len bytes including the NUL.
+ *  Needs 96 without a payment ID and 107 with one; refuses rather than write
+ *  past a shorter buffer. */
+int monero_base58_public_key(char *str_b58, size_t str_b58_len, unsigned char *view,
+                             unsigned char *spend, unsigned char is_subbadress,
+                             unsigned char *paymanetID);
 
 /** unsigned varint amount to uint64 */
 uint64_t monero_vamount2uint64(unsigned char *binary);

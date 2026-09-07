@@ -584,8 +584,9 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
             break;
     }
 
-    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view,
-                                         pub_spend, is_subbadress, paymanetID);
+    int error = monero_base58_public_key(
+        G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address),
+        pub_view, pub_spend, is_subbadress, paymanetID);
     if (error) {
         return error;
     }

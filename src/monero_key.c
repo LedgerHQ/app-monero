@@ -169,8 +169,13 @@ int monero_apdu_get_key() {
             // spend key
             monero_io_insert(G_monero_vstate.B, KEY_SIZE);
             // public base address
+            //
+            // The only caller that does not write into ux_address: this one
+            // appends into the reply, so what is left of io_buffer is the
+            // bound, not a fixed size.
             int error = monero_base58_public_key(
                 (char*)G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                sizeof(G_monero_vstate.io_buffer) - G_monero_vstate.io_offset,
                 G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
             if (error) {
                 // Return a real error SW
