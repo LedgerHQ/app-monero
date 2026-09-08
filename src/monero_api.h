@@ -276,6 +276,26 @@ static inline int monero_sha256_out_eph_update(const unsigned char *buf, size_t 
     return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, buf, len);
 }
 
+/** Start one output in the OUT_EPH transcript: its kind, then its position.
+ *
+ *  Call this before the key, on both sides. Without it the transcript is a bare
+ *  run of bytes -- key, then a view tag only for a tagged output -- and the host
+ *  picks which outputs are tagged. It could then hash [key0 tag0][key1] on one
+ *  side and [key0][tag0+key1 shifted, tag1] on the other: the same bytes, so the
+ *  same digest, but a different key in the signed transaction.
+ */
+static inline int monero_sha256_out_eph_frame(unsigned char target_tag, unsigned int index) {
+    unsigned char header[5];
+
+    header[0] = target_tag;
+    header[1] = (unsigned char)(index >> 24);
+    header[2] = (unsigned char)(index >> 16);
+    header[3] = (unsigned char)(index >> 8);
+    header[4] = (unsigned char)index;
+
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, header, sizeof(header));
+}
+
 static inline int monero_sha256_out_eph_final(unsigned char *out) {
     return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_eph, out);
 }

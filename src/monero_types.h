@@ -286,6 +286,11 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define IO_OFFSET_END  (unsigned int)-1
 #define IO_OFFSET_MARK (unsigned int)-2
 
+/* How a vout entry says what kind of output it is. Both
+ * the deriving side and the prefix parser hash this, so it lives here. */
+#define TXOUT_TO_KEY_TAG        0x02
+#define TXOUT_TO_TAGGED_KEY_TAG 0x03
+
 #define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
 
 /* What an extra nonce holding an encrypted payment ID looks like: this subtype

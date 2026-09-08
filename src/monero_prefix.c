@@ -63,8 +63,8 @@
  */
 
 #define TXIN_TO_KEY_TAG 0x02
-#define TXOUT_TO_KEY_TAG 0x02
-#define TXOUT_TO_TAGGED_KEY_TAG 0x03
+/* TXOUT_TO_KEY_TAG and TXOUT_TO_TAGGED_KEY_TAG are in monero_types.h: the
+ * deriving side hashes them too. */
 
 /* tx_extra field tags (cryptonote_basic/tx_extra.h) */
 #define TX_EXTRA_TAG_PADDING 0x00
@@ -461,6 +461,15 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                 if ((tag != TXOUT_TO_KEY_TAG) &&
                     (tag != TXOUT_TO_TAGGED_KEY_TAG)) {
                     return SW_WRONG_DATA;
+                }
+                /* Same header the deriving side hashed: this output's kind and
+                 * its position. The count was already checked against
+                 * tx_output_cnt, so counting down gives the index. */
+                err = monero_sha256_out_eph_frame(
+                    tag, (unsigned int)(G_monero_vstate.tx_output_cnt -
+                                        G_monero_vstate.prefix_vout_remaining));
+                if (err) {
+                    return err;
                 }
                 G_monero_vstate.prefix_outkey_tag = tag;
                 G_monero_vstate.prefix_field_off = 0;

@@ -1102,6 +1102,14 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // both sides hash them the same way.
     if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
         (G_monero_vstate.io_protocol_version >= 2)) {
+        // Say which kind of output this is and where it sits before hashing the
+        // key. tx_output_cnt is this output's index; it is bumped below.
+        err = monero_sha256_out_eph_frame(
+            use_view_tags ? TXOUT_TO_TAGGED_KEY_TAG : TXOUT_TO_KEY_TAG,
+            G_monero_vstate.tx_output_cnt);
+        if (err) {
+            goto end;
+        }
         err = monero_sha256_out_eph_update(out_eph_public_key, KEY_SIZE);
         if (err) {
             goto end;
