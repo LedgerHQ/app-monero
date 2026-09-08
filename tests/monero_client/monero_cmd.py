@@ -186,6 +186,77 @@ class MoneroCmd(MoneroCryptoCmd):
         reuse the encrypted tx private key from open_tx; the device derives the
         additional public key from it and returns it.
         """
+        response = self._gen_txout_keys_exchange(
+            _tx_priv_key, tx_pub_key, dst_pub_view_key, dst_pub_spend_key,
+            output_index, is_change_addr, is_subaddress, need_additional_txkeys,
+            use_view_tags=False)
+
+        _ak_amount = response[:32]
+        hmac_ak_amount = response[32:64]
+        out_ephemeral_pub_key = response[64:96]
+
+        assert (hmac_ak_amount == hmac_sha256(_ak_amount,
+                                              MoneroCryptoCmd.HMAC_KEY,
+                                              Type.AMOUNT_KEY))
+
+        if need_additional_txkeys:
+            assert len(response) == 128
+            additional_pub_key = response[96:128]
+            return _ak_amount, out_ephemeral_pub_key, additional_pub_key
+
+        assert len(response) == 96
+        return _ak_amount, out_ephemeral_pub_key, None
+
+    def gen_txout_keys_view_tagged(self,
+                                   _tx_priv_key: bytes,
+                                   tx_pub_key: bytes,
+                                   dst_pub_view_key: bytes,
+                                   dst_pub_spend_key: bytes,
+                                   output_index: int,
+                                   is_change_addr: bool,
+                                   is_subaddress: bool,
+                                   need_additional_txkeys: bool = False
+                                   ) -> Tuple[bytes, bytes, bytes | None, bytes]:
+        """gen_txout_keys with use_view_tags set, so the reply carries the tag.
+
+        Returns (amount_key, out_ephemeral_pub_key, additional_pub_key,
+        view_tag). Separate from gen_txout_keys() only to keep that function's
+        three-element return, which 50-odd call sites unpack.
+
+        use_view_tags is a per-output byte the host chooses, so a transaction can
+        mix tagged and untagged outputs -- which is what the OUT_EPH transcript
+        test needs."""
+        response = self._gen_txout_keys_exchange(
+            _tx_priv_key, tx_pub_key, dst_pub_view_key, dst_pub_spend_key,
+            output_index, is_change_addr, is_subaddress, need_additional_txkeys,
+            use_view_tags=True)
+
+        _ak_amount = response[:32]
+        out_ephemeral_pub_key = response[64:96]
+
+        assert (response[32:64] == hmac_sha256(_ak_amount,
+                                               MoneroCryptoCmd.HMAC_KEY,
+                                               Type.AMOUNT_KEY))
+
+        if need_additional_txkeys:
+            assert len(response) == 129, len(response)
+            return (_ak_amount, out_ephemeral_pub_key, response[96:128],
+                    response[128:129])
+
+        assert len(response) == 97, len(response)
+        return _ak_amount, out_ephemeral_pub_key, None, response[96:97]
+
+    def _gen_txout_keys_exchange(self,
+                                 _tx_priv_key: bytes,
+                                 tx_pub_key: bytes,
+                                 dst_pub_view_key: bytes,
+                                 dst_pub_spend_key: bytes,
+                                 output_index: int,
+                                 is_change_addr: bool,
+                                 is_subaddress: bool,
+                                 need_additional_txkeys: bool,
+                                 use_view_tags: bool) -> bytes:
+        """Send INS_GEN_TXOUT_KEYS and return the raw reply."""
         ins: InsType = InsType.INS_GEN_TXOUT_KEYS
 
         if need_additional_txkeys:
@@ -210,7 +281,7 @@ class MoneroCmd(MoneroCryptoCmd):
             b"\x01" if is_change_addr else b"\x00",
             b"\x01" if is_subaddress else b"\x00",
             additional_field,
-            b"\x00",  # use_view_tags = false
+            b"\x01" if use_view_tags else b"\x00",
         ))
 
         self.transport.send(cla=PROTOCOL_VERSION,
@@ -227,21 +298,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
 
-        _ak_amount = response[:32]
-        hmac_ak_amount = response[32:64]
-        out_ephemeral_pub_key = response[64:96]
-
-        assert (hmac_ak_amount == hmac_sha256(_ak_amount,
-                                              MoneroCryptoCmd.HMAC_KEY,
-                                              Type.AMOUNT_KEY))
-
-        if need_additional_txkeys:
-            assert len(response) == 128
-            additional_pub_key = response[96:128]
-            return _ak_amount, out_ephemeral_pub_key, additional_pub_key
-
-        assert len(response) == 96
-        return _ak_amount, out_ephemeral_pub_key, None
+        return response
 
     def prefix_hash_init(self,
                          test_name: str,

@@ -50,9 +50,12 @@ def build_tx_prefix_outkeys(
         tx_pubkey:  the main tx public key R that goes in `extra` (tag 0x01). The
                     device binds this against the txkey_pub it was given in
                     gen_txout_keys, so honest tests must pass that same R.
-        view_tags:  optional per-output view-tag bytes; when provided, outputs are
-                    serialized as txout_to_tagged_key (0x03). Must match vout_keys
-                    length. When None, outputs are txout_to_key (0x02).
+        view_tags:  optional per-output view-tag bytes; an output with a tag is
+                    serialized as txout_to_tagged_key (0x03), one without as
+                    txout_to_key (0x02). Must match vout_keys length. None means
+                    every output is untagged; a list may hold None entries to
+                    mix the two forms in one vout, which is what the host is
+                    free to do on the wire.
         additional_pubkeys: optional additional tx public keys (tag 0x04), in
                     output order; bound by the device when the outputs use
                     subaddresses. Each must be 32 bytes.
@@ -93,7 +96,7 @@ def build_tx_prefix_outkeys(
     out += encode_varint(len(vout_keys))
     for idx, key in enumerate(vout_keys):
         out += encode_varint(0)          # amount (0 for RingCT)
-        if view_tags is None:
+        if view_tags is None or view_tags[idx] is None:
             out += bytes([TXOUT_TO_KEY_TAG])
             out += key
         else:
