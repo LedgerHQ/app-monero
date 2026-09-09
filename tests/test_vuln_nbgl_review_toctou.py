@@ -50,7 +50,7 @@ import pytest
 
 from ragger.backend.interface import BackendInterface
 from ragger.error import ExceptionRAPDU
-from ragger.navigator import Navigator
+from ragger.navigator import Navigator, NavInsID
 
 from monero_client.monero_types import SigType, Keys, Type, InsType
 from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
@@ -227,7 +227,8 @@ class TestAsyncReviewTotouVuln:
 
     # --------------------------------------------------------------- attack
     @staticmethod
-    def test_inject_output_during_review(monero: MoneroCmd, backend: BackendInterface, state):
+    def test_inject_output_during_review(monero: MoneroCmd, backend: BackendInterface,
+                                         navigator: Navigator, state):
         s = state["sender"]
 
         # output 0 (visible destination): MORE set -> auto-confirmed, no UI.
@@ -248,9 +249,15 @@ class TestAsyncReviewTotouVuln:
                                                       state["ba"][1][0], is_change=True))
         backend.send_raw(last_apdu)
         time.sleep(1.5)
-        assert backend.compare_screen_with_text("Review Transaction"), (
-            "expected the transaction review to be on screen"
-        )
+
+        # DEBUG builds run on Stagenet, so the shared-keys warning comes first.
+        # Click past it; output 1's reply stays deferred.
+        assert backend.compare_screen_with_text("Continue"), (
+            "expected the network warning before the review")
+        navigator.navigate([NavInsID.USE_CASE_CHOICE_CONFIRM],
+                           screen_change_before_first_instruction=False,
+                           screen_change_after_last_instruction=False)
+        backend.wait_for_text_on_screen("Review Transaction")
 
         # ---- INJECTION: a 3rd output (INS_VALIDATE/P1=2/P2=3), MORE set ----
         # Sent on the APDU channel while output 1's review is displayed and
@@ -365,7 +372,7 @@ class TestAsyncReviewLocked:
 
     @staticmethod
     def test_injection_rejected_during_review(monero: MoneroCmd, backend: BackendInterface,
-                                              state):
+                                              navigator: Navigator, state):
         s = state["sender"]
 
         # output 0: auto-confirmed (MORE set), no UI.
@@ -382,7 +389,19 @@ class TestAsyncReviewLocked:
                                                       state["ba"][1][0], is_change=True))
         backend.send_raw(last_apdu)
         time.sleep(1.0)
-        assert backend.compare_screen_with_text("Review Transaction")
+
+        # DEBUG builds run on Stagenet, so the terminal review opens with the
+        # shared-keys warning. Click past it: the injection below has to land
+        # while the review itself is up. Output 1's reply stays deferred either
+        # way -- Continue only draws.
+        assert backend.compare_screen_with_text("Continue"), (
+            "expected the network warning before the review")
+        navigator.navigate([NavInsID.USE_CASE_CHOICE_CONFIRM],
+                           screen_change_before_first_instruction=False,
+                           screen_change_after_last_instruction=False)
+        # The review takes a few ticks to draw, so wait for it rather than
+        # sampling the screen once.
+        backend.wait_for_text_on_screen("Review Transaction")
 
         # Inject a 3rd output while the review is displayed. With the fix, the
         # device rejects it and stays parked on the review (output 1 still deferred).

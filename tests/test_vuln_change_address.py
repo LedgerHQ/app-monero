@@ -266,11 +266,15 @@ class TestChangeAddressVuln:
             state["blinded_amount"][1][0],
         ))
 
+        # DEBUG builds run on Stagenet, so this terminal review opens with a
+        # shared-keys warning: one more click on nano, and on NBGL its
+        # "Continue" button.
         if device.is_nano:
-            instructions = get_nano_review_instructions(1)
+            instructions = get_nano_review_instructions(2)
         else:
             # Flex/Stax: swipe through fee + amount + addr pages, then approve
-            instructions = [NavInsID.SWIPE_CENTER_TO_LEFT] * 3 + [
+            instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM] + [
+                NavInsID.SWIPE_CENTER_TO_LEFT] * 3 + [
                 NavInsID.USE_CASE_REVIEW_TAP,
                 NavInsID.USE_CASE_REVIEW_CONFIRM,
             ]

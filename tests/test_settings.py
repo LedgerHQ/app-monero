@@ -31,8 +31,11 @@ def test_settings(navigator: Navigator, device: Device, test_name: str):
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
             #5 (Page 1)-> Select Network = Select network
             NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 1)),
-            #6 (Select network)-> Test network = Page 1
+            #6 (Select network)-> Test network = Confirm switch
             NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 2)),
+            # 6b (Confirm switch)-> Switch = Page 1. Every network shares one
+            # key pair, so leaving the main network is confirmed explicitly.
+            NavInsID.USE_CASE_CHOICE_CONFIRM,
             #7 (Page 1)-> Select Network = Select network
             NavIns(NavInsID.TOUCH, _get_settings_element_coordinates(device, 1)),
             # 8 (Select account)-> Back = Page 1
@@ -85,6 +88,8 @@ def test_settings(navigator: Navigator, device: Device, test_name: str):
             NavInsID.BOTH_CLICK,    # = Select Network (Main Network, Stage Network+)
             NavInsID.RIGHT_CLICK,   # = Select Network (Stage Network, Stage Network+)
             NavInsID.RIGHT_CLICK,   # = Select Network (Test Network, Stage Network+)
+            NavInsID.BOTH_CLICK,    # = Switch network? (warning)
+            NavInsID.RIGHT_CLICK,   # = Switch
             NavInsID.BOTH_CLICK,    # = Main page
             # Verification "Test Network"
             NavInsID.RIGHT_CLICK,   # = Settings HL

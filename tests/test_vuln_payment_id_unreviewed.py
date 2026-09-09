@@ -135,6 +135,12 @@ def _read_review(backend: BackendInterface, navigator: Navigator,
     The page count is found, not scripted, because whether the pages differ is
     the question. navigate_and_compare with no instructions just snapshots the
     screen as it stands."""
+    # DEBUG builds run on Stagenet, so the review opens with a shared-keys
+    # warning. Not snapshotted: this file measures review pages.
+    backend.wait_for_text_on_screen("Continue")
+    navigator.navigate([NavInsID.USE_CASE_CHOICE_CONFIRM],
+                       screen_change_before_first_instruction=False)
+
     backend.wait_for_text_on_screen("Review")
     pages = []
     for idx in range(max_pages):
@@ -185,7 +191,7 @@ def _send_terminal_output(monero: MoneroCmd, backend: BackendInterface,
 
 
 def _setup(monero: MoneroCmd, backend: BackendInterface, device,
-           snapshot_name: str, payment_id):
+           snapshot_name: str, payment_id, is_change: bool = False):
     """A real one-output transaction, up to just before the review.
 
     Honest: the prefix nonce is the ciphertext the device returned and the keys
@@ -193,6 +199,10 @@ def _setup(monero: MoneroCmd, backend: BackendInterface, device,
 
     payment_id None means no INS_STEALTH and no nonce, which is what the wallet
     sends with more than two destinations.
+
+    is_change makes that output the change, which the caller must then claim in
+    the terminal record too. It draws the shorter review, with no address to
+    page through.
 
     Returns (plain address, view, spend, amount key, encrypted payment ID,
     blinded mask, blinded amount)."""
@@ -207,7 +217,7 @@ def _setup(monero: MoneroCmd, backend: BackendInterface, device,
     ak, eph, _ = monero.gen_txout_keys(
         _tx_priv_key=tx_priv_key, tx_pub_key=tx_pub_key,
         dst_pub_view_key=view, dst_pub_spend_key=spend,
-        output_index=0, is_change_addr=False, is_subaddress=False)
+        output_index=0, is_change_addr=is_change, is_subaddress=False)
 
     monero.prefix_hash_init(snapshot_name, device, navigator=None,
                             version=0, timelock=0)

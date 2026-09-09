@@ -535,16 +535,20 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
+        # The last review opens with a shared-keys warning, because DEBUG=1
+        # builds run on Stagenet: one more click on nano, and on NBGL its
+        # "Continue" button.
         instructions = None
         if device.is_nano:
             if is_last:
-                instructions = get_nano_review_instructions(1)
+                instructions = get_nano_review_instructions(2)
             else:
                 instructions = get_nano_review_instructions(3)
         else:
             if is_last:
                 # For NBGL devices (Flex/Stax), calculate total swipes needed
-                instructions = [NavInsID.SWIPE_CENTER_TO_LEFT] * swipe_count + [
+                instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM] + [
+                    NavInsID.SWIPE_CENTER_TO_LEFT] * swipe_count + [
                     NavInsID.USE_CASE_REVIEW_TAP,
                     NavInsID.USE_CASE_REVIEW_CONFIRM
                 ]

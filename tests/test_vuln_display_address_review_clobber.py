@@ -144,6 +144,12 @@ def _read_review(backend: BackendInterface, navigator: Navigator,
     instructions runs only its initial WAIT no-op, snapshotting the current
     screen.
     """
+    # DEBUG builds run on Stagenet, so the review opens with a shared-keys
+    # warning. Not snapshotted: this file measures review pages.
+    backend.wait_for_text_on_screen("Continue")
+    navigator.navigate([NavInsID.USE_CASE_CHOICE_CONFIRM],
+                       screen_change_before_first_instruction=False)
+
     backend.wait_for_text_on_screen("Review")
     pages = []
     for idx in range(max_pages):
