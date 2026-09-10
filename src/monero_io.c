@@ -220,7 +220,8 @@ int monero_io_fetch_available(void) {
     return G_monero_vstate.io_length - G_monero_vstate.io_offset;
 }
 void monero_io_assert_available(int sz) {
-    if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
+    if (sz < 0 || G_monero_vstate.io_offset > G_monero_vstate.io_length ||
+        (G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
         send_error_and_kill_app(ERROR_IO_FULL);
     }
 }
