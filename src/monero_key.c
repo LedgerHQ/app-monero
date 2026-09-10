@@ -779,31 +779,6 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 
     memcpy(G_monero_vstate.last_get_subaddress_secret_key, sub_sec, KEY_SIZE);
 
-    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        unsigned int major =
-            (unsigned int)index[0] | ((unsigned int)index[1] << 8) |
-            ((unsigned int)index[2] << 16) | ((unsigned int)index[3] << 24);
-        unsigned int minor =
-            (unsigned int)index[4] | ((unsigned int)index[5] << 8) |
-            ((unsigned int)index[6] << 16) | ((unsigned int)index[7] << 24);
-        unsigned char already_seen = 0;
-        for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
-            if (G_monero_vstate.tx_change_major_indices[i] == major &&
-                G_monero_vstate.tx_change_minor_indices[i] == minor) {
-                already_seen = 1;
-                break;
-            }
-        }
-        if (!already_seen && (major != 0 || minor != 0) &&
-            G_monero_vstate.tx_change_cnt < 8) {
-            G_monero_vstate
-                .tx_change_major_indices[G_monero_vstate.tx_change_cnt] = major;
-            G_monero_vstate
-                .tx_change_minor_indices[G_monero_vstate.tx_change_cnt] = minor;
-            G_monero_vstate.tx_change_cnt++;
-        }
-    }
-
     monero_io_insert_encrypt(sub_sec, KEY_SIZE, TYPE_SCALAR);
     explicit_bzero(sec, sizeof(sec));
     explicit_bzero(sub_sec, sizeof(sec));
@@ -818,7 +793,7 @@ int monero_check_change_address(const unsigned char* Aout,
                                 unsigned int* out_major) {
     unsigned char C[KEY_SIZE];
     unsigned char D[KEY_SIZE];
-    unsigned char index[8];
+    unsigned char index[8] = {0};
     int err;
 
     /* primary address (major=0, minor=0) */
@@ -830,61 +805,35 @@ int monero_check_change_address(const unsigned char* Aout,
         return 0;
     }
 
-    for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
-        unsigned int M = G_monero_vstate.tx_change_major_indices[i];
-        unsigned int m = G_monero_vstate.tx_change_minor_indices[i];
-        /* candidates: exact (M,m), then account root (M,0) if m!=0 && M!=0 */
-        unsigned char candidates = (m != 0 && M != 0) ? 2 : 1;
-
-        index[0] = (unsigned char)(M & 0xFF);
-        index[1] = (unsigned char)((M >> 8) & 0xFF);
-        index[2] = (unsigned char)((M >> 16) & 0xFF);
-        index[3] = (unsigned char)((M >> 24) & 0xFF);
-
-        for (unsigned char j = 0; j < candidates; j++) {
-            unsigned int m_check = (j == 0) ? m : 0;
-            index[4] = (unsigned char)(m_check & 0xFF);
-            index[5] = (unsigned char)((m_check >> 8) & 0xFF);
-            index[6] = (unsigned char)((m_check >> 16) & 0xFF);
-            index[7] = (unsigned char)((m_check >> 24) & 0xFF);
-            err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE,
-                                        sizeof(index));
-            if (err) {
-                return err;
-            }
-            if ((memcmp(Aout, C, KEY_SIZE) == 0) &&
-                (memcmp(Bout, D, KEY_SIZE) == 0)) {
-                if (out_major != NULL) {
-                    *out_major = M;
-                }
-                return 0;
-            }
-        }
-    }
-
-    /* The wallet sends change to the account root (M, 0) but never asks the
-     * device for it while signing, so the whitelist above is empty on a normal
-     * send and change to a non-primary account gets rejected. Re-derive each
-     * (M, 0) and match against (Aout, Bout). B can't be forged without the
-     * spend key, so substitution is still caught. Bound matches wallet2's
-     * default. */
+    /* Account roots only, derived here rather than taken from the host: the
+     * wallet always sends change to the root of the account it spends from, so
+     * a non-root subaddress is never legitimate change. B can't be forged
+     * without the spend key, so substitution is still caught. The bound is the
+     * wallet's own default account lookahead. index keeps minor = 0 from its
+     * initialiser; only the major varies below. */
 #define CHANGE_ACCOUNT_LOOKAHEAD 50
-    index[4] = 0;
-    index[5] = 0;
-    index[6] = 0;
-    index[7] = 0;
     for (unsigned int M = 1; M < CHANGE_ACCOUNT_LOOKAHEAD; M++) {
         index[0] = (unsigned char)(M & 0xFF);
         index[1] = (unsigned char)((M >> 8) & 0xFF);
         index[2] = (unsigned char)((M >> 16) & 0xFF);
         index[3] = (unsigned char)((M >> 24) & 0xFF);
-        err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE,
-                                    sizeof(index));
+        /* Spend key first: it costs one base multiply, while the view key
+         * needs a second, variable-base one. Only derive that on a match. */
+        err = monero_get_subaddress_spend_public_key(D, index, KEY_SIZE,
+                                                     sizeof(index));
         if (err) {
             return err;
         }
-        if ((memcmp(Aout, C, KEY_SIZE) == 0) &&
-            (memcmp(Bout, D, KEY_SIZE) == 0)) {
+        if (memcmp(Bout, D, KEY_SIZE) != 0) {
+            continue;
+        }
+        /* C = a.D, the rest of monero_get_subaddress, on the D we just made. */
+        err = monero_ecmul_k(C, D, G_monero_vstate.a, KEY_SIZE, KEY_SIZE,
+                             sizeof(G_monero_vstate.a));
+        if (err) {
+            return err;
+        }
+        if (memcmp(Aout, C, KEY_SIZE) == 0) {
             if (out_major != NULL) {
                 *out_major = M;
             }

@@ -156,10 +156,6 @@ struct monero_v_state_s {
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
-    /* change address verification */
-    unsigned int tx_change_major_indices[8];
-    unsigned int tx_change_minor_indices[8];
-    unsigned char tx_change_cnt;
     /* The single main tx public key the wallet uses for every output of this tx
      * (r.G, or r.D for a single subaddress destination). Recorded from the first
      * output and enforced on the rest, so the change can't be derived under a
