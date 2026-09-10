@@ -1005,12 +1005,15 @@ int monero_ecmul_H(unsigned char* W, unsigned char* scalar32, size_t W_len,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
-                   size_t W_len, size_t P_len, size_t scalar32_len) {
-    /* Compressed Ed25519 identity: encoded y=1 with x sign 0 (32 bytes, LE). */
-    static const unsigned char ED25519_IDENTITY[32] = {0x01};
+/* Compressed Ed25519 identity: encoded y=1 with x sign 0 (32 bytes, LE). */
+static const unsigned char ED25519_IDENTITY[32] = {0x01};
+
+/* Decompress P, multiply by scalar32, compress. The caller owns the subgroup
+ * check. */
+static int monero_ecmul_point(unsigned char* W, unsigned char* P,
+                              unsigned char* scalar32, size_t W_len,
+                              size_t P_len, size_t scalar32_len) {
     unsigned char Pxy[PXY_SIZE];
-    unsigned char eightP[32];
     unsigned char s[32];
     int error = 0;
 
@@ -1026,20 +1029,6 @@ int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
     error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     if (error) {
         return error;
-    }
-
-    /* Reject low-order points before multiplying by a (potentially secret)
-     * scalar: if [8]P == identity then P lies in the 8-torsion subgroup and the
-     * returned product leaks the scalar mod ord(P). Delegate the cofactor
-     * multiplication to monero_ecmul_8(), the same primitive used by
-     * monero_hash_to_ec(), so the check runs as a self-contained SDK sequence
-     * before Pxy is touched. */
-    error = monero_ecmul_8(eightP, P, sizeof(eightP), 32);
-    if (error) {
-        return error;
-    }
-    if (memcmp(eightP, ED25519_IDENTITY, 32) == 0) {
-        return SW_WRONG_DATA;
     }
 
     Pxy[0] = 0x02;
@@ -1058,21 +1047,45 @@ int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
     return 0;
 }
 
+int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
+                   size_t W_len, size_t P_len, size_t scalar32_len) {
+    unsigned char eightP[32];
+    int error = 0;
+
+    /* [8]P == identity means P is low order, and the product would leak the
+     * scalar mod ord(P). */
+    error = monero_ecmul_8(eightP, P, sizeof(eightP), P_len);
+    if (error) {
+        return error;
+    }
+    if (memcmp(eightP, ED25519_IDENTITY, 32) == 0) {
+        return SW_WRONG_DATA;
+    }
+
+    return monero_ecmul_point(W, P, scalar32, W_len, P_len, scalar32_len);
+}
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
 int monero_ecmul_8k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
                     size_t W_len, size_t P_len, size_t scalar32_len) {
-    unsigned char s[32];
+    unsigned char s8[32];
     int error = 0;
-    error = monero_multm_8(s, scalar32, sizeof(s), scalar32_len);
+
+    error = monero_multm_8(s8, scalar32, sizeof(s8), scalar32_len);
     if (error) {
         return error;
     }
 
-    error = monero_ecmul_k(W, P, s, W_len, P_len, sizeof(s));
+    /* No [8]P check: the x8 on the scalar already clears torsion. A low-order
+     * P gives the identity, caught below for the price of a compare. */
+    error = monero_ecmul_point(W, P, s8, W_len, P_len, sizeof(s8));
     if (error) {
         return error;
+    }
+    if (memcmp(W, ED25519_IDENTITY, 32) == 0) {
+        return SW_WRONG_DATA;
     }
     return 0;
 }
