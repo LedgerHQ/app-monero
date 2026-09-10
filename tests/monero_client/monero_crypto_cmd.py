@@ -354,6 +354,73 @@ class MoneroCryptoCmd:
 
         return _d_in
 
+    def derive_secret_key(self,
+                          derivation: bytes,
+                          output_index: int,
+                          _priv_key: bytes) -> bytes:
+        """Hs(derivation || varint(index)) + priv, returned encrypted.
+
+        The device reads derivation, then a u32 index, then the key, and
+        outside a transaction it consumes no HMACs - so none are interleaved
+        here or the index would be read out of the middle of one.
+        """
+        ins: InsType = InsType.INS_DERIVE_SECRET_KEY
+
+        payload: bytes = b"".join([
+            derivation,
+            struct.pack(">I", output_index),
+            _priv_key,
+        ])
+
+        self.transport.send(cla=PROTOCOL_VERSION,
+                            ins=ins,
+                            p1=0,
+                            p2=0,
+                            option=0,
+                            payload=payload)
+
+        sw, response = self.transport.recv()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(sw, ins)
+
+        assert len(response) == 32
+
+        return response  # encrypted Hs(derivation||index) + priv
+
+    def get_tx_proof(self,
+                     msg: bytes,
+                     R: bytes,
+                     A: bytes,
+                     B: bytes,
+                     D: bytes,
+                     _r: bytes,
+                     subaddress: bool = False) -> Tuple[bytes, bytes]:
+        """TXPROOF_V2 over host-supplied public fields and an encrypted r.
+
+        `subaddress` is the wallet's option bit: set when B is present, which
+        makes the device use B rather than G as the commitment base.
+        """
+        ins: InsType = InsType.INS_GET_TX_PROOF
+
+        payload: bytes = b"".join([msg, R, A, B, D, _r])
+
+        self.transport.send(cla=PROTOCOL_VERSION,
+                            ins=ins,
+                            p1=0,
+                            p2=0,
+                            option=1 if subaddress else 0,
+                            payload=payload)
+
+        sw, response = self.transport.recv()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(sw, ins)
+
+        assert len(response) == 64
+
+        return response[:32], response[32:]  # sig_c, sig_r
+
     def derive_view_tag(self, derivation: bytes, output_index: bytes) -> int:
         ins: InsType = InsType.INS_DERIVE_VIEW_TAG
 
