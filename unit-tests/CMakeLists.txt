@@ -68,6 +68,25 @@ ledger_unit_tests_add_test(
     COMPILE_DEFS  ${UT_COMPILE_DEFS_SDK} ${UT_COMPILE_DEFS}
 )
 
+# monero_crypto.c: destination lengths validated after the write. The cx_
+# stubs are not crypto, they just write the same number of bytes the real ones
+# do, which is what these tests measure.
+ledger_unit_tests_add_test(
+    NAME          test_monero_crypto
+    SOURCES       ${CMAKE_CURRENT_SOURCE_DIR}/../src/monero_crypto.c
+                  ${CMAKE_CURRENT_SOURCE_DIR}/stubs/stub_crypto.c
+    INCLUDE_DIRS  ${UT_INCLUDE_DIRS_SDK} ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS  ${UT_COMPILE_DEFS_SDK} ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME          test_monero_blind
+    SOURCES       ${CMAKE_CURRENT_SOURCE_DIR}/../src/monero_blind.c
+                  ${CMAKE_CURRENT_SOURCE_DIR}/stubs/stub_blind.c
+    INCLUDE_DIRS  ${UT_INCLUDE_DIRS_SDK} ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS  ${UT_COMPILE_DEFS_SDK} ${UT_COMPILE_DEFS}
+)
+
 ledger_unit_tests_add_test(
     NAME          test_monero_io
     SOURCES       ${CMAKE_CURRENT_SOURCE_DIR}/../src/monero_io.c

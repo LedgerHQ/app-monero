@@ -103,6 +103,94 @@ static void test_more_arrived_than_declared_is_refused(void) {
     TEST_ASSERT_EQUAL_HEX16(SW_WRONG_LENGTH, stub_kill_sw);
 }
 
+/* ------------------------------ key fetch and response-buffer holes */
+
+/* A short destination with a guard behind it, so an overrun is visible. */
+#define GUARD_BYTE 0x7e
+#define GUARD_LEN  32
+
+typedef struct {
+    unsigned char buf[16];
+    unsigned char guard[GUARD_LEN];
+} guarded_short_t;
+
+static int guard_intact(const unsigned char *guard) {
+    for (size_t i = 0; i < GUARD_LEN; i++) {
+        if (guard[i] != GUARD_BYTE) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void arm_short(guarded_short_t *b) {
+    memset(b->buf, 0, sizeof(b->buf));
+    memset(b->guard, GUARD_BYTE, GUARD_LEN);
+}
+
+/* Put 32 readable bytes in the io buffer, so the honest path has something to
+ * decrypt. Not the fake view or spend key, so it takes the decrypt branch. */
+static void give_io_a_key(void) {
+    memset(G_monero_vstate.io_buffer, 0x5c, 32);
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 32;
+}
+
+static void test_fetch_decrypt_key_rejects_a_short_buffer(void) {
+    /* The check read `buffer_size > 32`, so it turned away the buffers that
+     * were big enough and waved through the ones that were not. */
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_key();
+
+    int err = monero_io_fetch_decrypt_key(b.buf, sizeof(b.buf));
+
+    TEST_ASSERT_TRUE_MESSAGE(guard_intact(b.guard),
+                             "wrote 32 bytes into a 16-byte buffer");
+    TEST_ASSERT_EQUAL_HEX16(SW_WRONG_DATA_RANGE, err);
+}
+
+static void test_fetch_decrypt_key_accepts_a_full_buffer(void) {
+    /* Every caller in the app passes sizeof() of a 32-byte array. */
+    struct {
+        unsigned char buf[32];
+        unsigned char guard[GUARD_LEN];
+    } b;
+    memset(b.buf, 0, sizeof(b.buf));
+    memset(b.guard, GUARD_BYTE, GUARD_LEN);
+    give_io_a_key();
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(
+        0, monero_io_fetch_decrypt_key(b.buf, sizeof(b.buf)),
+        "a 32-byte buffer was refused");
+    TEST_ASSERT_TRUE(guard_intact(b.guard));
+}
+
+static void test_io_hole_refuses_a_wrapping_size(void) {
+    /* The check added io_length to sz first, so a size near UINT_MAX wrapped
+     * to something small and passed. The memmove that follows would then use
+     * that size as an offset. */
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 10;
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_hole(0xFFFFFFF8u);
+        TEST_FAIL_MESSAGE("a wrapping size was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+}
+
+static void test_io_hole_still_takes_a_normal_size(void) {
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 10;
+
+    if (setjmp(stub_kill_jmp) != 0) {
+        TEST_FAIL_MESSAGE("a 32-byte hole in a 300-byte buffer was refused");
+    }
+    monero_io_hole(32);
+    TEST_ASSERT_EQUAL_UINT(42, G_monero_vstate.io_length);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_matching_length_is_accepted);
@@ -111,5 +199,9 @@ int main(void) {
     RUN_TEST(test_stale_bytes_are_not_adopted);
     RUN_TEST(test_shorter_than_the_header_is_refused);
     RUN_TEST(test_more_arrived_than_declared_is_refused);
+    RUN_TEST(test_fetch_decrypt_key_rejects_a_short_buffer);
+    RUN_TEST(test_fetch_decrypt_key_accepts_a_full_buffer);
+    RUN_TEST(test_io_hole_refuses_a_wrapping_size);
+    RUN_TEST(test_io_hole_still_takes_a_normal_size);
     return UNITY_END();
 }

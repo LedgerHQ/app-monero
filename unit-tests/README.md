@@ -61,6 +61,9 @@ different objects.
     CMakeLists.txt          one ledger_unit_tests_add_test() per suite
     stubs/                  what the app needs but the tests do not
     test_monero_base58.c    monero_base58_public_key
+    test_monero_crypto.c    the hash, modular-arithmetic and amount helpers
+    test_monero_blind.c     monero_unblind
+    test_monero_io.c        monero_io_do, monero_io_hole, the key fetchers
 
 The framework is `LedgerUT` from the SDK: Unity for assertions, CMock available
 for SDK syscalls. `app-boilerplate/unit-tests/` is the reference.
@@ -129,10 +132,3 @@ reach.
 `stubs/glyphs.h` is empty but required: the SDK's `ux_nbgl.h` includes it and
 every source reaches that through `os.h`, so even a test touching no UI needs
 the file to exist.
-
-## What is worth adding next
-
-The scan's remaining memory-safety findings are all the same shape: a length
-that is unchecked, inverted or wraps, in a pure function. They belong here
-rather than in `tests/`, and they share this harness. See the tickets for
-which.
