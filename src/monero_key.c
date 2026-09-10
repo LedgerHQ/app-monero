@@ -941,9 +941,22 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
                 if (err) {
                     goto end;
                 }
-            } else if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
-                err = SW_WRONG_DATA;
-                goto end;
+            } else {
+                /* R vouches for the public value only, and the derivation
+                 * below runs on tx_key, so bind that too or a foreign scalar
+                 * burns the output. */
+                unsigned char expected[KEY_SIZE];
+                err = monero_ecmul_G(expected, tx_key, sizeof(expected),
+                                     sizeof(tx_key));
+                if (err == 0 &&
+                    (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0 ||
+                     memcmp(txkey_pub, expected, KEY_SIZE) != 0)) {
+                    err = SW_WRONG_DATA;
+                }
+                explicit_bzero(expected, sizeof(expected));
+                if (err) {
+                    goto end;
+                }
             }
         }
     }
