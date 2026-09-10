@@ -534,6 +534,12 @@ int monero_hash_to_scalar(unsigned char* scalar, unsigned char* raw,
                           size_t scalar_len, unsigned int raw_len) {
     int error;
 
+    // The hash below writes 32 bytes whatever scalar_len says, and
+    // monero_reduce only checks the size afterwards.
+    if (!scalar || scalar_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
+
     error = monero_keccak_F(raw, raw_len, scalar);
     if (error) {
         return error;
@@ -551,6 +557,12 @@ int monero_hash_to_scalar(unsigned char* scalar, unsigned char* raw,
 /* ----------------------------------------------------------------------- */
 int monero_hash_to_ec(unsigned char* ec, unsigned char* ec_pub, size_t ec_len) {
     int error;
+
+    // Same as above: 32 bytes land in ec before ec_len is looked at.
+    if (!ec || ec_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
+
     error = monero_keccak_F(ec_pub, 32, ec);
     if (error) {
         return error;
@@ -606,7 +618,7 @@ int monero_derivation_to_scalar(unsigned char* scalar, unsigned char* drv_data,
     unsigned int len_varint;
     int error = 0;
 
-    if (drv_data_len < 32) {
+    if (!drv_data || drv_data_len < 32) {
         PRINTF("Buffer Error: %s:%d \n", __LINE__);
         return SW_WRONG_DATA_RANGE;
     }
@@ -850,6 +862,13 @@ int monero_get_subaddress_secret_key(unsigned char* sub_s, unsigned char* s,
                                      size_t s_len, size_t index_len) {
     unsigned char in[sizeof(C_sub_address_prefix) + 32 + 8];
     int error;
+
+    // The keccak below writes 32 bytes into sub_s, and monero_reduce only
+    // checks sub_s_len after that.
+    if (!sub_s || sub_s_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
 
     if (!s || s_len < 32) {
         PRINTF("Buffer Error: %s:%d \n", __LINE__);
@@ -1260,6 +1279,12 @@ int monero_addm(unsigned char* r, unsigned char* a, unsigned char* b,
     unsigned char rb[32];
     int error;
 
+    // cx_math_addm_no_throw writes 32 bytes into r, and the monero_reverse32 at
+    // the end only checks r_len after that.
+    if (!r || r_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
+
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
         return error;
@@ -1291,6 +1316,12 @@ int monero_subm(unsigned char* r, unsigned char* a, unsigned char* b,
     unsigned char rb[32];
     int error;
 
+    // cx_math_subm_no_throw writes 32 bytes into r, and the monero_reverse32 at
+    // the end only checks r_len after that.
+    if (!r || r_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
+
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
         return error;
@@ -1319,6 +1350,12 @@ int monero_multm(unsigned char* r, unsigned char* a, unsigned char* b,
     unsigned char ra[32];
     unsigned char rb[32];
     int error;
+
+    // cx_math_multm_no_throw writes 32 bytes into r, and the monero_reverse32
+    // at the end only checks r_len after that.
+    if (!r || r_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
@@ -1349,6 +1386,12 @@ int monero_multm_8(unsigned char* r, unsigned char* a, size_t r_len,
     unsigned char ra[32];
     unsigned char rb[32];
     int error;
+
+    // cx_math_multm_no_throw writes 32 bytes into r, and the monero_reverse32
+    // at the end only checks r_len after that.
+    if (!r || r_len < 32) {
+        return SW_WRONG_DATA_RANGE;
+    }
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
@@ -1428,6 +1471,11 @@ unsigned int monero_uint642str(uint64_t val, char* str, unsigned int str_len) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
     }
+    // One digit and a terminator is the least this can write. Below that the
+    // zero case still stored a digit, and the `str_len - 1` clamp wrapped.
+    if (str_len < 2) {
+        return SW_WRONG_DATA_RANGE;
+    }
     explicit_bzero(str, str_len);
 
     offset = 22;
@@ -1455,6 +1503,11 @@ unsigned int monero_amount2str(uint64_t xmr, char* str, unsigned int str_len) {
     if (!str) {
         PRINTF("%d \n\n", __LINE__);
         return SW_WRONG_DATA;
+    }
+    // One digit and a terminator is the least this can write. Below that the
+    // zero case still stored a digit, and the `str_len - 1` clamp wrapped.
+    if (str_len < 2) {
+        return SW_WRONG_DATA_RANGE;
     }
     explicit_bzero(str, str_len);
 
