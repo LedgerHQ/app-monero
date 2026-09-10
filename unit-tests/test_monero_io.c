@@ -11,6 +11,7 @@
  * there. That case is why this suite exists.
  */
 
+#include <limits.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -191,6 +192,134 @@ static void test_io_hole_still_takes_a_normal_size(void) {
     TEST_ASSERT_EQUAL_UINT(42, G_monero_vstate.io_length);
 }
 
+/* ------------------------------ negative parser lengths */
+
+/* io_length and io_offset are unsigned short, so the guard's subtraction
+ * promotes to signed int and the whole comparison is signed. A negative length
+ * used to pass it and reach memcpy, which takes a size_t: -1 becomes SIZE_MAX.
+ * No caller in the app passes one, so only a direct call gets here. */
+
+static void give_io_a_payload(unsigned short len) {
+    memset(G_monero_vstate.io_buffer, 0x5c, len);
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = len;
+}
+
+static void test_skip_refuses_a_negative_length(void) {
+    give_io_a_payload(64);
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_skip(-1);
+        TEST_FAIL_MESSAGE("a negative skip was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(0, G_monero_vstate.io_offset,
+                                   "io_offset moved on a refused skip");
+}
+
+static void test_fetch_refuses_a_negative_length(void) {
+    /* Unfixed, this is memcpy(dst, src, SIZE_MAX) and the suite dies rather
+     * than reporting a failure. */
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_payload(64);
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_fetch(b.buf, -1);
+        TEST_FAIL_MESSAGE("a negative fetch was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+    TEST_ASSERT_TRUE_MESSAGE(guard_intact(b.guard),
+                             "wrote past the destination");
+}
+
+static void test_fetch_refuses_more_than_remains(void) {
+    /* The direction that always worked, kept so a fix cannot lose it. */
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_payload(8);
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_fetch(b.buf, 16);
+        TEST_FAIL_MESSAGE("read past the end of the payload");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+    TEST_ASSERT_TRUE(guard_intact(b.guard));
+}
+
+static void test_fetch_still_takes_a_legal_length(void) {
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_payload(64);
+
+    if (setjmp(stub_kill_jmp) != 0) {
+        TEST_FAIL_MESSAGE("an eight-byte fetch from 64 bytes was refused");
+    }
+    TEST_ASSERT_EQUAL_INT(8, monero_io_fetch(b.buf, 8));
+    TEST_ASSERT_EQUAL_UINT(8, G_monero_vstate.io_offset);
+    TEST_ASSERT_TRUE(guard_intact(b.guard));
+}
+
+static void test_fetch_still_takes_a_zero_length(void) {
+    /* monero_apdu_reset fetches io_length - io_offset bytes, which is zero for
+     * an empty INS_RESET, so the boundary has to stay open. */
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_payload(0);
+
+    if (setjmp(stub_kill_jmp) != 0) {
+        TEST_FAIL_MESSAGE("a zero-length fetch was refused");
+    }
+    TEST_ASSERT_EQUAL_INT(0, monero_io_fetch(b.buf, 0));
+    TEST_ASSERT_EQUAL_UINT(0, G_monero_vstate.io_offset);
+}
+
+static void test_skip_refuses_the_most_negative_length(void) {
+    /* INT_MIN has no positive counterpart, so a fix that negates rather than
+     * rejects would still be broken here. */
+    give_io_a_payload(64);
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_skip(INT_MIN);
+        TEST_FAIL_MESSAGE("INT_MIN was accepted as a length");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+    TEST_ASSERT_EQUAL_UINT(0, G_monero_vstate.io_offset);
+}
+
+static void test_fetch_nv_refuses_a_negative_length(void) {
+    /* No caller in the app, but it is the third helper taking a signed length
+     * and its sink is an NVM write. */
+    guarded_short_t b;
+    arm_short(&b);
+    give_io_a_payload(64);
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_fetch_nv(b.buf, -1);
+        TEST_FAIL_MESSAGE("a negative NVM write length was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+    TEST_ASSERT_TRUE(guard_intact(b.guard));
+}
+
+static void test_fetch_takes_exactly_what_remains(void) {
+    /* The boundary the guard must not close: len == available. */
+    struct {
+        unsigned char buf[16];
+        unsigned char guard[GUARD_LEN];
+    } b;
+    memset(b.buf, 0, sizeof(b.buf));
+    memset(b.guard, GUARD_BYTE, GUARD_LEN);
+    give_io_a_payload(16);
+
+    if (setjmp(stub_kill_jmp) != 0) {
+        TEST_FAIL_MESSAGE("a fetch of exactly the remaining bytes was refused");
+    }
+    TEST_ASSERT_EQUAL_INT(16, monero_io_fetch(b.buf, 16));
+    TEST_ASSERT_EQUAL_UINT(16, G_monero_vstate.io_offset);
+    TEST_ASSERT_TRUE(guard_intact(b.guard));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_matching_length_is_accepted);
@@ -203,5 +332,13 @@ int main(void) {
     RUN_TEST(test_fetch_decrypt_key_accepts_a_full_buffer);
     RUN_TEST(test_io_hole_refuses_a_wrapping_size);
     RUN_TEST(test_io_hole_still_takes_a_normal_size);
+    RUN_TEST(test_skip_refuses_a_negative_length);
+    RUN_TEST(test_fetch_refuses_a_negative_length);
+    RUN_TEST(test_fetch_refuses_more_than_remains);
+    RUN_TEST(test_fetch_still_takes_a_legal_length);
+    RUN_TEST(test_fetch_still_takes_a_zero_length);
+    RUN_TEST(test_skip_refuses_the_most_negative_length);
+    RUN_TEST(test_fetch_nv_refuses_a_negative_length);
+    RUN_TEST(test_fetch_takes_exactly_what_remains);
     return UNITY_END();
 }

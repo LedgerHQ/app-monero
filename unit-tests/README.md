@@ -63,7 +63,7 @@ different objects.
     test_monero_base58.c    monero_base58_public_key
     test_monero_crypto.c    the hash, modular-arithmetic and amount helpers
     test_monero_blind.c     monero_unblind
-    test_monero_io.c        monero_io_do, monero_io_hole, the key fetchers
+    test_monero_io.c        monero_io_do, monero_io_hole, the fetch length guard
 
 The framework is `LedgerUT` from the SDK: Unity for assertions, CMock available
 for SDK syscalls. `app-boilerplate/unit-tests/` is the reference.
