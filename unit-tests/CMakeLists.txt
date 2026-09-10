@@ -31,6 +31,8 @@ set(UT_COMPILE_DEFS
     MONERO_VERSION_MAJOR=2
     MONERO_VERSION_MINOR=2
     MONERO_VERSION_MICRO=2
+    # From the Makefile (line 76), sizes G_io_tx_buffer.
+    CUSTOM_IO_APDU_BUFFER_SIZE=\(255+5+64\)
 )
 
 #######################################################################
@@ -62,6 +64,14 @@ ledger_unit_tests_add_test(
     NAME          test_monero_base58
     SOURCES       ${CMAKE_CURRENT_SOURCE_DIR}/../src/monero_monero.c
                   ${CMAKE_CURRENT_SOURCE_DIR}/stubs/stub_monero.c
+    INCLUDE_DIRS  ${UT_INCLUDE_DIRS_SDK} ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS  ${UT_COMPILE_DEFS_SDK} ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME          test_monero_io
+    SOURCES       ${CMAKE_CURRENT_SOURCE_DIR}/../src/monero_io.c
+                  ${CMAKE_CURRENT_SOURCE_DIR}/stubs/stub_io.c
     INCLUDE_DIRS  ${UT_INCLUDE_DIRS_SDK} ${UT_INCLUDE_DIRS}
     COMPILE_DEFS  ${UT_COMPILE_DEFS_SDK} ${UT_COMPILE_DEFS}
 )

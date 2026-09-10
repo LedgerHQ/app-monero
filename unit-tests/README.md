@@ -89,7 +89,7 @@ them when a suite calls an SDK function it has to control — CMock then replace
 every function in the listed header, so never list one declaring the function
 under test. `app-boilerplate/unit-tests/` has examples.
 
-Three things cost time the first go:
+Four things cost time the first go:
 
 **Include order.** `monero_api.h` and `monero_vars.h` include each other, and
 the static inlines in `monero_api.h` use `G_monero_vstate`, which
@@ -103,6 +103,12 @@ inline, so it cannot be replaced. `monero_hash` underneath it can.
 **`N_state_pic` is const**, because on device it is NVRAM. A const object lands
 in `.rodata`, so a test that writes it segfaults. `stubs/stub_monero.c` aliases
 the symbol onto writable storage.
+
+**`send_error_and_kill_app` is `noreturn`**, so a stub cannot just record the
+status and return. `stubs/stub_io.c` longjmps to a `jmp_buf` the test sets, and
+the test reads the status from `stub_kill_sw`. Unity's own `TEST_PROTECT` is
+the wrong tool: it lands in Unity's abort frame and counts as a failure, when
+being killed is the behaviour under test.
 
 ## The `app` target
 
