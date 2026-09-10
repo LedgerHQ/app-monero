@@ -634,7 +634,8 @@ def _record_index(monero: MoneroCmd, fake_view_key: bytes, major: int, minor: in
 
 def _drive_change_through_prehash(monero, backend, navigator, test_name,
                                   chg_view, chg_spend, is_subaddress, amount,
-                                  is_last, corrupt_amount_high_byte=False):
+                                  is_last, corrupt_amount_high_byte=False,
+                                  record=None, subaddr=None):
     """Run a REAL-tx flow up to a single change prehash_update; return the SW.
 
     Both gen_txout_keys outputs use the user's primary address (so the flow is
@@ -655,7 +656,15 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
 
     monero.reset_and_get_version(monero_client_version=b"0.18")
     assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-    tx_pub_key, _tx_priv_key, _, _ = monero.open_tx()
+    tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
+
+    # `record` asks the device to remember a (major, minor) the way the old
+    # host-populated whitelist was fed; `subaddr` then aims the change at that
+    # subaddress. Both exist to show the recording no longer helps.
+    if record is not None:
+        _record_index(monero, fvk, major=record[0], minor=record[1])
+    if subaddr is not None:
+        chg_view, chg_spend = _compute_subaddress_keys(*subaddr)
 
     ak = [None, None]
     eph = [None, None]
@@ -701,54 +710,82 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
 
 
 # ---------------------------------------------------------------------------
-# TestSubaddressChangeDirect — exact (M, m≠0) accepted as change
+# TestSubaddressChangeDirect - a recorded non-root subaddress is refused
 # ---------------------------------------------------------------------------
 @pytest.mark.incremental
 class TestSubaddressChangeDirect:
     """
-    When an input came from subaddress (M=1, m=3), that exact subaddress is
-    accepted as a change address.  Previously only (M, 0) was checked, so
-    change to (M, m≠0) was incorrectly rejected.
+    Recording an index no longer makes it a change address.
+
+    The device used to keep every (major, minor) the host asked about during a
+    real tx and accept that exact subaddress as change. Nothing bound those
+    indices to an input being spent, so the host chose the destination. It is
+    gone: only account roots (M, 0) are accepted, re-derived on the device.
+
+    No client loses anything: a wallet only flags an output as change when it
+    equals its own change address, and that is always the root of the account
+    it spends from, so it never asks for a non-root subaddress.
+
+    One test, no preamble: _drive_change_through_prehash opens its own
+    transaction, and opening a second one leaves the nano screen on the same
+    frame, so the fee-review navigation would wait for a change that never
+    comes.
     """
 
     @staticmethod
-    @pytest.fixture(autouse=True, scope="class")
-    def state():
-        return {"tx_pub_key": None, "_tx_priv_key": None, "fvk": None}
-
-    @staticmethod
-    def test_reset_sub_direct(monero: MoneroCmd):
-        monero.reset_and_get_version(monero_client_version=b"0.18")
-
-    @staticmethod
-    def test_set_sig_sub_direct(monero: MoneroCmd):
-        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-
-    @staticmethod
-    def test_open_tx_sub_direct(monero: MoneroCmd, state):
-        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
-        state["tx_pub_key"] = tx_pub_key
-        state["_tx_priv_key"] = _tx_priv_key
-        state["fvk"] = fvk
-
-    @staticmethod
-    def test_subaddr_direct_accepted(monero: MoneroCmd, state):
+    def test_subaddr_direct_refused(monero: MoneroCmd,
+                                    backend: BackendInterface,
+                                    navigator: Navigator, test_name: str):
         """
-        Record index (1, 3) via INS_GET_SUBADDRESS_SECRET_KEY, then verify
-        that gen_txout_keys with is_change=True and (A_{1,3}, B_{1,3}) succeeds.
-        """
-        _record_index(monero, state["fvk"], major=1, minor=3)
-        A_sub, B_sub = _compute_subaddress_keys(major=1, minor=3)
+        Record index (1, 3), then show that change to that exact subaddress is
+        refused anyway.
 
-        # Must not raise — the exact subaddress is in the whitelist.
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=A_sub,
-            dst_pub_spend_key=B_sub,
-            output_index=0,
-            is_change_addr=True,
-            is_subaddress=True,
+        The refusal comes at prehash_update, not gen_txout_keys: the check
+        needs the unblinded amount, so it lives at monero_prehash.c:280 and
+        gen_txout_keys accepts any address.
+        """
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(1, 3), subaddr=(1, 3))
+        assert sw == 0x691C, (
+            f"expected SW_SECURITY_CHANGE_ADDRESS (0x691C) for a recorded "
+            f"non-root subaddress, got {hex(sw)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TestZeroMajorSubaddressRefused — the case that showed nothing at all
+# ---------------------------------------------------------------------------
+@pytest.mark.incremental
+class TestZeroMajorSubaddressRefused:
+    """
+    Change to (0, m) is refused, and this is the case worth its own test.
+
+    monero_check_change_address reports only the major to its caller, and
+    monero_format_change_title prints "Change" for major 0. So while the host
+    could still nominate a destination, (0, 12345) was accepted and the review
+    called it plain "Change" -- indistinguishable from change to the primary
+    address, on a subaddress the wallet may never scan. A non-zero major at
+    least rendered "Change account N".
+    """
+
+    @staticmethod
+    def test_zero_major_subaddress_refused(monero: MoneroCmd,
+                                           backend: BackendInterface,
+                                           navigator: Navigator,
+                                           test_name: str):
+        # Minor far outside any default scan window, account 0 so the title
+        # would have read "Change".
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(0, 12345), subaddr=(0, 12345))
+        assert sw == 0x691C, (
+            f"expected SW_SECURITY_CHANGE_ADDRESS (0x691C) for a recorded "
+            f"(0, 12345) subaddress, got {hex(sw)}"
         )
 
 
@@ -793,7 +830,8 @@ class TestSubaddressChangeAccountRoot:
         _record_index(monero, state["fvk"], major=1, minor=3)
         A_root, B_root = _compute_subaddress_keys(major=1, minor=0)
 
-        # Must not raise — account root of a seen major is always whitelisted.
+        # Must not raise. The root is re-derived on the device by the account
+        # lookahead, so recording (1, 3) above is irrelevant to the outcome.
         monero.gen_txout_keys(
             _tx_priv_key=state["_tx_priv_key"],
             tx_pub_key=state["tx_pub_key"],
@@ -951,8 +989,10 @@ class TestChangeAccountDisplayed:
 # cached subaddress table (wallet2.cpp: change_dts.addr =
 # get_subaddress({subaddr_account, 0})). So for any user on a non-zero account the
 # whitelist was empty and gen_txout_keys returned SW_SECURITY_CHANGE_ADDRESS,
-# killing the app. Account-0 users were fine (change == primary). Every other test
-# passes only because it calls _record_index() first, which no real wallet does.
+# killing the app. Account-0 users were fine (change == primary). That is what the
+# account lookahead fixed, and the host-populated whitelist has since been removed
+# entirely -- the _record_index() calls left in this file now only show that
+# recording an index buys the host nothing.
 #
 # This test omits _record_index to mirror the real wallet, and asserts the change
 # is accepted.
