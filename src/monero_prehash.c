@@ -161,6 +161,8 @@ int monero_apdu_mlsag_prehash_update() {
     monero_io_discard(0);
 
     // update MLSAG prehash
+    // The host picks the width. Safe: the type is hashed above, and the
+    // verifier shapes ecdhInfo by type, so a wrong width breaks the signature.
     if ((G_monero_vstate.options & 0x03) == 0x02) {
         err = monero_keccak_update_H(v, 8);
         if (err) {
