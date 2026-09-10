@@ -36,6 +36,7 @@ int monero_apdu_get_tx_proof() {
     unsigned char sig_c[32];
     unsigned char sig_r[32];
     unsigned char sep[32];
+    unsigned char expected[32];
     int err = 0;
 #define k (G_monero_vstate.tmp + 256)
 #define k_len (sizeof(G_monero_vstate.tmp) - 256)
@@ -56,6 +57,29 @@ int monero_apdu_get_tx_proof() {
     }
 
     monero_io_discard(0);
+
+    /* The response is linear in r, so without these a wrapper offset from a
+     * device key by a known amount yields a signature under that key. */
+    if (G_monero_vstate.options & 1) {
+        err = monero_ecmul_k(expected, B, r, sizeof(expected), 32, sizeof(r));
+    } else {
+        err = monero_ecmul_G(expected, r, sizeof(expected), sizeof(r));
+    }
+    if (err) {
+        goto end;
+    }
+    if (memcmp(expected, R, 32) != 0) {
+        err = SW_WRONG_DATA;
+        goto end;
+    }
+    err = monero_ecmul_k(expected, A, r, sizeof(expected), 32, sizeof(r));
+    if (err) {
+        goto end;
+    }
+    if (memcmp(expected, D, 32) != 0) {
+        err = SW_WRONG_DATA;
+        goto end;
+    }
 
     // Generate random k
     err = monero_rng_mod_order(k, k_len);
@@ -134,6 +158,7 @@ end:
     explicit_bzero(sig_c, sizeof(sig_c));
     explicit_bzero(sig_r, sizeof(sig_r));
     explicit_bzero(sep, sizeof(sep));
+    explicit_bzero(expected, sizeof(expected));
     explicit_bzero(G_monero_vstate.tmp, sizeof(G_monero_vstate.tmp));
     return err;
 }
