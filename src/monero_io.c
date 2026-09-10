@@ -21,6 +21,7 @@
 #include "monero_types.h"
 #include "monero_vars.h"
 #include "os.h"
+#include "os_apdu.h"
 #include "os_utils.h"
 #include "read.h"
 
@@ -453,10 +454,12 @@ int monero_io_fetch_nv(unsigned char* buffer, int len) {
 #define MAX_OUT MONERO_APDU_LENGTH
 
 int monero_io_do(unsigned int io_flags) {
+    unsigned short rx = 0;
+
     // if IO_ASYNCH_REPLY has been  set,
     //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
     if (io_flags & IO_ASYNCH_REPLY) {
-        monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
+        rx = monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
     }
     // else send data now
     else {
@@ -466,7 +469,9 @@ int monero_io_do(unsigned int io_flags) {
         G_monero_vstate.io_reply_pending = 0;
         G_monero_vstate.io_offset = 0;
         if (G_monero_vstate.io_length > MAX_OUT) {
-            return SW_IO_FULL;
+            // Not a return: no caller reads one, so returning here would leave
+            // the previous command's header in place and dispatch it again.
+            send_error_and_kill_app(SW_IO_FULL);
         }
         memcpy(G_io_apdu_buffer,
                G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
@@ -477,8 +482,17 @@ int monero_io_do(unsigned int io_flags) {
                                G_monero_vstate.io_length);
             return 0;
         } else {
-            monero_io_exchange(CHANNEL_APDU, G_monero_vstate.io_length);
+            rx = monero_io_exchange(CHANNEL_APDU, G_monero_vstate.io_length);
         }
+    }
+
+    // The host declares Lc; the transport says how many bytes arrived. Believe
+    // the transport: G_io_apdu_buffer is the same array the reply above was
+    // sent from, so a short APDU claiming a long one is parsed out of that
+    // reply.
+    if (rx < APDU_OFF_DATA ||
+        (unsigned int)(rx - APDU_OFF_DATA) != G_io_apdu_buffer[APDU_OFF_LC]) {
+        send_error_and_kill_app(SW_WRONG_LENGTH);
     }
 
     //--- set up received data  ---
