@@ -39,52 +39,40 @@ Keys used (from seed "abandon … about"):
   B = dae41d6b13568fdd71ec3d20c2f614c65fe819f36ca5da8d24df3bd89b2bad9d
 """
 
+import struct
+
 import pytest
 import nacl.bindings as nb
 from Crypto.Hash import keccak
 from ragger.backend.interface import BackendInterface
 from ragger.navigator import Navigator, NavInsID
 
-from monero_client.monero_cmd import MoneroCmd
+from monero_client.monero_cmd import MoneroCmd, TESTS_ROOT_DIR
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd, PROTOCOL_VERSION
 from monero_client.monero_types import InsType, Type, Keys, SigType
 from monero_client.crypto.hmac import hmac_sha256
-from monero_client.utils.varint import encode_varint
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 from monero_client.utils.utils import get_nano_review_instructions
-from monero_client.exception import SecurityChangeAddress
+from monero_client.crypto.monero_math import (
+    L,
+    derivation_to_scalar,
+    sc_reduce32)
 
-# ---------------------------------------------------------------------------
-# Monero Ed25519 helpers (client-side, for spending proof)
-# ---------------------------------------------------------------------------
-_L = 2 ** 252 + 27742317777372353535851937790883648493  # Ed25519 group order
-
-
-def _sc_reduce32(b: bytes) -> bytes:
-    return (int.from_bytes(b, "little") % _L).to_bytes(32, "little")
 
 
 def _generate_key_derivation(pub_key: bytes, priv_key: bytes) -> bytes:
     """8 * priv_key * pub_key  (Monero ECDH derivation, no clamping)."""
-    a8 = ((int.from_bytes(priv_key, "little") * 8) % _L).to_bytes(32, "little")
+    a8 = ((int.from_bytes(priv_key, "little") * 8) % L).to_bytes(32, "little")
     return nb.crypto_scalarmult_ed25519_noclamp(a8, pub_key)
-
-
-def _derivation_to_scalar(derivation: bytes, output_index: int) -> bytes:
-    """H_s(derivation ‖ varint(index)) reduced mod l."""
-    k = keccak.new(digest_bits=256)
-    k.update(derivation)
-    k.update(encode_varint(output_index))
-    return _sc_reduce32(k.digest())
 
 
 # ---------------------------------------------------------------------------
 # Attacker's keypair  (deterministic: sc_reduce32 applied to fixed byte seeds)
 # ---------------------------------------------------------------------------
-_ATTACKER_B_PRIV = _sc_reduce32(bytes([0x11] * 32))
+_ATTACKER_B_PRIV = sc_reduce32(bytes([0x11] * 32))
 _ATTACKER_B_PUB = nb.crypto_scalarmult_ed25519_base_noclamp(_ATTACKER_B_PRIV)
 _ATTACKER_A_PUB = nb.crypto_scalarmult_ed25519_base_noclamp(
-    _sc_reduce32(bytes([0xAA] * 32))
+    sc_reduce32(bytes([0xAA] * 32))
 )
 
 # User (from the test seed "abandon … about")
@@ -345,7 +333,7 @@ class TestChangeAddressVuln:
         D = _generate_key_derivation(R, a)
 
         # Step 2 — derivation → amount-key scalar
-        alpha = _derivation_to_scalar(D, output_index=1)
+        alpha = derivation_to_scalar(D, output_index=1)
 
         # Step 3 — expected one-time pubkey: α·G + B'
         alpha_G = nb.crypto_scalarmult_ed25519_base_noclamp(alpha)
@@ -599,7 +587,7 @@ def _compute_subaddress_keys(major: int, minor: int):
         + major.to_bytes(4, "little")
         + minor.to_bytes(4, "little")
     )
-    d = _sc_reduce32(k.digest())
+    d = sc_reduce32(k.digest())
     D = nb.crypto_core_ed25519_add(
         _USER.public_spend_key,
         nb.crypto_scalarmult_ed25519_base_noclamp(d),
@@ -635,7 +623,7 @@ def _record_index(monero: MoneroCmd, fake_view_key: bytes, major: int, minor: in
 def _drive_change_through_prehash(monero, backend, navigator, test_name,
                                   chg_view, chg_spend, is_subaddress, amount,
                                   is_last, corrupt_amount_high_byte=False,
-                                  record=None, subaddr=None):
+                                  record=None, subaddr=None, approve=False):
     """Run a REAL-tx flow up to a single change prehash_update; return the SW.
 
     Both gen_txout_keys outputs use the user's primary address (so the flow is
@@ -644,9 +632,10 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
     gated on a non-zero unblinded amount:
       * non-zero non-wallet change -> rejected with 0x691C, synchronously, before
         any UI (works on Nano and NBGL);
-      * zero-amount change          -> the check is skipped; a non-last output is
-        auto-confirmed on NBGL -> 0x9000 (BAGL would block, so callers gate that
-        case to NBGL).
+      * zero-amount change          -> the check is skipped.
+
+    Pass approve=True when the output is expected through: it then clicks the
+    review, which Nano needs and NBGL auto-confirms.
 
     The commitment is sent as zeros and relies on the DEBUG build's
     BYPASS_COMMITMENT_FOR_TESTS; the change check runs right after it.
@@ -700,10 +689,27 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
         bm, ba,
     ))
     option = (0x00 if is_last else 0x80) | 0x02   # | is_short
-    monero.transport.send(cla=PROTOCOL_VERSION, ins=InsType.INS_VALIDATE,
-                          p1=2, p2=1, option=option, payload=payload)
     try:
-        sw, _ = monero.transport.recv()
+        if approve and device.is_nano:
+            with monero.transport.send_async(
+                    cla=PROTOCOL_VERSION, ins=InsType.INS_VALIDATE,
+                    p1=2, p2=1, option=option, payload=payload):
+                # ux_flow_change is [title, Sign, Reject]: one click to Sign.
+                navigator.navigate_and_compare(
+                    TESTS_ROOT_DIR, test_name,
+                    get_nano_review_instructions(1))
+            sw, _ = monero.transport.async_response()
+        else:
+            # Blocking exchange, not send + recv. This branch usually ends in a
+            # refusal, which exits the app; a streamed response then dies
+            # mid-read and surfaces as ChunkedEncodingError from inside
+            # urllib3. Speculos turns that same error into a TimeoutError on
+            # the blocking path, so use it and get either the status word or a
+            # failure that says what went wrong.
+            apdu = struct.pack("BBBBBB", PROTOCOL_VERSION,
+                               InsType.INS_VALIDATE.value, 2, 1,
+                               1 + len(payload), option) + payload
+            sw = backend.exchange_raw(apdu).status
         return sw
     except ExceptionRAPDU as exc:
         return exc.status
@@ -790,56 +796,32 @@ class TestZeroMajorSubaddressRefused:
 
 
 # ---------------------------------------------------------------------------
-# TestSubaddressChangeAccountRoot — (M, 0) accepted when input from (M, m≠0)
+# TestSubaddressChangeAccountRoot - the account root (M, 0) is still accepted
 # ---------------------------------------------------------------------------
-@pytest.mark.incremental
 class TestSubaddressChangeAccountRoot:
     """
-    When an input came from subaddress (M=1, m=3), the account root (M=1, m=0)
-    is also accepted as a change address — matching monero-gui's behaviour of
-    always routing change to get_subaddress({subaddr_account, 0}).
+    An account root (M=1, m=0) must still be accepted as change, which is what
+    monero-gui always routes change to: get_subaddress({subaddr_account, 0}).
+
+    Driven through prehash_update, where the change check lives. The previous
+    version called gen_txout_keys and asserted only "must not raise", which
+    passed whatever the device did.
     """
 
     @staticmethod
-    @pytest.fixture(autouse=True, scope="class")
-    def state():
-        return {"tx_pub_key": None, "_tx_priv_key": None, "fvk": None}
-
-    @staticmethod
-    def test_reset_sub_root(monero: MoneroCmd):
-        monero.reset_and_get_version(monero_client_version=b"0.18")
-
-    @staticmethod
-    def test_set_sig_sub_root(monero: MoneroCmd):
-        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-
-    @staticmethod
-    def test_open_tx_sub_root(monero: MoneroCmd, state):
-        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
-        state["tx_pub_key"] = tx_pub_key
-        state["_tx_priv_key"] = _tx_priv_key
-        state["fvk"] = fvk
-
-    @staticmethod
-    def test_account_root_accepted(monero: MoneroCmd, state):
-        """
-        Record index (1, 3) — only the input subaddress, not the root.
-        Then verify that gen_txout_keys with is_change=True and the account
-        root (A_{1,0}, B_{1,0}) succeeds (standard wallet change routing).
-        """
-        _record_index(monero, state["fvk"], major=1, minor=3)
-        A_root, B_root = _compute_subaddress_keys(major=1, minor=0)
-
-        # Must not raise. The root is re-derived on the device by the account
-        # lookahead, so recording (1, 3) above is irrelevant to the outcome.
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=A_root,
-            dst_pub_spend_key=B_root,
-            output_index=0,
-            is_change_addr=True,
-            is_subaddress=True,
+    def test_account_root_accepted(monero: MoneroCmd,
+                                   backend: BackendInterface,
+                                   navigator: Navigator,
+                                   test_name: str):
+        # Record (1, 3) but send change to the root (1, 0): the device
+        # re-derives the root, so the recording is irrelevant.
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(1, 3), subaddr=(1, 0), approve=True)
+        assert sw == 0x9000, (
+            f"the account root (1, 0) must be accepted as change, got {hex(sw)}"
         )
 
 

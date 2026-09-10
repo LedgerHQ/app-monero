@@ -1,7 +1,7 @@
 """Verifies settings and information navigation
 """
 from pathlib import Path
-from ledgered.devices import Device, DeviceType
+from ledgered.devices import Device
 
 
 from ragger.firmware.touch.positions import POSITIONS

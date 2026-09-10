@@ -73,14 +73,14 @@ from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 from monero_client.utils.varint import encode_varint
+from monero_client.status_words import (
+    SW_SECURITY_PREFIX_HASH,
+    SW_SECURITY_PREFIX_NOT_FINALIZED)
+from monero_client.crypto.monero_math import sc_reduce32
 
 # ed25519 group order; monero_reduce() is a little-endian mod-l reduce.
-L = 2 ** 252 + 27742317777372353535851937790883648493
-
 # Raised by the terminal finalize when message != prefixH -- compiled out on DEBUG=1.
-SW_SECURITY_PREFIX_HASH = 0x691B
 # Raised once the prefix has not been streamed and verified for this transaction.
-SW_SECURITY_PREFIX_NOT_FINALIZED = 0x691F
 
 ZERO_COMMITMENT = bytes(32)
 # Any well-formed scalar: the FAKE session's INS_BLIND only needs a valid mask.
@@ -110,11 +110,6 @@ def _output_payload(recv: Keys, ak: bytes, blinded_mask: bytes,
         hmac_sha256(ak, MoneroCryptoCmd.HMAC_KEY, Type.AMOUNT_KEY),
         ZERO_COMMITMENT, blinded_mask, blinded_amount,
     ))
-
-
-def _sc_reduce(value: bytes) -> bytes:
-    """monero_reduce(): little-endian scalar mod l."""
-    return (int.from_bytes(value, "little") % L).to_bytes(32, "little")
 
 
 def _expect_accepted(backend: BackendInterface, apdu: bytes, step: str) -> bytes:
@@ -313,7 +308,7 @@ class TestPrefixStreamNeverRequiredVuln:
                          "INS_MLSAG P1=1 (prepare)")
         c = _expect_accepted(backend, _raw_apdu(InsType.INS_MLSAG, 2, 1, 0x00),
                              "INS_MLSAG P1=2 (hash)")
-        assert c == _sc_reduce(keccak.new(digest_bits=256,
+        assert c == sc_reduce32(keccak.new(digest_bits=256,
                                           data=state["mlsagh"]).digest())
         print("\n[confirmed] signed with no prefix ever streamed: the output-key "
               "binding never ran, and the signed hash is built on the FAKE-session "

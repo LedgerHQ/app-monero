@@ -50,8 +50,9 @@ from ragger.backend.interface import BackendInterface, RaisePolicy
 
 from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
 from monero_client.monero_types import InsType
+from monero_client.status_words import (
+    SW_WRONG_LENGTH)
 
-SW_WRONG_LENGTH = 0x6700
 
 # Option byte plus the 8-byte index: what an honest caller declares.
 HONEST_LC = 9

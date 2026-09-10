@@ -40,8 +40,6 @@ view key, so from the public keypair GENERATE_KEYPAIR returns it can compute
 """
 
 import pytest
-import nacl.bindings as nb
-from Crypto.Hash import keccak
 
 from ragger.backend.interface import BackendInterface
 
@@ -49,37 +47,13 @@ from monero_client.crypto.hmac import hmac_sha256
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.monero_types import SigType, Type
-from monero_client.utils.varint import encode_varint
 
 from test_vuln_change_address import _USER
-
-_L = 2 ** 252 + 27742317777372353535851937790883648493
+from monero_client.crypto.monero_math import (
+    key_derivation,
+    one_time_key)
 
 OUTPUT_INDEX = 0
-
-
-def _red(n: int) -> bytes:
-    return (n % _L).to_bytes(32, "little")
-
-
-def _key_derivation(pub: bytes, priv: bytes) -> bytes:
-    """8 * priv * pub, Monero's ECDH derivation. No clamping."""
-    return nb.crypto_scalarmult_ed25519_noclamp(
-        _red(int.from_bytes(priv, "little") * 8), pub)
-
-
-def _derivation_to_scalar(derivation: bytes, index: int) -> bytes:
-    k = keccak.new(digest_bits=256)
-    k.update(derivation)
-    k.update(encode_varint(index))
-    return _red(int.from_bytes(k.digest(), "little"))
-
-
-def _one_time_key(derivation: bytes, index: int, spend_pub: bytes) -> bytes:
-    """Hs(derivation || varint(index)).G + B, the key that lands in vout."""
-    s = _derivation_to_scalar(derivation, index)
-    return nb.crypto_core_ed25519_add(
-        nb.crypto_scalarmult_ed25519_base_noclamp(s), spend_pub)
 
 
 def _foreign_scalar(backend) -> tuple:
@@ -124,8 +98,8 @@ class TestHonestSecretScans:
             is_subaddress=False,
         )
 
-        expected = _one_time_key(
-            _key_derivation(tx_pub_key, _USER.secret_view_key),
+        expected = one_time_key(
+            key_derivation(tx_pub_key, _USER.secret_view_key),
             OUTPUT_INDEX, _USER.public_spend_key)
 
         assert out_eph == expected, (
@@ -203,12 +177,12 @@ class TestSecretWasUnbound:
 
         # 8.a.(k'.G) is the derivation the device just did, computable here
         # from the returned public key and the seed's view secret.
-        derived_under_foreign = _one_time_key(
-            _key_derivation(foreign_pub, _USER.secret_view_key),
+        derived_under_foreign = one_time_key(
+            key_derivation(foreign_pub, _USER.secret_view_key),
             OUTPUT_INDEX, _USER.public_spend_key)
         # 8.a.R is what the recipient computes from the on-chain tx pubkey.
-        recipient_scans_for = _one_time_key(
-            _key_derivation(tx_pub_key, _USER.secret_view_key),
+        recipient_scans_for = one_time_key(
+            key_derivation(tx_pub_key, _USER.secret_view_key),
             OUTPUT_INDEX, _USER.public_spend_key)
 
         assert out_eph == derived_under_foreign, (

@@ -24,6 +24,10 @@ class MoneroCryptoCmd:
     def __init__(self, backend: BackendInterface, debug: bool = False) -> None:
         self.transport = Transport(backend, debug=debug)
         self.is_in_tx_mode = False
+        # The APDU class byte is the protocol version. The app pins it for the
+        # session, so a test that needs another one sets it before the first
+        # command.
+        self.protocol = PROTOCOL_VERSION
 
     @staticmethod
     def xor_cipher(value: bytes, key: bytes) -> bytes:
@@ -45,7 +49,7 @@ class MoneroCryptoCmd:
                         Type.SCALAR),  # hmac
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -61,36 +65,10 @@ class MoneroCryptoCmd:
 
         return response  # scalar * pub_key
 
-    def secret_scalar_mul_base(self, _priv_key: bytes):
-        ins: InsType = InsType.INS_SECRET_SCAL_MUL_BASE
-
-        payload: bytes = b"".join([
-            _priv_key,  # encrypted priv_key
-            hmac_sha256(_priv_key,
-                        MoneroCryptoCmd.HMAC_KEY,
-                        Type.SCALAR),  # hmac
-        ])
-
-        self.transport.send(cla=PROTOCOL_VERSION,
-                         ins=ins,
-                         p1=0,
-                         p2=0,
-                         option=0,
-                         payload=payload)
-
-        sw, response = self.transport.recv()  # type: int, bytes
-
-        if not sw & 0x9000:
-            raise DeviceError(sw, ins)
-
-        assert len(response) == 32
-
-        return response  # priv_key * G
-
     def get_public_keys(self) -> Tuple[bytes, bytes, str]:
         ins: InsType = InsType.INS_GET_KEY
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=1,
                          p2=0,
@@ -151,7 +129,7 @@ class MoneroCryptoCmd:
                 NavIns(NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM),
                 NavIns(NavInsID.USE_CASE_STATUS_DISMISS)
             ]
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=0,
                                     p2=0,
@@ -192,7 +170,7 @@ class MoneroCryptoCmd:
                 ]
         try:
 
-            with self.transport.send_async(cla=PROTOCOL_VERSION,
+            with self.transport.send_async(cla=self.protocol,
                                         ins=ins,
                                         p1=2,
                                         p2=0,
@@ -220,7 +198,7 @@ class MoneroCryptoCmd:
     def generate_keypair(self) -> Tuple[bytes, bytes]:
         ins: InsType = InsType.INS_GENERATE_KEYPAIR
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -241,7 +219,7 @@ class MoneroCryptoCmd:
     def verify_key(self, _priv_key: bytes, pub_key: bytes) -> bool:
         ins: InsType = InsType.INS_VERIFY_KEY
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -271,7 +249,7 @@ class MoneroCryptoCmd:
                         Type.SCALAR),  # hmac
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -303,7 +281,7 @@ class MoneroCryptoCmd:
             address.encode("ascii")
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -328,7 +306,7 @@ class MoneroCryptoCmd:
                         Type.SCALAR),
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -372,7 +350,7 @@ class MoneroCryptoCmd:
             _priv_key,
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                             ins=ins,
                             p1=0,
                             p2=0,
@@ -405,7 +383,7 @@ class MoneroCryptoCmd:
 
         payload: bytes = b"".join([msg, R, A, B, D, _r])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                             ins=ins,
                             p1=0,
                             p2=0,
@@ -429,7 +407,7 @@ class MoneroCryptoCmd:
             output_index,
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,

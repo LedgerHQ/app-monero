@@ -71,6 +71,8 @@ from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION, TESTS_ROOT_DIR
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_COMMAND_NOT_ALLOWED)
 
 ZERO_COMMITMENT = bytes(32)
 
@@ -85,7 +87,6 @@ LEAKED_ROW = "Main address"
 # nbgl_useCaseReview's finishTitle, set by start_signature(); marks the last page.
 SIGN_PAGE = "Sign transaction"
 
-SW_COMMAND_NOT_ALLOWED = 0x6980
 
 # INS_DISPLAY_ADDRESS body: major, minor, payment id, and the byte the app
 # fetches past. All zero = the primary address, p1 = 0 = not integrated.

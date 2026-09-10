@@ -58,6 +58,12 @@ from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 from monero_client.utils.varint import encode_varint
+from monero_client.status_words import (
+    SWO_COMMAND_NOT_ACCEPTED,
+    SW_COMMAND_NOT_ALLOWED)
+
+# SW_COMMAND_NOT_ALLOWED: the app's own io_reply_pending gate
+# SWO_COMMAND_NOT_ACCEPTED: the SDK's pending-APDU latch, which pre-empts it
 
 # IN_OPTION_MORE_COMMAND (0x80) | short-amount flag (0x02).
 OPT_MORE = 0x80 | 0x02
@@ -67,8 +73,6 @@ ZERO_COMMITMENT = bytes(32)
 # SW returned by the app's IO gate (send_error_and_kill_app) when a command
 # arrives while a confirmation is still on screen. The app answers this, then
 # exits to the dashboard (fail-closed), so the pending review is torn down.
-SW_COMMAND_NOT_ALLOWED = 0x6980    # the app's own io_reply_pending gate
-SWO_COMMAND_NOT_ACCEPTED = 0x6901  # the SDK's pending-APDU latch, which pre-empts it
 # Which layer answers depends on the SDK the app was built against, so accept
 # either: the property under test is that the command is refused, not who refused.
 SW_REFUSED_MID_REVIEW = (SW_COMMAND_NOT_ALLOWED, SWO_COMMAND_NOT_ACCEPTED)

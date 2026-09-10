@@ -49,10 +49,10 @@ from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
-from monero_client.utils.varint import encode_varint
+from monero_client.status_words import (
+    SW_SECURITY_COMMITMENT_CHAIN_CONTROL)
 
 # Raised by the OUTK destination-chain comparison. Not behind DEBUG=1.
-SW_SECURITY_COMMITMENT_CHAIN_CONTROL = 0x6914
 
 ZERO_COMMITMENT = bytes(32)
 ATTACKER_PROOF = b"\xad" * 32

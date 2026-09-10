@@ -10,22 +10,29 @@ the only failure mode is the parser erroring on a valid tx_extra shape
 app_exit -> a crash to dashboard.
 
 These tests stream tx_extra shapes real wallets emit but the real-sign vectors
-don't cover, and assert the parser accepts them. The parser runs entirely within
+don't cover, and assert the parser handles them. The parser runs entirely within
 INS_PREFIX_HASH, before any UI, so no navigation is needed.
 
 Covered:
-  * integrated (encrypted) payment ID nonce  -> tag 0x02, 9-byte content
-  * long (unencrypted) payment ID nonce      -> tag 0x02, 33-byte content
+  * integrated (encrypted) payment ID nonce  -> tag 0x02, 9-byte, accepted
+  * long (unencrypted) payment ID nonce      -> tag 0x02, 33-byte, refused
   * tx_extra padding                         -> tag 0x00 + trailing zeros
   * multi-destination (3 outputs)            -> larger vout walk
   * subaddress additional tx pubkeys         -> tag 0x04 (checked vs ADDK)
+
+The long payment ID is the one refusal: a real transaction takes only the
+encrypted payment ID the device made itself, because the device cannot vouch for
+any other and no wallet has read a long one since hardfork 12.
 """
 
 import pytest
 
+from ragger.error import ExceptionRAPDU
+
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import SigType
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import SW_SECURITY_PAYMENT_ID
 
 # The device now requires the prefix to carry the encrypted payment ID it made
 # itself, so a test that streams one has to ask for it first.
@@ -101,14 +108,29 @@ class TestExtraIntegratedPaymentId:
 
 @pytest.mark.incremental
 class TestExtraLongPaymentId:
-    """Legacy long (unencrypted) 32-byte payment ID in a nonce."""
+    """
+    Legacy long (unencrypted) 32-byte payment ID in a nonce, now refused.
+
+    The device never makes one, so it has nothing to compare it against and
+    nothing to show at review, and wallet2 has discarded them on receive since
+    hardfork 12 (IGNORE_LONG_PAYMENT_ID_FROM_BLOCK_VERSION), so there is no
+    reader either. Signing 32 unreviewed bytes for no one is the worse trade,
+    so a real transaction takes only the encrypted payment ID the device made.
+
+    This is a deliberate compatibility break: Monero GUI can still put a long
+    payment ID in a transaction, though only from a scanned QR code or a
+    monero: URI -- its input field is readOnly.
+    """
 
     @staticmethod
-    def test_long_payment_id_accepted(monero: MoneroCmd, device, test_name: str):
+    def test_long_payment_id_refused(monero: MoneroCmd, device, test_name: str):
         tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
         suffix = _nonce_field(_NONCE_PAYMENT_ID + bytes(32))
-        h = _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
-        assert len(h) == 32
+        with pytest.raises(ExceptionRAPDU) as exc_info:
+            _stream_prefix(monero, device, test_name, tx_pub_key, eph, suffix)
+        assert exc_info.value.status == SW_SECURITY_PAYMENT_ID, (
+            "expected %#06x for a payment ID the device did not make, got %#06x"
+            % (SW_SECURITY_PAYMENT_ID, exc_info.value.status))
 
 
 @pytest.mark.incremental

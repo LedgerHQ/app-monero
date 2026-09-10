@@ -25,10 +25,10 @@ from ragger.error import ExceptionRAPDU
 
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import SigType
+from monero_client.status_words import (
+    SW_WRONG_DATA)
 
 from test_vuln_change_address import _USER
-
-SW_WRONG_DATA = 0x6984
 
 
 @pytest.mark.incremental

@@ -38,8 +38,17 @@ from ragger.error import ExceptionRAPDU
 from ragger.navigator import Navigator
 
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
-
-_L = 2 ** 252 + 27742317777372353535851937790883648493
+from monero_client.status_words import (
+    SW_WRONG_DATA)
+from monero_client.crypto.monero_math import (
+    add,
+    base,
+    derivation_to_scalar,
+    hash_to_scalar,
+    key_derivation,
+    mul,
+    num,
+    red)
 
 # The sentinels the wallet substitutes for the real keys. src/monero_init.c:30.
 FAKE_VIEW_KEY = bytes(32)
@@ -56,44 +65,9 @@ G = nb.crypto_scalarmult_ed25519_base_noclamp((1).to_bytes(32, "little"))
 SEP = keccak.new(digest_bits=256, data=b"TXPROOF_V2").digest()
 
 
-def _num(s: bytes) -> int:
-    return int.from_bytes(s, "little")
-
-
-def _red(n: int) -> bytes:
-    return (n % _L).to_bytes(32, "little")
-
-
-def _hs(data: bytes) -> bytes:
-    return _red(_num(keccak.new(digest_bits=256, data=data).digest()))
-
-
-def _mul(scalar: bytes, point: bytes) -> bytes:
-    return nb.crypto_scalarmult_ed25519_noclamp(scalar, point)
-
-
-def _base(scalar: bytes) -> bytes:
-    return nb.crypto_scalarmult_ed25519_base_noclamp(scalar)
-
-
-def _add(p: bytes, q: bytes) -> bytes:
-    return nb.crypto_core_ed25519_add(p, q)
-
-
-def _key_derivation(pub: bytes, priv: bytes) -> bytes:
-    """8 * priv * pub, Monero's ECDH derivation. No clamping."""
-    return _mul(_red(_num(priv) * 8), pub)
-
-
-def _derivation_to_scalar(derivation: bytes, index: int) -> bytes:
-    """Hs(derivation || varint(index)). Indices below 128 are one byte."""
-    assert index < 128
-    return _hs(derivation + bytes([index]))
-
-
 def _challenge(msg, D, X, Y, R, A, B) -> bytes:
     """Hs(msg || D || X || Y || sep || R || A || B), s_comm_2 in crypto.cpp."""
-    return _hs(msg + D + X + Y + SEP + R + A + B)
+    return hash_to_scalar(msg + D + X + Y + SEP + R + A + B)
 
 
 def _verify_txproof_v2(msg, R, A, B, D, sig_c, sig_r) -> bool:
@@ -101,31 +75,31 @@ def _verify_txproof_v2(msg, R, A, B, D, sig_c, sig_r) -> bool:
 
     X = c.R + s.B if B is present else c.R + s.G;  Y = c.D + s.A.
     """
-    X = _add(_mul(sig_c, R), _mul(sig_r, B) if B else _base(sig_r))
-    Y = _add(_mul(sig_c, D), _mul(sig_r, A))
+    X = add(mul(sig_c, R), mul(sig_r, B) if B else base(sig_r))
+    Y = add(mul(sig_c, D), mul(sig_r, A))
     return _challenge(msg, D, X, Y, R, A, B or bytes(32)) == sig_c
 
 
 def _device_side(msg, R, A, B_field, D, x, k):
     """What src/monero_proof.c computes, standard mode. For the premise only."""
-    X, Y = _base(k), _mul(k, A)
+    X, Y = base(k), mul(k, A)
     sig_c = _challenge(msg, D, X, Y, R, A, B_field)
-    return sig_c, _red(_num(k) - _num(sig_c) * _num(x))
+    return sig_c, red(num(k) - num(sig_c) * num(x))
 
 
 class TestForgeryAlgebra:
     """No device. If these do not hold, nothing below them is interesting."""
 
     def test_seed_keys_are_consistent(self):
-        assert _base(SECRET_SPEND_KEY) == PUBLIC_SPEND_KEY
+        assert base(SECRET_SPEND_KEY) == PUBLIC_SPEND_KEY
 
     def test_offset_wrapper_converts_to_a_spend_key_signature(self):
         b = SECRET_SPEND_KEY
         B = PUBLIC_SPEND_KEY
         msg = os.urandom(32)
-        h = _hs(b"a derivation the host can compute")
-        x = _red(_num(h) + _num(b))          # what DERIVE_SECRET_KEY wraps
-        k = _red(_num(os.urandom(32)))       # the device's nonce
+        h = hash_to_scalar(b"a derivation the host can compute")
+        x = red(num(h) + num(b))          # what DERIVE_SECRET_KEY wraps
+        k = red(num(os.urandom(32)))       # the device's nonce
 
         # the host presents the victim's spend key as the transaction key
         R, A, D = B, G, B
@@ -134,9 +108,9 @@ class TestForgeryAlgebra:
         # what the device returned is not itself a valid proof
         assert not _verify_txproof_v2(msg, R, A, None, D, sig_c, sig_r)
 
-        adjusted = _red(_num(sig_r) + _num(sig_c) * _num(h))
+        adjusted = red(num(sig_r) + num(sig_c) * num(h))
 
-        assert adjusted == _red(_num(k) - _num(sig_c) * _num(b)), \
+        assert adjusted == red(num(k) - num(sig_c) * num(b)), \
             "the adjusted response is not k - c*b"
         assert _verify_txproof_v2(msg, R, A, None, D, sig_c, adjusted), \
             "the adjusted signature does not verify under the spend key"
@@ -144,16 +118,14 @@ class TestForgeryAlgebra:
     def test_a_legitimate_proof_verifies(self):
         """Controls the verifier itself: it must accept an honest proof."""
         msg = os.urandom(32)
-        r = _red(_num(os.urandom(32)))
-        A = _base(_red(_num(os.urandom(32))))   # some recipient view key
-        R, D = _base(r), _mul(r, A)
-        k = _red(_num(os.urandom(32)))
+        r = red(num(os.urandom(32)))
+        A = base(red(num(os.urandom(32))))   # some recipient view key
+        R, D = base(r), mul(r, A)
+        k = red(num(os.urandom(32)))
         sig_c, sig_r = _device_side(msg, R, A, bytes(32), D, r, k)
 
         assert _verify_txproof_v2(msg, R, A, None, D, sig_c, sig_r)
 
-
-SW_WRONG_DATA = 0x6984
 
 OUTPUT_INDEX = 7
 
@@ -173,11 +145,11 @@ def _spend_key_offset_wrapper(client, navigator, device, test_name):
     # A derivation whose plaintext the host can compute: it chose the point and
     # it holds the view key, so it does not need the device's answer.
     wrapped_d = client.gen_key_derivation(G, FAKE_VIEW_KEY)
-    d = _key_derivation(G, a)
+    d = key_derivation(G, a)
     assert MoneroCryptoCmd.xor_cipher(wrapped_d, b"\x55") == d, \
         "the derivation the host computed is not the one the device used"
 
-    h = _derivation_to_scalar(d, OUTPUT_INDEX)
+    h = derivation_to_scalar(d, OUTPUT_INDEX)
 
     # x = h + b, under the fake spend sentinel. A generic scalar wrapper with
     # nothing tying it to the instruction that made it.
@@ -185,7 +157,7 @@ def _spend_key_offset_wrapper(client, navigator, device, test_name):
                                          FAKE_SPEND_KEY)
 
     # h.G + B == x.G shows what the wrapper holds without needing b
-    assert _add(_base(h), B) == _base(
+    assert add(base(h), B) == base(
         MoneroCryptoCmd.xor_cipher(wrapped_x, b"\x55")), \
         "the wrapper is not Hs(derivation||index) + b"
 
@@ -278,7 +250,7 @@ class TestSinkWasUnbound:
         # What the device returned is not itself a forgery.
         assert not _verify_txproof_v2(msg, R, A_arg, None, D, sig_c, sig_r)
 
-        adjusted = _red(_num(sig_r) + _num(sig_c) * _num(h))
+        adjusted = red(num(sig_r) + num(sig_c) * num(h))
 
         assert _verify_txproof_v2(msg, R, A_arg, None, D, sig_c, adjusted), \
             "the adjusted signature does not verify under the spend key"

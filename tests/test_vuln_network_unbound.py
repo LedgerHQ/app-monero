@@ -44,12 +44,13 @@ from monero_client.monero_types import InsType, Type
 from monero_client.crypto.hmac import hmac_sha256
 
 from monero_client.utils.utils import get_nano_review_instructions
+from monero_client.status_words import (
+    SW_DENY)
 
 from test_vuln_payment_id_unreviewed import (_setup, _pay, _squash, _page_text,
                                              _prefix_of, FEE, SIGN_PAGE,
                                              ZERO_COMMITMENT)
 
-SW_DENY = 0x6982
 
 # What the warning must call the active network, keyed by the address prefix
 # the device reports (monero_types.h:37-47). Mainnet is absent on purpose:

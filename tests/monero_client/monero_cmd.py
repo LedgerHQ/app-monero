@@ -27,7 +27,7 @@ from .exception.device_error import DeviceError
 from .utils.varint import encode_varint
 from .utils.utils import get_nano_review_instructions
 from pathlib import Path
-from ledgered.devices import Device, DeviceType
+from ledgered.devices import Device
 from ragger.backend.interface import BackendInterface
 from ragger.navigator import Navigator, NavInsID
 
@@ -45,7 +45,7 @@ class MoneroCmd(MoneroCryptoCmd):
                               ) -> Tuple[int, int, int]:
         ins: InsType = InsType.INS_RESET
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -73,7 +73,7 @@ class MoneroCmd(MoneroCryptoCmd):
 
         payload: bytes = struct.pack("B", sig_type)
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=1,
                          p2=0,
@@ -102,7 +102,7 @@ class MoneroCmd(MoneroCryptoCmd):
         # 4 bytes
         account: bytes = struct.pack(">I", 0)
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=1,
                          p2=0,
@@ -147,7 +147,7 @@ class MoneroCmd(MoneroCryptoCmd):
     def close_tx(self) -> None:
         ins: InsType = InsType.INS_CLOSE_TX
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -284,7 +284,7 @@ class MoneroCmd(MoneroCryptoCmd):
             b"\x01" if use_view_tags else b"\x00",
         ))
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -317,7 +317,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if device.is_nano and timelock != 0:
             instructions = get_nano_review_instructions(1)
 
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=1,
                                     p2=0,
@@ -342,7 +342,7 @@ class MoneroCmd(MoneroCryptoCmd):
     def prefix_hash_update(self, index: int, payload: bytes, is_last: bool) -> bytes:
         ins: InsType = InsType.INS_PREFIX_HASH
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=InsType.INS_PREFIX_HASH,
                          p1=2,
                          p2=index,
@@ -372,7 +372,7 @@ class MoneroCmd(MoneroCryptoCmd):
                         MoneroCryptoCmd.HMAC_KEY,
                         Type.AMOUNT_KEY)
         ])
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -406,7 +406,7 @@ class MoneroCmd(MoneroCryptoCmd):
             amount.to_bytes(32, byteorder="little")
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -442,7 +442,7 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -478,7 +478,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if device.is_nano:
             instructions = get_nano_review_instructions(1)
 
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=1,
                                     p2=index,
@@ -554,7 +554,7 @@ class MoneroCmd(MoneroCryptoCmd):
                 ]
 
         backend.wait_for_text_on_screen("Processing")
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=2,
                                     p2=index,
@@ -611,7 +611,7 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=3,
                          p2=index,

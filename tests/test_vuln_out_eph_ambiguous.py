@@ -52,10 +52,11 @@ from ragger.error import ExceptionRAPDU
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import Keys, SigType
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_SECURITY_OUTKEYS_CHAIN_CONTROL)
 
 # The OUT_EPH mismatch the framing now produces. Not a new status word: this is
 # the check that was always there, finally reached.
-SW_SECURITY_OUTKEYS_CHAIN_CONTROL = 0x6915
 
 # The test seed "abandon ... about", the address the review would show.
 _USER = Keys(

@@ -75,6 +75,8 @@ from monero_client.monero_types import InsType, Type, SigType
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.varint import encode_varint
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_SECURITY_PAYMENT_ID)
 
 # What the user means to pay, and what the attacker swaps in.
 PAY_ID_USER = bytes.fromhex("1122334455667788")
@@ -84,8 +86,6 @@ PAY_ID_DUMMY = bytes(8)          # what the wallet sends when there is none
 # Eight bytes the device never produced. Any value that differs will do: the
 # check is a comparison, so the attacker does not need a valid ciphertext.
 ENC_FOREIGN = bytes.fromhex("dead beef dead beef".replace(" ", ""))
-
-SW_SECURITY_PAYMENT_ID = 0x6921
 
 
 def _raw_apdu(ins: InsType, p1: int, p2: int, option: int,

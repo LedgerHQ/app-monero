@@ -65,7 +65,6 @@ check into the test that produced the value.
 
 import pytest
 import nacl.bindings as nb
-from Crypto.Hash import keccak
 
 from ragger.backend.interface import BackendInterface
 from ragger.error import ExceptionRAPDU
@@ -73,16 +72,17 @@ from ragger.navigator import Navigator
 
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import Keys, SigType
-from monero_client.utils.varint import encode_varint
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_WRONG_DATA)
+from monero_client.crypto.monero_math import (
+    derivation_to_scalar,
+    key_derivation)
 
-SW_WRONG_DATA = 0x6984
 
 ZERO_COMMITMENT = bytes(32)
 FEE = 30660000            # 0.00003066 XMR
 AMOUNT = 907880000        # 0.00090788 XMR
-
-_L = 2 ** 252 + 27742317777372353535851937790883648493
 
 
 # The test seed "abandon ... about". This is the address shown on screen. The
@@ -100,30 +100,13 @@ _USER = Keys(
 )
 
 
-def _sc_reduce32(b: bytes) -> bytes:
-    return (int.from_bytes(b, "little") % _L).to_bytes(32, "little")
-
-
-def _key_derivation(pub: bytes, priv: bytes) -> bytes:
-    """8 * priv * pub. This is Monero's ECDH derivation. No clamping."""
-    a8 = ((int.from_bytes(priv, "little") * 8) % _L).to_bytes(32, "little")
-    return nb.crypto_scalarmult_ed25519_noclamp(a8, pub)
-
-
-def _derivation_to_scalar(derivation: bytes, index: int) -> bytes:
-    k = keccak.new(digest_bits=256)
-    k.update(derivation)
-    k.update(encode_varint(index))
-    return _sc_reduce32(k.digest())
-
-
 def _recipient_scan(tx_pub_key: bytes, index: int) -> bytes:
     """The one-time key a real recipient computes for position `index`.
 
     It is Hs(8.a.R || varint(index)).G + B. Computed here, from the seed keys.
     The device is not asked."""
-    d = _key_derivation(tx_pub_key, _USER.secret_view_key)
-    s = _derivation_to_scalar(d, index)
+    d = key_derivation(tx_pub_key, _USER.secret_view_key)
+    s = derivation_to_scalar(d, index)
     return nb.crypto_core_ed25519_add(
         nb.crypto_scalarmult_ed25519_base_noclamp(s), _USER.public_spend_key)
 

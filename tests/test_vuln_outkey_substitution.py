@@ -28,19 +28,17 @@ from ragger.error import ExceptionRAPDU
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import Keys, SigType
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_SECURITY_OUTKEYS_CHAIN_CONTROL)
+from monero_client.crypto.monero_math import (
+    sc_reduce32)
 
 # Status word raised by the binding fix.
-SW_SECURITY_OUTKEYS_CHAIN_CONTROL = 0x6915
 
 
 # ---------------------------------------------------------------------------
 # Identities
 # ---------------------------------------------------------------------------
-def _sc_reduce32(b: bytes) -> bytes:
-    _L = 2 ** 252 + 27742317777372353535851937790883648493
-    return (int.from_bytes(b, "little") % _L).to_bytes(32, "little")
-
-
 # User (from the test seed "abandon … about") — the destination shown on screen.
 _USER = Keys(
     public_view_key=bytes.fromhex(
@@ -60,7 +58,7 @@ _USER = Keys(
 
 # Attacker-controlled one-time output key (a valid Ed25519 point, ≠ P_device).
 _ATTACKER_OUT_KEY = nb.crypto_scalarmult_ed25519_base_noclamp(
-    _sc_reduce32(bytes([0x11] * 32))
+    sc_reduce32(bytes([0x11] * 32))
 )
 
 

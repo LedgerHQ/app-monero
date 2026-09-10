@@ -52,10 +52,10 @@ from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.status_words import (
+    SW_WRONG_DATA)
 
 # Returned by the main-tx-pubkey check at derivation.
-SW_WRONG_DATA = 0x6984
-SW_SECURITY_COMMITMENT_CHAIN_CONTROL = 0x6914
 
 ZERO_COMMITMENT = bytes(32)
 ATTACKER_PROOF = b"\xad" * 32
