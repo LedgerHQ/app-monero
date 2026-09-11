@@ -191,7 +191,8 @@ def _send_terminal_output(monero: MoneroCmd, backend: BackendInterface,
 
 
 def _setup(monero: MoneroCmd, backend: BackendInterface, device,
-           snapshot_name: str, payment_id, is_change: bool = False):
+           snapshot_name: str, payment_id, is_change: bool = False,
+           stealth_view: bytes = None):
     """A real one-output transaction, up to just before the review.
 
     Honest: the prefix nonce is the ciphertext the device returned and the keys
@@ -204,6 +205,10 @@ def _setup(monero: MoneroCmd, backend: BackendInterface, device,
     the terminal record too. It draws the shorter review, with no address to
     page through.
 
+    stealth_view overrides the point INS_STEALTH derives the mask against. The
+    honest value is the destination's own view key; anything else is the
+    unbound-operand case.
+
     Returns (plain address, view, spend, amount key, encrypted payment ID,
     blinded mask, blinded amount)."""
     monero.reset_and_get_version(monero_client_version=b"0.18")
@@ -212,7 +217,8 @@ def _setup(monero: MoneroCmd, backend: BackendInterface, device,
     tx_pub_key, tx_priv_key, _, _ = monero.open_tx()
 
     enc_pid = (None if payment_id is None
-               else _stealth(backend, view, tx_priv_key, payment_id))
+               else _stealth(backend, stealth_view or view, tx_priv_key,
+                             payment_id))
 
     ak, eph, _ = monero.gen_txout_keys(
         _tx_priv_key=tx_priv_key, tx_pub_key=tx_pub_key,
