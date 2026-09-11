@@ -101,12 +101,16 @@ enum {
 /* Accumulate one varint byte. Returns 1 when the varint is complete (value in
  * prefix_vi_val), 0 when more bytes are needed, -1 on overflow/malformed. */
 static int pfx_varint_byte(unsigned char c) {
-    if (G_monero_vstate.prefix_vi_shift >= 64) {
+    unsigned int shift = G_monero_vstate.prefix_vi_shift;
+
+    /* On the tenth byte only bit 63 fits, so anything above 0x01 is shifted
+     * out and the value silently differs from what the host encoded. Same rule
+     * as monero_decode_varint. */
+    if (shift > 63 || (shift == 63 && (c & 0xFE) != 0)) {
         return -1;
     }
-    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f)
-                                     << G_monero_vstate.prefix_vi_shift;
-    G_monero_vstate.prefix_vi_shift += 7;
+    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f) << shift;
+    G_monero_vstate.prefix_vi_shift = shift + 7;
     return (c & 0x80) ? 0 : 1;
 }
 
