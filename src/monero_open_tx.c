@@ -185,6 +185,15 @@ int monero_apdu_set_signature_mode() {
     monero_io_discard(0);
     switch (sig_mode) {
         case TRANSACTION_CREATE_REAL:
+            /* Every output and prefix binding is built only for protocol 2 and
+             * above, so on the legacy protocol the device would review one
+             * recipient and sign whatever the host streamed. The wallet has
+             * sent 4 since the protocol existed. */
+            if ((G_monero_vstate.protocol != 3) &&
+                (G_monero_vstate.protocol != 4)) {
+                return SW_PROTOCOL_NOT_SUPPORTED;
+            }
+            break;
         case TRANSACTION_CREATE_FAKE:
             break;
         default:
