@@ -192,6 +192,74 @@ static void test_io_hole_still_takes_a_normal_size(void) {
     TEST_ASSERT_EQUAL_UINT(42, G_monero_vstate.io_length);
 }
 
+/* The wrap check was only half of it. monero_io_inserted() still added into
+ * the unsigned-short counters unchecked, and monero_io_hole() never required
+ * io_offset <= io_length before subtracting one from the other. The sequence
+ * below is the one the 2026-09-11 verdict set out. */
+
+static void test_io_inserted_refuses_growth_past_capacity(void) {
+    /* offset 0, length 10, then grow by 65530: the counters are unsigned short,
+     * so offset became 65530 and length wrapped to 4. monero_io_hole(1) then
+     * passed the capacity check on a length of 4 and handed memmove a negative
+     * 4 - 65530 as a size_t. */
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 10;
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_inserted(65530);
+        TEST_FAIL_MESSAGE("growth past the buffer was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(ERROR_IO_FULL, (unsigned int) stub_kill_sw);
+}
+
+static void test_io_inserted_still_takes_what_the_app_asks_for(void) {
+    /* The only real caller is monero_key.c, with 95. */
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 0;
+
+    if (setjmp(stub_kill_jmp) != 0) {
+        TEST_FAIL_MESSAGE("95 bytes into an empty 300-byte buffer was refused");
+    }
+    monero_io_inserted(95);
+    TEST_ASSERT_EQUAL_UINT(95, G_monero_vstate.io_offset);
+    TEST_ASSERT_EQUAL_UINT(95, G_monero_vstate.io_length);
+}
+
+static void test_io_hole_refuses_an_offset_past_the_length(void) {
+    /* The state monero_io_inserted() used to be able to leave behind. The
+     * subtraction below it would be negative, and memmove takes a size_t. */
+    G_monero_vstate.io_offset = 50;
+    G_monero_vstate.io_length = 10;
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_hole(1);
+        TEST_FAIL_MESSAGE("an offset past the length was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(SW_SECURITY_INTERNAL, (unsigned int) stub_kill_sw);
+}
+
+static void test_io_hole_refuses_a_length_past_the_buffer(void) {
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = MONERO_IO_BUFFER_LENGTH + 1;
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_hole(1);
+        TEST_FAIL_MESSAGE("a length past the buffer was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(SW_SECURITY_INTERNAL, (unsigned int) stub_kill_sw);
+}
+
+static void test_io_inserted_refuses_a_broken_state(void) {
+    G_monero_vstate.io_offset = 50;
+    G_monero_vstate.io_length = 10;
+
+    if (setjmp(stub_kill_jmp) == 0) {
+        monero_io_inserted(1);
+        TEST_FAIL_MESSAGE("an offset past the length was accepted");
+    }
+    TEST_ASSERT_EQUAL_HEX32(SW_SECURITY_INTERNAL, (unsigned int) stub_kill_sw);
+}
+
 /* ------------------------------ negative parser lengths */
 
 /* io_length and io_offset are unsigned short, so the guard's subtraction
@@ -332,6 +400,11 @@ int main(void) {
     RUN_TEST(test_fetch_decrypt_key_accepts_a_full_buffer);
     RUN_TEST(test_io_hole_refuses_a_wrapping_size);
     RUN_TEST(test_io_hole_still_takes_a_normal_size);
+    RUN_TEST(test_io_inserted_refuses_growth_past_capacity);
+    RUN_TEST(test_io_inserted_still_takes_what_the_app_asks_for);
+    RUN_TEST(test_io_hole_refuses_an_offset_past_the_length);
+    RUN_TEST(test_io_hole_refuses_a_length_past_the_buffer);
+    RUN_TEST(test_io_inserted_refuses_a_broken_state);
     RUN_TEST(test_skip_refuses_a_negative_length);
     RUN_TEST(test_fetch_refuses_a_negative_length);
     RUN_TEST(test_fetch_refuses_more_than_remains);
