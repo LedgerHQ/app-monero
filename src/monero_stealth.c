@@ -44,6 +44,19 @@ int monero_apdu_stealth() {
     if (err) {
         goto end;
     }
+    // The host picks both derivation operands, so tie them down here: only
+    // this transaction's secret, and keep the point for the output review to
+    // check against the destination it shows. It has to be here rather than
+    // with the payment ID below, because the keccak reuses sec as its output
+    // buffer and the scalar is gone by then.
+    if (retain) {
+        if (G_monero_vstate.tx_payment_id_set ||
+            memcmp(sec, G_monero_vstate.r, KEY_SIZE) != 0) {
+            err = SW_SECURITY_PAYMENT_ID;
+            goto end;
+        }
+        memcpy(G_monero_vstate.tx_payment_id_pub, pub, KEY_SIZE);
+    }
     // fetch paymentID
     monero_io_fetch(payID, 8);
 
@@ -66,10 +79,6 @@ int monero_apdu_stealth() {
     // One payment ID per transaction. Allow a second call and the host picks
     // which value is checked and shown.
     if (retain) {
-        if (G_monero_vstate.tx_payment_id_set) {
-            err = SW_SECURITY_PAYMENT_ID;
-            goto end;
-        }
         // Copy the plaintext now. The loop below overwrites payID.
         memcpy(G_monero_vstate.tx_payment_id, payID, 8);
     }

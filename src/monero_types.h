@@ -175,6 +175,7 @@ struct monero_v_state_s {
      * One per transaction. A second INS_STEALTH is refused, or the host would
      * choose which value is checked and shown. */
     unsigned char tx_payment_id_nonce[9];
+    unsigned char tx_payment_id_pub[KEY_SIZE];
     unsigned char tx_payment_id[8];
     unsigned char tx_payment_id_set;
 

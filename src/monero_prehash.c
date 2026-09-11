@@ -188,6 +188,15 @@ int monero_apdu_mlsag_prehash_update() {
             // A payment ID makes this the integrated address. That is the only
             // form that says which customer of a shared address gets the money.
             unsigned char* payment_id;
+            // The mask was derived against one view key. If this output is a
+            // different destination, the address on screen is not the one the
+            // recipient can decrypt the payment ID with.
+            if (G_monero_vstate.tx_payment_id_set &&
+                memcmp(Aout, G_monero_vstate.tx_payment_id_pub, KEY_SIZE) !=
+                    0) {
+                err = SW_SECURITY_PAYMENT_ID;
+                goto end;
+            }
             err = payment_id_to_display(is_subaddress, &payment_id);
             if (err) {
                 goto end;
