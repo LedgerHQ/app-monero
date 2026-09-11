@@ -913,15 +913,20 @@ unsigned int monero_check_scalar_range_1N(unsigned char* s, size_t s_len) {
     int diff;
     int error = monero_reverse32(x, s, sizeof(x), s_len);
     if (error) {
-        return error;
+        goto end;
     }
     if (cx_math_cmp_no_throw(x, C_ED25519_ORDER, 32, &diff)) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     if (cx_math_is_zero(x, 32) || diff >= 0) {
-        return SW_WRONG_DATA_RANGE;
+        error = SW_WRONG_DATA_RANGE;
+        goto end;
     }
-    return 0;
+end:
+    /* x is a reversed copy of the scalar being range-checked. */
+    explicit_bzero(x, sizeof(x));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -949,20 +954,26 @@ int monero_ecmul_G(unsigned char* W, unsigned char* scalar32, size_t W_len,
 
     error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     if (error) {
-        return error;
+        goto end;
     }
     memcpy(Pxy, C_ED25519_G, PXY_SIZE);
     error = cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, s, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     error =
         cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     memcpy(W, &Pxy[1], 32);
-    return 0;
+end:
+    /* s is the secret scalar and Pxy the point built from it. */
+    explicit_bzero(s, sizeof(s));
+    explicit_bzero(Pxy, sizeof(Pxy));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -981,7 +992,7 @@ int monero_ecmul_H(unsigned char* W, unsigned char* scalar32, size_t W_len,
     }
     error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     if (error) {
-        return error;
+        goto end;
     }
 
     Pxy[0] = 0x02;
@@ -995,11 +1006,16 @@ int monero_ecmul_H(unsigned char* W, unsigned char* scalar32, size_t W_len,
         cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
 
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     memcpy(W, &Pxy[1], 32);
-    return 0;
+end:
+    /* s is the secret scalar and Pxy the point built from it. */
+    explicit_bzero(s, sizeof(s));
+    explicit_bzero(Pxy, sizeof(Pxy));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1028,7 +1044,7 @@ static int monero_ecmul_point(unsigned char* W, unsigned char* P,
     }
     error = monero_reverse32(s, scalar32, sizeof(s), scalar32_len);
     if (error) {
-        return error;
+        goto end;
     }
 
     Pxy[0] = 0x02;
@@ -1040,11 +1056,16 @@ static int monero_ecmul_point(unsigned char* W, unsigned char* P,
     error |=
         cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     memcpy(W, &Pxy[1], 32);
-    return 0;
+end:
+    /* s is the secret scalar and Pxy the point built from it. */
+    explicit_bzero(s, sizeof(s));
+    explicit_bzero(Pxy, sizeof(Pxy));
+    return error;
 }
 
 int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
@@ -1075,19 +1096,23 @@ int monero_ecmul_8k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
 
     error = monero_multm_8(s8, scalar32, sizeof(s8), scalar32_len);
     if (error) {
-        return error;
+        goto end;
     }
 
     /* No [8]P check: the x8 on the scalar already clears torsion. A low-order
      * P gives the identity, caught below for the price of a compare. */
     error = monero_ecmul_point(W, P, s8, W_len, P_len, sizeof(s8));
     if (error) {
-        return error;
+        goto end;
     }
     if (memcmp(W, ED25519_IDENTITY, 32) == 0) {
-        return SW_WRONG_DATA;
+        error = SW_WRONG_DATA;
+        goto end;
     }
-    return 0;
+end:
+    /* s8 is 8 times the secret scalar. */
+    explicit_bzero(s8, sizeof(s8));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1300,24 +1325,26 @@ int monero_addm(unsigned char* r, unsigned char* a, unsigned char* b,
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_reverse32(rb, b, sizeof(rb), b_len);
     if (error) {
-        return error;
+        goto end;
     }
     error =
         cx_math_addm_no_throw(r, ra, rb, (unsigned char*)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     error = monero_reverse32(r, r, r_len, r_len);
-    if (error) {
-        return error;
-    }
-
-    return 0;
+end:
+    /* ra and rb are reversed copies of the operands, which are secret scalars
+     * on the signing paths. */
+    explicit_bzero(ra, sizeof(ra));
+    explicit_bzero(rb, sizeof(rb));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1337,23 +1364,26 @@ int monero_subm(unsigned char* r, unsigned char* a, unsigned char* b,
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_reverse32(rb, b, sizeof(rb), b_len);
     if (error) {
-        return error;
+        goto end;
     }
     error =
         cx_math_subm_no_throw(r, ra, rb, (unsigned char*)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     error = monero_reverse32(r, r, r_len, r_len);
-    if (error) {
-        return error;
-    }
-    return 0;
+end:
+    /* ra and rb are reversed copies of the operands, which are secret scalars
+     * on the signing paths. */
+    explicit_bzero(ra, sizeof(ra));
+    explicit_bzero(rb, sizeof(rb));
+    return error;
 }
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -1372,23 +1402,26 @@ int monero_multm(unsigned char* r, unsigned char* a, unsigned char* b,
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
-        return error;
+        goto end;
     }
     error = monero_reverse32(rb, b, sizeof(rb), b_len);
     if (error) {
-        return error;
+        goto end;
     }
     error =
         cx_math_multm_no_throw(r, ra, rb, (unsigned char*)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
 
     error = monero_reverse32(r, r, r_len, r_len);
-    if (error) {
-        return error;
-    }
-    return 0;
+end:
+    /* ra and rb are reversed copies of the operands, which are secret scalars
+     * on the signing paths. */
+    explicit_bzero(ra, sizeof(ra));
+    explicit_bzero(rb, sizeof(rb));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1408,20 +1441,24 @@ int monero_multm_8(unsigned char* r, unsigned char* a, size_t r_len,
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
-        return error;
+        goto end;
     }
+    /* not cleanup: this builds the public constant 8 */
     explicit_bzero(rb, 32);
     rb[31] = 8;
     error =
         cx_math_multm_no_throw(r, ra, rb, (unsigned char*)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     error = monero_reverse32(r, r, r_len, r_len);
-    if (error) {
-        return error;
-    }
-    return 0;
+end:
+    /* ra and rb are reversed copies of the operands, which are secret scalars
+     * on the signing paths. */
+    explicit_bzero(ra, sizeof(ra));
+    explicit_bzero(rb, sizeof(rb));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1434,17 +1471,18 @@ int monero_reduce(unsigned char* r, unsigned char* a, size_t r_len,
 
     error = monero_reverse32(ra, a, sizeof(ra), a_len);
     if (error) {
-        return error;
+        goto end;
     }
     error = cx_math_modm_no_throw(ra, 32, (unsigned char*)C_ED25519_ORDER, 32);
     if (error) {
-        return SW_SECURITY_INTERNAL;
+        error = SW_SECURITY_INTERNAL;
+        goto end;
     }
     error = monero_reverse32(r, ra, r_len, sizeof(ra));
-    if (error) {
-        return error;
-    }
-    return 0;
+end:
+    /* ra holds the reduced secret scalar. */
+    explicit_bzero(ra, sizeof(ra));
+    return error;
 }
 
 /* ----------------------------------------------------------------------- */
