@@ -26,9 +26,14 @@ extern const monero_nv_state_t N_state_pic __attribute__((alias("nv_storage")));
 
 #define FILLER 0xc3
 
+int stub_crypto_fail_scalar_mult = 0;
+int stub_crypto_fail_addm = 0;
+
 void stub_crypto_reset(void) {
     memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
     memset(&nv_storage, 0, sizeof(nv_storage));
+    stub_crypto_fail_scalar_mult = 0;
+    stub_crypto_fail_addm = 0;
 }
 
 void __attribute__((noreturn)) send_error_and_kill_app(int sw) {
@@ -64,9 +69,13 @@ cx_err_t cx_sha256_init_no_throw(cx_sha256_t *hash) {
 /* -- modular arithmetic: each writes len bytes into r -- */
 cx_err_t cx_math_addm_no_throw(uint8_t *r, const uint8_t *a, const uint8_t *b,
                                const uint8_t *m, size_t len) {
-    (void) a;
     (void) b;
     (void) m;
+    (void) a;
+    if (stub_crypto_fail_addm) {
+        stub_crypto_fail_addm = 0;
+        return CX_INVALID_PARAMETER;
+    }
     memset(r, FILLER, len);
     return CX_OK;
 }
@@ -154,8 +163,12 @@ cx_err_t cx_ecfp_add_point_no_throw(cx_curve_t curve, uint8_t *R,
 cx_err_t cx_ecfp_scalar_mult_no_throw(cx_curve_t curve, uint8_t *P,
                                       const uint8_t *k, size_t k_len) {
     (void) curve;
-    (void) k;
     (void) k_len;
+    (void) k;
+    if (stub_crypto_fail_scalar_mult) {
+        stub_crypto_fail_scalar_mult = 0;
+        return CX_INVALID_PARAMETER;
+    }
     memset(P, FILLER, 65);
     return CX_OK;
 }

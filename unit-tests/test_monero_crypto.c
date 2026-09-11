@@ -68,6 +68,80 @@ void setUp(void) {
 
 void tearDown(void) {}
 
+/* ------------------------------------------ secret-scalar cleanup */
+
+/* The helpers copy the caller's scalar into a local and used to return without
+ * clearing it. Every exit now routes through one explicit_bzero block.
+ *
+ * That the local ends up zero is NOT asserted here. Doing so means reading the
+ * callee's frame after it has returned, which is undefined and duly behaved
+ * differently on CI than on a developer machine. The erasure is verified by
+ * inspection; what these tests hold is the part a refactor actually breaks,
+ * which is that routing every exit through one label did not change any
+ * return value on either path. */
+
+static void test_ecmul_G_success_path_unchanged(void) {
+    guarded_full_t w;
+    arm(&w, sizeof(w.buf));
+
+    TEST_ASSERT_EQUAL_INT(0, monero_ecmul_G(w.buf, A, sizeof(w.buf), sizeof(A)));
+    TEST_ASSERT_TRUE(intact(w.guard));
+}
+
+static void test_ecmul_G_sdk_error_still_reports_internal(void) {
+    guarded_full_t w;
+    arm(&w, sizeof(w.buf));
+
+    stub_crypto_fail_scalar_mult = 1;
+    TEST_ASSERT_EQUAL_HEX16_MESSAGE(
+        SW_SECURITY_INTERNAL,
+        monero_ecmul_G(w.buf, A, sizeof(w.buf), sizeof(A)),
+        "the SDK-error exit stopped reporting SW_SECURITY_INTERNAL");
+    TEST_ASSERT_TRUE(intact(w.guard));
+}
+
+static void test_ecmul_H_success_path_unchanged(void) {
+    guarded_full_t w;
+    arm(&w, sizeof(w.buf));
+
+    TEST_ASSERT_EQUAL_INT(0, monero_ecmul_H(w.buf, A, sizeof(w.buf), sizeof(A)));
+    TEST_ASSERT_TRUE(intact(w.guard));
+}
+
+static void test_ecmul_H_sdk_error_still_reports_internal(void) {
+    guarded_full_t w;
+    arm(&w, sizeof(w.buf));
+
+    stub_crypto_fail_scalar_mult = 1;
+    TEST_ASSERT_EQUAL_HEX16(SW_SECURITY_INTERNAL,
+                            monero_ecmul_H(w.buf, A, sizeof(w.buf), sizeof(A)));
+}
+
+static void test_addm_sdk_error_still_reports_internal(void) {
+    guarded_full_t r;
+    arm(&r, sizeof(r.buf));
+
+    stub_crypto_fail_addm = 1;
+    TEST_ASSERT_EQUAL_HEX16_MESSAGE(
+        SW_SECURITY_INTERNAL,
+        monero_addm(r.buf, A, B, sizeof(r.buf), sizeof(A), sizeof(B)),
+        "the SDK-error exit stopped reporting SW_SECURITY_INTERNAL");
+    TEST_ASSERT_TRUE(intact(r.guard));
+}
+
+/* The argument checks run before any copy exists, so they must still refuse
+ * exactly as before rather than fall through into the cleanup path. */
+static void test_argument_checks_are_unchanged(void) {
+    unsigned char out[32];
+    TEST_ASSERT_EQUAL_HEX16(SW_WRONG_DATA_RANGE,
+                            monero_ecmul_G(NULL, A, 32, sizeof(A)));
+    TEST_ASSERT_EQUAL_HEX16(SW_WRONG_DATA_RANGE,
+                            monero_ecmul_G(out, A, 31, sizeof(A)));
+    TEST_ASSERT_EQUAL_HEX16(
+        SW_WRONG_DATA_RANGE,
+        monero_addm(NULL, A, B, 32, sizeof(A), sizeof(B)));
+}
+
 /* ------------------------------------------ modular arithmetic */
 
 /* cx_math_*m_no_throw writes 32 bytes into r before monero_reverse32 gets to
@@ -258,6 +332,12 @@ static void test_amount2str_formats_normally(void) {
 
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_ecmul_G_success_path_unchanged);
+    RUN_TEST(test_ecmul_G_sdk_error_still_reports_internal);
+    RUN_TEST(test_ecmul_H_success_path_unchanged);
+    RUN_TEST(test_ecmul_H_sdk_error_still_reports_internal);
+    RUN_TEST(test_addm_sdk_error_still_reports_internal);
+    RUN_TEST(test_argument_checks_are_unchanged);
     RUN_TEST(test_addm_rejects_a_short_destination);
     RUN_TEST(test_subm_rejects_a_short_destination);
     RUN_TEST(test_multm_rejects_a_short_destination);
