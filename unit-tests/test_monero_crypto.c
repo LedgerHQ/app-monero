@@ -197,6 +197,12 @@ static void check_null_dest_refused(int err, const char *name) {
     char msg[96];
     snprintf(msg, sizeof(msg), "%s accepted a NULL destination", name);
     TEST_ASSERT_NOT_EQUAL_MESSAGE(0, err, msg);
+    /* A non-zero status is not enough on its own: these stubs skip a write to
+     * NULL, where the real SDK would not, so the call can "fail" for some
+     * later reason while the guard is missing. Require that nothing reached an
+     * SDK call with a NULL destination at all. */
+    snprintf(msg, sizeof(msg), "%s let a NULL destination reach the SDK", name);
+    TEST_ASSERT_FALSE_MESSAGE(stub_crypto_null_dest_seen, msg);
 }
 
 static void test_addm_rejects_a_null_destination(void) {
@@ -268,6 +274,70 @@ static void test_hash_to_ec_rejects_a_short_destination(void) {
 }
 
 /* -------------------------------------------------- amount2str */
+
+/* The verdict asked for every boundary length, not one sample: 0, 1 and 31 all
+ * have to refuse with the destination and the canary untouched. One buffer
+ * serves all three, since the point is the declared length rather than the
+ * allocation. */
+static void check_every_short_length_refused(
+    int (*call)(unsigned char *dest, size_t dest_len), const char *name) {
+    static const size_t lens[] = {0, 1, 31};
+
+    for (size_t i = 0; i < sizeof(lens) / sizeof(lens[0]); i++) {
+        struct {
+            unsigned char buf[31];
+            unsigned char guard[GUARD_LEN];
+        } b;
+        char msg[96];
+
+        memset(b.buf, 0, sizeof(b.buf));
+        memset(b.guard, GUARD_BYTE, GUARD_LEN);
+
+        int err = call(b.buf, lens[i]);
+
+        snprintf(msg, sizeof(msg), "%s accepted a %zu-byte destination", name,
+                 lens[i]);
+        TEST_ASSERT_NOT_EQUAL_MESSAGE(0, err, msg);
+        snprintf(msg, sizeof(msg), "%s wrote past a %zu-byte destination", name,
+                 lens[i]);
+        TEST_ASSERT_TRUE_MESSAGE(intact(b.guard), msg);
+        for (size_t j = 0; j < sizeof(b.buf); j++) {
+            snprintf(msg, sizeof(msg), "%s touched a %zu-byte destination",
+                     name, lens[i]);
+            TEST_ASSERT_EQUAL_HEX8_MESSAGE(0, b.buf[j], msg);
+        }
+    }
+}
+
+static int call_hash_to_scalar(unsigned char *dest, size_t dest_len) {
+    return monero_hash_to_scalar(dest, A, dest_len, sizeof(A));
+}
+
+static int call_hash_to_ec(unsigned char *dest, size_t dest_len) {
+    return monero_hash_to_ec(dest, A, dest_len);
+}
+
+static int call_subaddress_secret_key(unsigned char *dest, size_t dest_len) {
+    unsigned char index[8] = {0};
+    return monero_get_subaddress_secret_key(dest, A, index, dest_len, sizeof(A),
+                                            sizeof(index));
+}
+
+static void test_hash_to_scalar_refuses_every_short_length(void) {
+    check_every_short_length_refused(call_hash_to_scalar,
+                                     "monero_hash_to_scalar");
+}
+
+static void test_hash_to_ec_refuses_every_short_length(void) {
+    check_every_short_length_refused(call_hash_to_ec, "monero_hash_to_ec");
+}
+
+/* The one the verdict found still unguarded: it checked s and index but never
+ * its own output. */
+static void test_subaddress_secret_key_refuses_every_short_length(void) {
+    check_every_short_length_refused(call_subaddress_secret_key,
+                                     "monero_get_subaddress_secret_key");
+}
 
 static void test_amount2str_rejects_a_zero_length_buffer(void) {
     /* xmr == 0 takes the special case, which wrote str[0] with no room. */
@@ -352,6 +422,9 @@ int main(void) {
     RUN_TEST(test_reduce_was_already_safe);
     RUN_TEST(test_hash_to_scalar_rejects_a_short_destination);
     RUN_TEST(test_hash_to_ec_rejects_a_short_destination);
+    RUN_TEST(test_hash_to_scalar_refuses_every_short_length);
+    RUN_TEST(test_hash_to_ec_refuses_every_short_length);
+    RUN_TEST(test_subaddress_secret_key_refuses_every_short_length);
     RUN_TEST(test_amount2str_rejects_a_zero_length_buffer);
     RUN_TEST(test_amount2str_zero_length_does_not_underflow);
     RUN_TEST(test_full_size_destinations_still_work);

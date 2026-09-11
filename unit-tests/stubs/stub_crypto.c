@@ -26,12 +26,14 @@ extern const monero_nv_state_t N_state_pic __attribute__((alias("nv_storage")));
 
 #define FILLER 0xc3
 
+int stub_crypto_null_dest_seen = 0;
 int stub_crypto_fail_scalar_mult = 0;
 int stub_crypto_fail_addm = 0;
 
 void stub_crypto_reset(void) {
     memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
     memset(&nv_storage, 0, sizeof(nv_storage));
+    stub_crypto_null_dest_seen = 0;
     stub_crypto_fail_scalar_mult = 0;
     stub_crypto_fail_addm = 0;
 }
@@ -49,6 +51,9 @@ cx_err_t cx_hash_no_throw(cx_hash_t *hash, uint32_t mode, const uint8_t *in,
     (void) mode;
     (void) in;
     (void) len;
+    if (!out) {
+        stub_crypto_null_dest_seen = 1;
+    }
     if (out && out_len) {
         memset(out, FILLER, out_len);
     }
@@ -76,6 +81,10 @@ cx_err_t cx_math_addm_no_throw(uint8_t *r, const uint8_t *a, const uint8_t *b,
         stub_crypto_fail_addm = 0;
         return CX_INVALID_PARAMETER;
     }
+    if (!r) {
+        stub_crypto_null_dest_seen = 1;
+        return CX_OK;
+    }
     memset(r, FILLER, len);
     return CX_OK;
 }
@@ -85,6 +94,10 @@ cx_err_t cx_math_subm_no_throw(uint8_t *r, const uint8_t *a, const uint8_t *b,
     (void) a;
     (void) b;
     (void) m;
+    if (!r) {
+        stub_crypto_null_dest_seen = 1;
+        return CX_OK;
+    }
     memset(r, FILLER, len);
     return CX_OK;
 }
@@ -94,6 +107,10 @@ cx_err_t cx_math_multm_no_throw(uint8_t *r, const uint8_t *a, const uint8_t *b,
     (void) a;
     (void) b;
     (void) m;
+    if (!r) {
+        stub_crypto_null_dest_seen = 1;
+        return CX_OK;
+    }
     memset(r, FILLER, len);
     return CX_OK;
 }
@@ -113,6 +130,10 @@ cx_err_t cx_math_powm_no_throw(uint8_t *r, const uint8_t *a, const uint8_t *e,
     (void) e;
     (void) len_e;
     (void) m;
+    if (!r) {
+        stub_crypto_null_dest_seen = 1;
+        return CX_OK;
+    }
     memset(r, FILLER, len);
     return CX_OK;
 }
