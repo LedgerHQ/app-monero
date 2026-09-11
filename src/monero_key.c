@@ -896,6 +896,15 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
     use_view_tags = monero_io_fetch_u8();
 
+    // These four are booleans in the wallet and are only ever tested for
+    // truth here, so a value above 1 means the host and the device disagree
+    // about the transaction shape. Refuse rather than guess.
+    if ((is_change | is_subaddress | need_additional_txkeys | use_view_tags) >
+        1) {
+        err = SW_WRONG_DATA;
+        goto end;
+    }
+
     // The change address is validated in INS_VALIDATE / prehash_update, once
     // the amount has been unblinded: sweep_all/sweep_single add a zero-amount
     // dummy change whose address isn't wallet-owned, and it can only be told
