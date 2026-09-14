@@ -27,7 +27,7 @@ from .exception.device_error import DeviceError
 from .utils.varint import encode_varint
 from .utils.utils import get_nano_review_instructions
 from pathlib import Path
-from ledgered.devices import Device, DeviceType
+from ledgered.devices import Device
 from ragger.backend.interface import BackendInterface
 from ragger.navigator import Navigator, NavInsID
 
@@ -45,7 +45,7 @@ class MoneroCmd(MoneroCryptoCmd):
                               ) -> Tuple[int, int, int]:
         ins: InsType = InsType.INS_RESET
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -73,7 +73,7 @@ class MoneroCmd(MoneroCryptoCmd):
 
         payload: bytes = struct.pack("B", sig_type)
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=1,
                          p2=0,
@@ -102,7 +102,7 @@ class MoneroCmd(MoneroCryptoCmd):
         # 4 bytes
         account: bytes = struct.pack(">I", 0)
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=1,
                          p2=0,
@@ -147,7 +147,7 @@ class MoneroCmd(MoneroCryptoCmd):
     def close_tx(self) -> None:
         ins: InsType = InsType.INS_CLOSE_TX
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -186,6 +186,77 @@ class MoneroCmd(MoneroCryptoCmd):
         reuse the encrypted tx private key from open_tx; the device derives the
         additional public key from it and returns it.
         """
+        response = self._gen_txout_keys_exchange(
+            _tx_priv_key, tx_pub_key, dst_pub_view_key, dst_pub_spend_key,
+            output_index, is_change_addr, is_subaddress, need_additional_txkeys,
+            use_view_tags=False)
+
+        _ak_amount = response[:32]
+        hmac_ak_amount = response[32:64]
+        out_ephemeral_pub_key = response[64:96]
+
+        assert (hmac_ak_amount == hmac_sha256(_ak_amount,
+                                              MoneroCryptoCmd.HMAC_KEY,
+                                              Type.AMOUNT_KEY))
+
+        if need_additional_txkeys:
+            assert len(response) == 128
+            additional_pub_key = response[96:128]
+            return _ak_amount, out_ephemeral_pub_key, additional_pub_key
+
+        assert len(response) == 96
+        return _ak_amount, out_ephemeral_pub_key, None
+
+    def gen_txout_keys_view_tagged(self,
+                                   _tx_priv_key: bytes,
+                                   tx_pub_key: bytes,
+                                   dst_pub_view_key: bytes,
+                                   dst_pub_spend_key: bytes,
+                                   output_index: int,
+                                   is_change_addr: bool,
+                                   is_subaddress: bool,
+                                   need_additional_txkeys: bool = False
+                                   ) -> Tuple[bytes, bytes, bytes | None, bytes]:
+        """gen_txout_keys with use_view_tags set, so the reply carries the tag.
+
+        Returns (amount_key, out_ephemeral_pub_key, additional_pub_key,
+        view_tag). Separate from gen_txout_keys() only to keep that function's
+        three-element return, which 50-odd call sites unpack.
+
+        use_view_tags is a per-output byte the host chooses, so a transaction can
+        mix tagged and untagged outputs -- which is what the OUT_EPH transcript
+        test needs."""
+        response = self._gen_txout_keys_exchange(
+            _tx_priv_key, tx_pub_key, dst_pub_view_key, dst_pub_spend_key,
+            output_index, is_change_addr, is_subaddress, need_additional_txkeys,
+            use_view_tags=True)
+
+        _ak_amount = response[:32]
+        out_ephemeral_pub_key = response[64:96]
+
+        assert (response[32:64] == hmac_sha256(_ak_amount,
+                                               MoneroCryptoCmd.HMAC_KEY,
+                                               Type.AMOUNT_KEY))
+
+        if need_additional_txkeys:
+            assert len(response) == 129, len(response)
+            return (_ak_amount, out_ephemeral_pub_key, response[96:128],
+                    response[128:129])
+
+        assert len(response) == 97, len(response)
+        return _ak_amount, out_ephemeral_pub_key, None, response[96:97]
+
+    def _gen_txout_keys_exchange(self,
+                                 _tx_priv_key: bytes,
+                                 tx_pub_key: bytes,
+                                 dst_pub_view_key: bytes,
+                                 dst_pub_spend_key: bytes,
+                                 output_index: int,
+                                 is_change_addr: bool,
+                                 is_subaddress: bool,
+                                 need_additional_txkeys: bool,
+                                 use_view_tags: bool) -> bytes:
+        """Send INS_GEN_TXOUT_KEYS and return the raw reply."""
         ins: InsType = InsType.INS_GEN_TXOUT_KEYS
 
         if need_additional_txkeys:
@@ -210,10 +281,10 @@ class MoneroCmd(MoneroCryptoCmd):
             b"\x01" if is_change_addr else b"\x00",
             b"\x01" if is_subaddress else b"\x00",
             additional_field,
-            b"\x00",  # use_view_tags = false
+            b"\x01" if use_view_tags else b"\x00",
         ))
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -227,21 +298,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins)
 
-        _ak_amount = response[:32]
-        hmac_ak_amount = response[32:64]
-        out_ephemeral_pub_key = response[64:96]
-
-        assert (hmac_ak_amount == hmac_sha256(_ak_amount,
-                                              MoneroCryptoCmd.HMAC_KEY,
-                                              Type.AMOUNT_KEY))
-
-        if need_additional_txkeys:
-            assert len(response) == 128
-            additional_pub_key = response[96:128]
-            return _ak_amount, out_ephemeral_pub_key, additional_pub_key
-
-        assert len(response) == 96
-        return _ak_amount, out_ephemeral_pub_key, None
+        return response
 
     def prefix_hash_init(self,
                          test_name: str,
@@ -260,7 +317,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if device.is_nano and timelock != 0:
             instructions = get_nano_review_instructions(1)
 
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=1,
                                     p2=0,
@@ -285,7 +342,7 @@ class MoneroCmd(MoneroCryptoCmd):
     def prefix_hash_update(self, index: int, payload: bytes, is_last: bool) -> bytes:
         ins: InsType = InsType.INS_PREFIX_HASH
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=InsType.INS_PREFIX_HASH,
                          p1=2,
                          p2=index,
@@ -315,7 +372,7 @@ class MoneroCmd(MoneroCryptoCmd):
                         MoneroCryptoCmd.HMAC_KEY,
                         Type.AMOUNT_KEY)
         ])
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -349,7 +406,7 @@ class MoneroCmd(MoneroCryptoCmd):
             amount.to_bytes(32, byteorder="little")
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -385,7 +442,7 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ])
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=0,
                          p2=0,
@@ -421,7 +478,7 @@ class MoneroCmd(MoneroCryptoCmd):
         if device.is_nano:
             instructions = get_nano_review_instructions(1)
 
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=1,
                                     p2=index,
@@ -478,22 +535,26 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
+        # The last review opens with a shared-keys warning, because DEBUG=1
+        # builds run on Stagenet: one more click on nano, and on NBGL its
+        # "Continue" button.
         instructions = None
         if device.is_nano:
             if is_last:
-                instructions = get_nano_review_instructions(1)
+                instructions = get_nano_review_instructions(2)
             else:
                 instructions = get_nano_review_instructions(3)
         else:
             if is_last:
                 # For NBGL devices (Flex/Stax), calculate total swipes needed
-                instructions = [NavInsID.SWIPE_CENTER_TO_LEFT] * swipe_count + [
+                instructions = [NavInsID.USE_CASE_CHOICE_CONFIRM] + [
+                    NavInsID.SWIPE_CENTER_TO_LEFT] * swipe_count + [
                     NavInsID.USE_CASE_REVIEW_TAP,
                     NavInsID.USE_CASE_REVIEW_CONFIRM
                 ]
 
         backend.wait_for_text_on_screen("Processing")
-        with self.transport.send_async(cla=PROTOCOL_VERSION,
+        with self.transport.send_async(cla=self.protocol,
                                     ins=ins,
                                     p1=2,
                                     p2=index,
@@ -550,7 +611,7 @@ class MoneroCmd(MoneroCryptoCmd):
             blinded_amount
         ))
 
-        self.transport.send(cla=PROTOCOL_VERSION,
+        self.transport.send(cla=self.protocol,
                          ins=ins,
                          p1=3,
                          p2=index,

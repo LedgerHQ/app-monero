@@ -178,10 +178,47 @@ void ui_menu_show_tx_aborted(void) {
 
 /* --------------------- FEE/CHANGE/TIMELOCK VALIDATION --------------------- */
 
-static void start_signature(void) {
+/* Settings' name for the active network, or NULL on the main network. The name
+ * arrays are in UI order, not network_id order, so map by hand. */
+static const char* other_network_name(void) {
+    switch (N_monero_pstate->network_id) {
+        case STAGENET:
+            return "Stage network";
+        case TESTNET:
+            return "Test network";
+        default:
+            return NULL;
+    }
+}
+
+static void review_transaction(void) {
     nbgl_useCaseReview(TYPE_TRANSACTION, &transactionContext.tagValueList,
                        &ICON_APP_MAIN, "Review Transaction\nto send Monero",
                        NULL, "Sign transaction?", ui_menu_validation_action);
+}
+
+static void network_warning_choice(bool proceed) {
+    if (proceed) {
+        review_transaction();
+    } else {
+        ui_menu_validation_action(false);
+    }
+}
+
+/* The device cannot refuse a main-network spend here - only warn. */
+static void start_signature(void) {
+    const char* net = other_network_name();
+
+    if (net == NULL) {
+        review_transaction();
+        return;
+    }
+
+    nbgl_useCaseChoice(&LARGE_WARNING_ICON, net,
+                       "This device signs with the same keys on every network. "
+                       "If your computer is compromised, this signature can "
+                       "spend real XMR.",
+                       "Continue", "Reject", network_warning_choice);
 }
 
 void ui_menu_fee_validation_display(unsigned int value
@@ -320,8 +357,9 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
     explicit_bzero(G_monero_vstate.ux_address,
                    sizeof(G_monero_vstate.ux_address));
 
-    error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view,
-                                     pub_spend, is_subbadress, paymanetID);
+    error = monero_base58_public_key(
+        G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address),
+        pub_view, pub_spend, is_subbadress, paymanetID);
     if (error) {
         return error;
     }

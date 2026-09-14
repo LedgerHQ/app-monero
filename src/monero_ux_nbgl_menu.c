@@ -82,6 +82,34 @@ static const char* const networkNames[] = {"Main network", "Stage network",
 
 static void display_settings_menu(void);
 
+static unsigned char pendingNetwork;
+
+static void apply_network(unsigned char net) {
+    monero_install(net);
+    monero_init();
+    display_settings_menu();
+}
+
+static void network_choice(bool confirm) {
+    if (confirm) {
+        apply_network(pendingNetwork);
+    } else {
+        display_settings_menu();
+    }
+}
+
+/* Every network shares one key pair, so a test network protects nothing. Say so
+ * where the choice is made, not only at signing. */
+static void confirm_network(unsigned char net) {
+    pendingNetwork = net;
+    nbgl_useCaseChoice(&ICON_APP_MAIN,
+                       (net == STAGENET) ? "Switch to Stage network?"
+                                         : "Switch to Test network?",
+                       "Your Main network keys do not change. A compromised "
+                       "computer could use this network to spend real XMR.",
+                       "Switch", "Cancel", network_choice);
+}
+
 static void update_account(void) {
     G_monero_vstate.disp_addr_mode = 0;
     G_monero_vstate.disp_addr_M = 0;
@@ -186,13 +214,13 @@ static void network_settings_control_cb(int token, uint8_t index) {
 #endif
                 if (index < MAX_NET) {
                 if (index == MAIN_NET) {
-                    monero_install(MAINNET);
+                    apply_network(MAINNET);
                 } else if (index == TEST_NET) {
-                    monero_install(TESTNET);
+                    confirm_network(TESTNET);
                 } else if (index == STAGE_NET) {
-                    monero_install(STAGENET);
+                    confirm_network(STAGENET);
                 }
-                monero_init();
+                return;
             }
             display_settings_menu();
             break;
@@ -259,8 +287,9 @@ static void display_home_and_settings(bool displayHome) {
     snprintf(transactionContext.buffer, sizeof(transactionContext.buffer),
              "Show %s", G_monero_vstate.ux_wallet_account_name);
 
-    monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
-                             G_monero_vstate.B, 0, NULL);
+    monero_base58_public_key(G_monero_vstate.ux_address,
+                             sizeof(G_monero_vstate.ux_address),
+                             G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
 
     homeAction.callback = display_account;
     homeAction.icon = NULL;

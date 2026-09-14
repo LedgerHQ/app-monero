@@ -63,8 +63,8 @@
  */
 
 #define TXIN_TO_KEY_TAG 0x02
-#define TXOUT_TO_KEY_TAG 0x02
-#define TXOUT_TO_TAGGED_KEY_TAG 0x03
+/* TXOUT_TO_KEY_TAG and TXOUT_TO_TAGGED_KEY_TAG are in monero_types.h: the
+ * deriving side hashes them too. */
 
 /* tx_extra field tags (cryptonote_basic/tx_extra.h) */
 #define TX_EXTRA_TAG_PADDING 0x00
@@ -91,7 +91,8 @@ enum {
     PFX_EXTRA_PUBKEY,    /* 32 bytes: main tx public key R (vs EXTRA_R)    */
     PFX_EXTRA_ADDK_CNT,  /* varint: additional tx public keys count        */
     PFX_EXTRA_ADDK,      /* count*32 bytes: additional keys (vs ADDK)      */
-    PFX_EXTRA_NONCE_LEN, /* 1 byte: nonce length, then skip                */
+    PFX_EXTRA_NONCE_LEN, /* 1 byte: nonce length                           */
+    PFX_EXTRA_NONCE_PID, /* 9 bytes: encrypted payment ID (bound)          */
     PFX_EXTRA_TLV_LEN,   /* varint: merge-mining/minergate length, skip    */
     PFX_EXTRA_SKIP,      /* skip prefix_off_remaining bytes                */
     PFX_DONE             /* vout + extra verified; remaining bytes ignored */
@@ -100,12 +101,16 @@ enum {
 /* Accumulate one varint byte. Returns 1 when the varint is complete (value in
  * prefix_vi_val), 0 when more bytes are needed, -1 on overflow/malformed. */
 static int pfx_varint_byte(unsigned char c) {
-    if (G_monero_vstate.prefix_vi_shift >= 64) {
+    unsigned int shift = G_monero_vstate.prefix_vi_shift;
+
+    /* On the tenth byte only bit 63 fits, so anything above 0x01 is shifted
+     * out and the value silently differs from what the host encoded. Same rule
+     * as monero_decode_varint. */
+    if (shift > 63 || (shift == 63 && (c & 0xFE) != 0)) {
         return -1;
     }
-    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f)
-                                     << G_monero_vstate.prefix_vi_shift;
-    G_monero_vstate.prefix_vi_shift += 7;
+    G_monero_vstate.prefix_vi_val |= (uint64_t)(c & 0x7f) << shift;
+    G_monero_vstate.prefix_vi_shift = shift + 7;
     return (c & 0x80) ? 0 : 1;
 }
 
@@ -139,6 +144,14 @@ static int pfx_finalize_extra(void) {
     if (G_monero_vstate.prefix_addk_expected &&
         !G_monero_vstate.prefix_extra_addk_found) {
         return SW_SECURITY_OUTKEYS_CHAIN_CONTROL;
+    }
+    /* The review showed the integrated address for the payment ID the device
+     * made, so the prefix has to carry it. Comparing it where it appears is not
+     * enough: it also has to appear. */
+    if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
+        G_monero_vstate.tx_payment_id_set &&
+        !G_monero_vstate.prefix_extra_pid_found) {
+        return SW_SECURITY_PAYMENT_ID;
     }
     G_monero_vstate.prefix_outkeys_done = 1;
     G_monero_vstate.prefix_state = PFX_DONE;
@@ -174,6 +187,7 @@ void monero_prefix_outkeys_reset(void) {
     G_monero_vstate.prefix_extra_acc = 0;
     G_monero_vstate.prefix_extra_r_found = 0;
     G_monero_vstate.prefix_extra_addk_found = 0;
+    G_monero_vstate.prefix_extra_pid_found = 0;
     G_monero_vstate.prefix_outkeys_done = 0;
 }
 
@@ -259,36 +273,61 @@ static int pfx_state_extra_addk(const unsigned char* buf, size_t len,
     return 0;
 }
 
-/* PFX_EXTRA_PUBKEY: consume the 32-byte main tx public key R and compare it to
- * EXTRA_R, byte-accumulating across chunks. Returns 0 to continue, or an SW. */
-static int pfx_state_extra_pubkey(const unsigned char* buf, size_t len,
-                                  size_t* i) {
-    size_t need = KEY_SIZE - G_monero_vstate.prefix_field_off;
+/* Consume the next bytes of a fixed-size `extra` field, accumulating how each
+ * one differs from what it must be. A field can straddle chunks, so the caller
+ * is told only when the whole field is in: returns 1 then, 0 to be called
+ * again. The accumulator is 0 if and only if every byte matched. */
+static int pfx_extra_compare(const unsigned char* buf, size_t len, size_t* i,
+                             const unsigned char* want, size_t size) {
+    size_t need = size - G_monero_vstate.prefix_field_off;
     size_t avail = len - *i;
     size_t take = (avail < need) ? avail : need;
     for (size_t k = 0; k < take; k++) {
         G_monero_vstate.prefix_extra_acc |=
             (unsigned char)(buf[*i + k] ^
-                            G_monero_vstate
-                                .EXTRA_R[G_monero_vstate.prefix_field_off + k]);
+                            want[G_monero_vstate.prefix_field_off + k]);
     }
     *i += take;
     G_monero_vstate.prefix_field_off += take;
     G_monero_vstate.prefix_extra_remaining -= take;
-    if (G_monero_vstate.prefix_field_off == KEY_SIZE) {
-        if (G_monero_vstate.prefix_extra_acc != 0) {
-            return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs */
-        }
-        G_monero_vstate.prefix_extra_r_found = 1;
-        if (G_monero_vstate.prefix_extra_remaining == 0) {
-            int err = pfx_finalize_extra();
-            if (err) {
-                return err;
-            }
-        } else {
-            G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
-        }
+    return G_monero_vstate.prefix_field_off == size;
+}
+
+/* PFX_EXTRA_PUBKEY: consume the 32-byte main tx public key R and compare it to
+ * EXTRA_R, byte-accumulating across chunks. Returns 0 to continue, or an SW. */
+static int pfx_state_extra_pubkey(const unsigned char* buf, size_t len,
+                                  size_t* i) {
+    if (!pfx_extra_compare(buf, len, i, G_monero_vstate.EXTRA_R, KEY_SIZE)) {
+        return 0;
     }
+    if (G_monero_vstate.prefix_extra_acc != 0) {
+        return SW_SECURITY_OUTKEYS_CHAIN_CONTROL; /* R differs */
+    }
+    G_monero_vstate.prefix_extra_r_found = 1;
+    if (G_monero_vstate.prefix_extra_remaining == 0) {
+        return pfx_finalize_extra();
+    }
+    G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
+    return 0;
+}
+
+/* PFX_EXTRA_NONCE_PID: consume the 9-byte encrypted payment ID and compare it
+ * to the nonce INS_STEALTH built for this transaction, the same way R is
+ * compared. Returns 0 to continue, or an SW. */
+static int pfx_state_extra_nonce_pid(const unsigned char* buf, size_t len,
+                                     size_t* i) {
+    if (!pfx_extra_compare(buf, len, i, G_monero_vstate.tx_payment_id_nonce,
+                           TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID_SIZE)) {
+        return 0;
+    }
+    if (G_monero_vstate.prefix_extra_acc != 0) {
+        return SW_SECURITY_PAYMENT_ID;
+    }
+    G_monero_vstate.prefix_extra_pid_found = 1;
+    if (G_monero_vstate.prefix_extra_remaining == 0) {
+        return pfx_finalize_extra();
+    }
+    G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
     return 0;
 }
 
@@ -427,6 +466,15 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                     (tag != TXOUT_TO_TAGGED_KEY_TAG)) {
                     return SW_WRONG_DATA;
                 }
+                /* Same header the deriving side hashed: this output's kind and
+                 * its position. The count was already checked against
+                 * tx_output_cnt, so counting down gives the index. */
+                err = monero_sha256_out_eph_frame(
+                    tag, (unsigned int)(G_monero_vstate.tx_output_cnt -
+                                        G_monero_vstate.prefix_vout_remaining));
+                if (err) {
+                    return err;
+                }
                 G_monero_vstate.prefix_outkey_tag = tag;
                 G_monero_vstate.prefix_field_off = 0;
                 G_monero_vstate.prefix_state = PFX_VOUT_KEY;
@@ -550,10 +598,38 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                 if (G_monero_vstate.prefix_extra_remaining < n) {
                     return SW_WRONG_DATA;
                 }
+                /* The only nonce a real transaction may carry is the one
+                 * encrypted payment ID the device made and showed at review.
+                 * The wallet rewrites the nonce in place around the
+                 * INS_STEALTH call and adds a dummy one only when there is
+                 * none, so that is the one shape it ever produces. A long
+                 * payment ID is plaintext the device never makes, so there is
+                 * nothing to bind it to, and wallets have discarded them since
+                 * hardfork 12 - no reader, so refuse rather than sign
+                 * unreviewed bytes. Fake transactions are not checked: they
+                 * stream a prefix too, and nothing was retained for them. */
+                if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+                    if (!G_monero_vstate.tx_payment_id_set ||
+                        G_monero_vstate.prefix_extra_pid_found ||
+                        (n != TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID_SIZE)) {
+                        return SW_SECURITY_PAYMENT_ID;
+                    }
+                    G_monero_vstate.prefix_field_off = 0;
+                    G_monero_vstate.prefix_extra_acc = 0;
+                    G_monero_vstate.prefix_state = PFX_EXTRA_NONCE_PID;
+                    break;
+                }
                 G_monero_vstate.prefix_off_remaining = n;
                 G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
                 break;
             }
+
+            case PFX_EXTRA_NONCE_PID:
+                err = pfx_state_extra_nonce_pid(buf, len, &i);
+                if (err) {
+                    return err;
+                }
+                break;
 
             case PFX_EXTRA_TLV_LEN:
                 if (G_monero_vstate.prefix_extra_remaining == 0) {

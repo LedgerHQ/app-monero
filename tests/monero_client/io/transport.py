@@ -1,8 +1,8 @@
 import enum
 import logging
 import struct
-from typing import Union, Tuple
-from ragger.backend.interface import BackendInterface, RAPDU
+from typing import Tuple
+from ragger.backend.interface import BackendInterface
 from contextlib import contextmanager
 
 

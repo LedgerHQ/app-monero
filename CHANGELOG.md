@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.3 - 2026-09-11
+
+- Different security and bug fixes
+- Signing now refuses a long (unencrypted) payment ID
+
 ## 2.2.2 - 2026-09-03
 
 - Different security and bug fixes

@@ -49,10 +49,10 @@ from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
-from monero_client.utils.varint import encode_varint
+from monero_client.status_words import (
+    SW_SECURITY_COMMITMENT_CHAIN_CONTROL)
 
 # Raised by the OUTK destination-chain comparison. Not behind DEBUG=1.
-SW_SECURITY_COMMITMENT_CHAIN_CONTROL = 0x6914
 
 ZERO_COMMITMENT = bytes(32)
 ATTACKER_PROOF = b"\xad" * 32
@@ -186,22 +186,22 @@ class TestIsSubaddressChangesTheOutputKey:
         _open_real_tx(monero, state)
         assert other_sec != state["tx_priv_key"], "the two tx secrets must differ"
 
+        # Two outputs, so two indices: an output must declare its own position.
+        # That rules out comparing the one-time keys, which depend on the index.
+        # The additional tx pubkey does not: it is s.Bout or s.G, and both s and
+        # Bout are the same in each call. So it isolates the flag.
         derived = {}
-        for is_sub in (False, True):
+        for idx, is_sub in enumerate((False, True)):
             derived[is_sub] = _gen_txout_keys_raw(
                 backend, state["tx_priv_key"], state["tx_pub_key"],
                 state["victim"].public_view_key, state["victim"].public_spend_key,
-                output_index=0, is_change=False, is_subaddress=is_sub,
+                output_index=idx, is_change=False, is_subaddress=is_sub,
                 additional_sec=other_sec)
 
-        assert derived[False][1] != derived[True][1], (
-            "is_subaddress did not change the one-time output key -- the premise "
-            "of this test no longer holds")
         assert derived[False][2] != derived[True][2], (
-            "is_subaddress did not change the additional tx pubkey")
-        print(f"\n[impact] same inputs, is_subaddress flipped:\n"
-              f"  out key  0 -> {derived[False][1].hex()}\n"
-              f"           1 -> {derived[True][1].hex()}\n"
+            "is_subaddress did not change the additional tx pubkey -- the "
+            "premise of this test no longer holds")
+        print(f"\n[impact] same secret, is_subaddress flipped:\n"
               f"  add pub  0 -> {derived[False][2].hex()}\n"
               f"           1 -> {derived[True][2].hex()}")
 

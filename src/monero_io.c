@@ -21,6 +21,7 @@
 #include "monero_types.h"
 #include "monero_vars.h"
 #include "os.h"
+#include "os_apdu.h"
 #include "os_utils.h"
 #include "read.h"
 
@@ -44,7 +45,25 @@ void monero_io_mark(void) {
     G_monero_vstate.io_mark = G_monero_vstate.io_offset;
 }
 
+/* io_offset <= io_length <= capacity. The insert path does pointer arithmetic
+ * on both and subtracts one from the other, so a broken pair turns into a huge
+ * memmove rather than a refusal. */
+static void monero_io_check_invariants(void) {
+    if (G_monero_vstate.io_length > MONERO_IO_BUFFER_LENGTH ||
+        G_monero_vstate.io_offset > G_monero_vstate.io_length) {
+        send_error_and_kill_app(SW_SECURITY_INTERNAL);
+    }
+}
+
 void monero_io_inserted(unsigned int len) {
+    // Both counters are unsigned short, so an unchecked += wraps: growing past
+    // the buffer left offset beyond length and made the subtraction in
+    // monero_io_hole negative.
+    monero_io_check_invariants();
+    if (len >
+        (unsigned int)(MONERO_IO_BUFFER_LENGTH - G_monero_vstate.io_length)) {
+        send_error_and_kill_app(ERROR_IO_FULL);
+    }
     G_monero_vstate.io_offset += len;
     G_monero_vstate.io_length += len;
 }
@@ -67,7 +86,9 @@ void monero_io_clear(void) {
 /* ----------------------------------------------------------------------- */
 
 void monero_io_hole(unsigned int sz) {
-    if ((G_monero_vstate.io_length + sz) > MONERO_IO_BUFFER_LENGTH) {
+    monero_io_check_invariants();
+    // Compare without adding: a large sz wraps the sum and slips past.
+    if (sz > (MONERO_IO_BUFFER_LENGTH - G_monero_vstate.io_length)) {
         send_error_and_kill_app(ERROR_IO_FULL);
     }
     memmove(G_monero_vstate.io_buffer + G_monero_vstate.io_offset + sz,
@@ -199,7 +220,8 @@ int monero_io_fetch_available(void) {
     return G_monero_vstate.io_length - G_monero_vstate.io_offset;
 }
 void monero_io_assert_available(int sz) {
-    if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
+    if (sz < 0 || G_monero_vstate.io_offset > G_monero_vstate.io_length ||
+        (G_monero_vstate.io_length - G_monero_vstate.io_offset) < sz) {
         send_error_and_kill_app(ERROR_IO_FULL);
     }
 }
@@ -311,7 +333,9 @@ int monero_io_fetch_decrypt_key(unsigned char* buffer, size_t buffer_size) {
     if (!buffer) {
         return SW_WRONG_DATA;
     }
-    if (buffer_size > 32) {
+    // 32 bytes are always written, so a shorter buffer overflows. This read
+    // the other way round, which let exactly the bad case through.
+    if (buffer_size < 32) {
         return SW_WRONG_DATA_RANGE;
     }
     monero_io_assert_available(32);
@@ -453,10 +477,12 @@ int monero_io_fetch_nv(unsigned char* buffer, int len) {
 #define MAX_OUT MONERO_APDU_LENGTH
 
 int monero_io_do(unsigned int io_flags) {
+    unsigned short rx = 0;
+
     // if IO_ASYNCH_REPLY has been  set,
     //  monero_io_exchange will return when  IO_RETURN_AFTER_TX will set in ui
     if (io_flags & IO_ASYNCH_REPLY) {
-        monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
+        rx = monero_io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
     }
     // else send data now
     else {
@@ -466,7 +492,9 @@ int monero_io_do(unsigned int io_flags) {
         G_monero_vstate.io_reply_pending = 0;
         G_monero_vstate.io_offset = 0;
         if (G_monero_vstate.io_length > MAX_OUT) {
-            return SW_IO_FULL;
+            // Not a return: no caller reads one, so returning here would leave
+            // the previous command's header in place and dispatch it again.
+            send_error_and_kill_app(SW_IO_FULL);
         }
         memcpy(G_io_apdu_buffer,
                G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
@@ -477,8 +505,17 @@ int monero_io_do(unsigned int io_flags) {
                                G_monero_vstate.io_length);
             return 0;
         } else {
-            monero_io_exchange(CHANNEL_APDU, G_monero_vstate.io_length);
+            rx = monero_io_exchange(CHANNEL_APDU, G_monero_vstate.io_length);
         }
+    }
+
+    // The host declares Lc; the transport says how many bytes arrived. Believe
+    // the transport: G_io_apdu_buffer is the same array the reply above was
+    // sent from, so a short APDU claiming a long one is parsed out of that
+    // reply.
+    if (rx < APDU_OFF_DATA ||
+        (unsigned int)(rx - APDU_OFF_DATA) != G_io_apdu_buffer[APDU_OFF_LC]) {
+        send_error_and_kill_app(SW_WRONG_LENGTH);
     }
 
     //--- set up received data  ---

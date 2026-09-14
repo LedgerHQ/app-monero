@@ -74,11 +74,17 @@ int monero_reset_tx(int reset_tx_cnt) {
     monero_prefix_outkeys_reset();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
-    G_monero_vstate.tx_change_cnt = 0;
     explicit_bzero(G_monero_vstate.tx_main_txkey,
                    sizeof(G_monero_vstate.tx_main_txkey));
     // No stage completed and no signing transcript yet. Only boundary for both.
     G_monero_vstate.tx_stages = 0;
+    G_monero_vstate.tx_payment_id_set = 0;
+    explicit_bzero(G_monero_vstate.tx_payment_id_nonce,
+                   sizeof(G_monero_vstate.tx_payment_id_nonce));
+    explicit_bzero(G_monero_vstate.tx_payment_id,
+                   sizeof(G_monero_vstate.tx_payment_id));
+    explicit_bzero(G_monero_vstate.tx_payment_id_pub,
+                   sizeof(G_monero_vstate.tx_payment_id_pub));
     explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));
     explicit_bzero(G_monero_vstate.C, sizeof(G_monero_vstate.C));
     explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));
@@ -181,6 +187,15 @@ int monero_apdu_set_signature_mode() {
     monero_io_discard(0);
     switch (sig_mode) {
         case TRANSACTION_CREATE_REAL:
+            /* Every output and prefix binding is built only for protocol 2 and
+             * above, so on the legacy protocol the device would review one
+             * recipient and sign whatever the host streamed. The wallet has
+             * sent 4 since the protocol existed. */
+            if ((G_monero_vstate.protocol != 3) &&
+                (G_monero_vstate.protocol != 4)) {
+                return SW_PROTOCOL_NOT_SUPPORTED;
+            }
+            break;
         case TRANSACTION_CREATE_FAKE:
             break;
         default:

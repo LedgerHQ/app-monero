@@ -61,12 +61,12 @@ from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 from monero_client.utils.varint import encode_varint
+from monero_client.status_words import (
+    SW_SECURITY_PREHASH_NOT_FINALIZED)
+from monero_client.crypto.monero_math import sc_reduce32
 
 # ed25519 group order; monero_reduce() is a little-endian mod-l reduce.
-L = 2 ** 252 + 27742317777372353535851937790883648493
-
 # Returned once mlsagH is not known to belong to the transaction being signed.
-SW_SECURITY_PREHASH_NOT_FINALIZED = 0x691E
 
 ZERO_COMMITMENT = bytes(32)
 # Any well-formed scalar: the FAKE session's INS_BLIND only needs a valid mask.
@@ -92,11 +92,6 @@ def _output_payload(recv: Keys, ak: bytes, blinded_mask: bytes,
         hmac_sha256(ak, MoneroCryptoCmd.HMAC_KEY, Type.AMOUNT_KEY),
         ZERO_COMMITMENT, blinded_mask, blinded_amount,
     ))
-
-
-def _sc_reduce(value: bytes) -> bytes:
-    """monero_reduce(): little-endian scalar mod l."""
-    return (int.from_bytes(value, "little") % L).to_bytes(32, "little")
 
 
 def _expect_accepted(backend: BackendInterface, apdu: bytes, step: str) -> bytes:
@@ -296,7 +291,7 @@ class TestStaleMlsagHVuln:
         data = _expect_accepted(backend, _raw_apdu(InsType.INS_MLSAG, 2, 1, 0x00),
                                 "INS_MLSAG P1=2 (hash)")
         assert len(data) == 32
-        expected = _sc_reduce(keccak.new(digest_bits=256,
+        expected = sc_reduce32(keccak.new(digest_bits=256,
                                          data=state["stale_mlsagh"]).digest())
         assert data == expected, (
             "challenge does not derive from the FAKE-session mlsagH: got "
@@ -357,7 +352,7 @@ class TestHonestSigningStillWorks:
                          "INS_MLSAG P1=1 (prepare)")
         c = _expect_accepted(backend, _raw_apdu(InsType.INS_MLSAG, 2, 1, 0x00),
                              "INS_MLSAG P1=2 (hash)")
-        assert c == _sc_reduce(keccak.new(digest_bits=256,
+        assert c == sc_reduce32(keccak.new(digest_bits=256,
                                          data=state["mlsagh"]).digest()), (
             "challenge does not derive from the mlsagH the device just returned")
 

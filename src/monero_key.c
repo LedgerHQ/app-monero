@@ -169,8 +169,13 @@ int monero_apdu_get_key() {
             // spend key
             monero_io_insert(G_monero_vstate.B, KEY_SIZE);
             // public base address
+            //
+            // The only caller that does not write into ux_address: this one
+            // appends into the reply, so what is left of io_buffer is the
+            // bound, not a fixed size.
             int error = monero_base58_public_key(
                 (char*)G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
+                sizeof(G_monero_vstate.io_buffer) - G_monero_vstate.io_offset,
                 G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
             if (error) {
                 // Return a real error SW
@@ -774,31 +779,6 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 
     memcpy(G_monero_vstate.last_get_subaddress_secret_key, sub_sec, KEY_SIZE);
 
-    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
-        unsigned int major =
-            (unsigned int)index[0] | ((unsigned int)index[1] << 8) |
-            ((unsigned int)index[2] << 16) | ((unsigned int)index[3] << 24);
-        unsigned int minor =
-            (unsigned int)index[4] | ((unsigned int)index[5] << 8) |
-            ((unsigned int)index[6] << 16) | ((unsigned int)index[7] << 24);
-        unsigned char already_seen = 0;
-        for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
-            if (G_monero_vstate.tx_change_major_indices[i] == major &&
-                G_monero_vstate.tx_change_minor_indices[i] == minor) {
-                already_seen = 1;
-                break;
-            }
-        }
-        if (!already_seen && (major != 0 || minor != 0) &&
-            G_monero_vstate.tx_change_cnt < 8) {
-            G_monero_vstate
-                .tx_change_major_indices[G_monero_vstate.tx_change_cnt] = major;
-            G_monero_vstate
-                .tx_change_minor_indices[G_monero_vstate.tx_change_cnt] = minor;
-            G_monero_vstate.tx_change_cnt++;
-        }
-    }
-
     monero_io_insert_encrypt(sub_sec, KEY_SIZE, TYPE_SCALAR);
     explicit_bzero(sec, sizeof(sec));
     explicit_bzero(sub_sec, sizeof(sec));
@@ -813,7 +793,7 @@ int monero_check_change_address(const unsigned char* Aout,
                                 unsigned int* out_major) {
     unsigned char C[KEY_SIZE];
     unsigned char D[KEY_SIZE];
-    unsigned char index[8];
+    unsigned char index[8] = {0};
     int err;
 
     /* primary address (major=0, minor=0) */
@@ -825,61 +805,35 @@ int monero_check_change_address(const unsigned char* Aout,
         return 0;
     }
 
-    for (unsigned char i = 0; i < G_monero_vstate.tx_change_cnt; i++) {
-        unsigned int M = G_monero_vstate.tx_change_major_indices[i];
-        unsigned int m = G_monero_vstate.tx_change_minor_indices[i];
-        /* candidates: exact (M,m), then account root (M,0) if m!=0 && M!=0 */
-        unsigned char candidates = (m != 0 && M != 0) ? 2 : 1;
-
-        index[0] = (unsigned char)(M & 0xFF);
-        index[1] = (unsigned char)((M >> 8) & 0xFF);
-        index[2] = (unsigned char)((M >> 16) & 0xFF);
-        index[3] = (unsigned char)((M >> 24) & 0xFF);
-
-        for (unsigned char j = 0; j < candidates; j++) {
-            unsigned int m_check = (j == 0) ? m : 0;
-            index[4] = (unsigned char)(m_check & 0xFF);
-            index[5] = (unsigned char)((m_check >> 8) & 0xFF);
-            index[6] = (unsigned char)((m_check >> 16) & 0xFF);
-            index[7] = (unsigned char)((m_check >> 24) & 0xFF);
-            err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE,
-                                        sizeof(index));
-            if (err) {
-                return err;
-            }
-            if ((memcmp(Aout, C, KEY_SIZE) == 0) &&
-                (memcmp(Bout, D, KEY_SIZE) == 0)) {
-                if (out_major != NULL) {
-                    *out_major = M;
-                }
-                return 0;
-            }
-        }
-    }
-
-    /* The wallet sends change to the account root (M, 0) but never asks the
-     * device for it while signing, so the whitelist above is empty on a normal
-     * send and change to a non-primary account gets rejected. Re-derive each
-     * (M, 0) and match against (Aout, Bout). B can't be forged without the
-     * spend key, so substitution is still caught. Bound matches wallet2's
-     * default. */
+    /* Account roots only, derived here rather than taken from the host: the
+     * wallet always sends change to the root of the account it spends from, so
+     * a non-root subaddress is never legitimate change. B can't be forged
+     * without the spend key, so substitution is still caught. The bound is the
+     * wallet's own default account lookahead. index keeps minor = 0 from its
+     * initialiser; only the major varies below. */
 #define CHANGE_ACCOUNT_LOOKAHEAD 50
-    index[4] = 0;
-    index[5] = 0;
-    index[6] = 0;
-    index[7] = 0;
     for (unsigned int M = 1; M < CHANGE_ACCOUNT_LOOKAHEAD; M++) {
         index[0] = (unsigned char)(M & 0xFF);
         index[1] = (unsigned char)((M >> 8) & 0xFF);
         index[2] = (unsigned char)((M >> 16) & 0xFF);
         index[3] = (unsigned char)((M >> 24) & 0xFF);
-        err = monero_get_subaddress(C, D, index, KEY_SIZE, KEY_SIZE,
-                                    sizeof(index));
+        /* Spend key first: it costs one base multiply, while the view key
+         * needs a second, variable-base one. Only derive that on a match. */
+        err = monero_get_subaddress_spend_public_key(D, index, KEY_SIZE,
+                                                     sizeof(index));
         if (err) {
             return err;
         }
-        if ((memcmp(Aout, C, KEY_SIZE) == 0) &&
-            (memcmp(Bout, D, KEY_SIZE) == 0)) {
+        if (memcmp(Bout, D, KEY_SIZE) != 0) {
+            continue;
+        }
+        /* C = a.D, the rest of monero_get_subaddress, on the D we just made. */
+        err = monero_ecmul_k(C, D, G_monero_vstate.a, KEY_SIZE, KEY_SIZE,
+                             sizeof(G_monero_vstate.a));
+        if (err) {
+            return err;
+        }
+        if (memcmp(Aout, C, KEY_SIZE) == 0) {
             if (out_major != NULL) {
                 *out_major = M;
             }
@@ -942,6 +896,15 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     }
     use_view_tags = monero_io_fetch_u8();
 
+    // These four are booleans in the wallet and are only ever tested for
+    // truth here, so a value above 1 means the host and the device disagree
+    // about the transaction shape. Refuse rather than guess.
+    if ((is_change | is_subaddress | need_additional_txkeys | use_view_tags) >
+        1) {
+        err = SW_WRONG_DATA;
+        goto end;
+    }
+
     // The change address is validated in INS_VALIDATE / prehash_update, once
     // the amount has been unblinded: sweep_all/sweep_single add a zero-amount
     // dummy change whose address isn't wallet-owned, and it can only be told
@@ -954,6 +917,15 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // one key while a different R lands on-chain via a later output (which
     // would burn the change), without assuming the key is r.G.
     if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        // An output has no index of its own. Its index is its place in vout,
+        // and these calls come in that order. Use any other index and the
+        // recipient computes a different key, so the output is lost. The
+        // OUT_EPH chain and the prefix walk see keys, never indexes.
+        if (output_index != G_monero_vstate.tx_output_cnt) {
+            err = SW_WRONG_DATA;
+            goto end;
+        }
+
         if (G_monero_vstate.tx_output_cnt == 0) {
             memcpy(G_monero_vstate.tx_main_txkey, txkey_pub, KEY_SIZE);
         } else if (memcmp(txkey_pub, G_monero_vstate.tx_main_txkey, KEY_SIZE) !=
@@ -978,9 +950,22 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
                 if (err) {
                     goto end;
                 }
-            } else if (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0) {
-                err = SW_WRONG_DATA;
-                goto end;
+            } else {
+                /* R vouches for the public value only, and the derivation
+                 * below runs on tx_key, so bind that too or a foreign scalar
+                 * burns the output. */
+                unsigned char expected[KEY_SIZE];
+                err = monero_ecmul_G(expected, tx_key, sizeof(expected),
+                                     sizeof(tx_key));
+                if (err == 0 &&
+                    (memcmp(txkey_pub, G_monero_vstate.R, KEY_SIZE) != 0 ||
+                     memcmp(txkey_pub, expected, KEY_SIZE) != 0)) {
+                    err = SW_WRONG_DATA;
+                }
+                explicit_bzero(expected, sizeof(expected));
+                if (err) {
+                    goto end;
+                }
             }
         }
     }
@@ -1088,6 +1073,14 @@ int monero_apu_generate_txout_keys(/*size_t tx_version, crypto::secret_key tx_se
     // both sides hash them the same way.
     if ((G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) &&
         (G_monero_vstate.io_protocol_version >= 2)) {
+        // Say which kind of output this is and where it sits before hashing the
+        // key. tx_output_cnt is this output's index; it is bumped below.
+        err = monero_sha256_out_eph_frame(
+            use_view_tags ? TXOUT_TO_TAGGED_KEY_TAG : TXOUT_TO_KEY_TAG,
+            G_monero_vstate.tx_output_cnt);
+        if (err) {
+            goto end;
+        }
         err = monero_sha256_out_eph_update(out_eph_public_key, KEY_SIZE);
         if (err) {
             goto end;

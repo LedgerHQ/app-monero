@@ -163,9 +163,9 @@ end:
 /* ---  Set up ui/ux                                                   --- */
 /* ----------------------------------------------------------------------- */
 int monero_init_ux() {
-    int error =
-        monero_base58_public_key(G_monero_vstate.ux_address, G_monero_vstate.A,
-                                 G_monero_vstate.B, 0, NULL);
+    int error = monero_base58_public_key(
+        G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address),
+        G_monero_vstate.A, G_monero_vstate.B, 0, NULL);
     if (error) {
         return error;
     }

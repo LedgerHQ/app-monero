@@ -64,7 +64,6 @@ import struct
 
 import pytest
 import nacl.bindings as nb
-from Crypto.Hash import keccak
 
 from ragger.backend.interface import BackendInterface
 from ragger.error import ExceptionRAPDU
@@ -75,15 +74,14 @@ from monero_client.monero_cmd import MoneroCmd, PROTOCOL_VERSION
 from monero_client.monero_crypto_cmd import MoneroCryptoCmd
 from monero_client.crypto.hmac import hmac_sha256
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
-from monero_client.utils.varint import encode_varint
-
-L = 2 ** 252 + 27742317777372353535851937790883648493
+from monero_client.status_words import (
+    SW_SECURITY_COMMITMENT_CHAIN_CONTROL,
+    SW_SECURITY_USER_NOT_APPROVED)
+from monero_client.crypto.monero_math import (
+    sc_reduce32)
 
 # Raised by the OUTK destination-chain comparison. Not affected by DEBUG=1.
-SW_SECURITY_COMMITMENT_CHAIN_CONTROL = 0x6914
 # Raised once the output boundary that compares OUTK and captures C never ran.
-SW_SECURITY_OUTPUTS_NOT_REVIEWED = 0x6920
-SW_SECURITY_USER_NOT_APPROVED = 0x691D
 
 ZERO_COMMITMENT = bytes(32)
 ATTACKER_PROOF = b"\xad" * 32
@@ -91,14 +89,10 @@ AMOUNT = 907880000  # 0.00090788 XMR
 FEE = 30660000      # 0.00003066 XMR
 
 
-def _sc_reduce32(b: bytes) -> bytes:
-    return (int.from_bytes(b, "little") % L).to_bytes(32, "little")
-
-
 # The attacker's wallet: two valid Ed25519 points, distinct from the device's.
 _ATTACKER = Keys(
-    public_view_key=nb.crypto_scalarmult_ed25519_base_noclamp(_sc_reduce32(bytes([0x21] * 32))),
-    public_spend_key=nb.crypto_scalarmult_ed25519_base_noclamp(_sc_reduce32(bytes([0x22] * 32))),
+    public_view_key=nb.crypto_scalarmult_ed25519_base_noclamp(sc_reduce32(bytes([0x21] * 32))),
+    public_spend_key=nb.crypto_scalarmult_ed25519_base_noclamp(sc_reduce32(bytes([0x22] * 32))),
     secret_view_key=None, secret_spend_key=None, addr="",
 )
 
@@ -150,7 +144,6 @@ def _setup_mismatched_tx(monero: MoneroCmd, device, test_name: str, state):
     mask = monero.gen_commitment_mask(ak)
     state["blinded_mask"], state["blinded_amount"] = monero.blind(
         _ak_amount=ak, mask=mask, amount=AMOUNT, is_short=True)
-
 
 
 @pytest.mark.incremental

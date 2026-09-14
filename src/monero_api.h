@@ -101,8 +101,12 @@ unsigned int ui_menu_transaction_signed(void);
 /* ----------------------------------------------------------------------- */
 #define OFFSETOF(type, field) ((unsigned int)&(((type *)NULL)->field))
 
-int monero_base58_public_key(char *str_b58, unsigned char *view, unsigned char *spend,
-                             unsigned char is_subbadress, unsigned char *paymanetID);
+/** Encode an address into str_b58, at most str_b58_len bytes including the NUL.
+ *  Needs 96 without a payment ID and 107 with one; refuses rather than write
+ *  past a shorter buffer. */
+int monero_base58_public_key(char *str_b58, size_t str_b58_len, unsigned char *view,
+                             unsigned char *spend, unsigned char is_subbadress,
+                             unsigned char *paymanetID);
 
 /** unsigned varint amount to uint64 */
 uint64_t monero_vamount2uint64(unsigned char *binary);
@@ -270,6 +274,26 @@ static inline void monero_sha256_out_eph_init(void) {
 
 static inline int monero_sha256_out_eph_update(const unsigned char *buf, size_t len) {
     return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, buf, len);
+}
+
+/** Start one output in the OUT_EPH transcript: its kind, then its position.
+ *
+ *  Call this before the key, on both sides. Without it the transcript is a bare
+ *  run of bytes -- key, then a view tag only for a tagged output -- and the host
+ *  picks which outputs are tagged. It could then hash [key0 tag0][key1] on one
+ *  side and [key0][tag0+key1 shifted, tag1] on the other: the same bytes, so the
+ *  same digest, but a different key in the signed transaction.
+ */
+static inline int monero_sha256_out_eph_frame(unsigned char target_tag, unsigned int index) {
+    unsigned char header[5];
+
+    header[0] = target_tag;
+    header[1] = (unsigned char)(index >> 24);
+    header[2] = (unsigned char)(index >> 16);
+    header[3] = (unsigned char)(index >> 8);
+    header[4] = (unsigned char)index;
+
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, header, sizeof(header));
 }
 
 static inline int monero_sha256_out_eph_final(unsigned char *out) {

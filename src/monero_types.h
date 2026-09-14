@@ -136,7 +136,10 @@ struct monero_v_state_s {
     unsigned char tx_state_ins;
     unsigned char tx_state_p1;
     unsigned char tx_state_p2;
-    unsigned char tx_output_cnt;
+    /* How many outputs are derived so far. It is also the index the next
+     * output must send. Not a char: a char wraps after 256 outputs, and a
+     * wrapped count can match the wrong number of outputs. */
+    unsigned int tx_output_cnt;
     unsigned int tx_sign_cnt;
 /* Stages of a real transaction. The host picks the P1/P2 discriminants the state
  * machine keys off, so the APDU sequence proves none of them. Each bit is set at
@@ -153,16 +156,28 @@ struct monero_v_state_s {
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
-    /* change address verification */
-    unsigned int tx_change_major_indices[8];
-    unsigned int tx_change_minor_indices[8];
-    unsigned char tx_change_cnt;
     /* The single main tx public key the wallet uses for every output of this tx
      * (r.G, or r.D for a single subaddress destination). Recorded from the first
      * output and enforced on the rest, so the change can't be derived under a
      * different key than the one that lands on-chain (see monero_key.c). Reset
      * per tx. */
     unsigned char tx_main_txkey[KEY_SIZE];
+    /* The payment ID of this transaction, kept by INS_STEALTH in both forms.
+     *
+     * Every customer of one service shares a base address, so the payment ID
+     * is the only field that says who is being paid.
+     *
+     * _nonce is the extra nonce, subtype 0x01 then the 8 encrypted bytes. The
+     * prefix must carry this exact value.
+     * tx_payment_id is the plaintext. The review shows it, because the device
+     * got it from the host and only the user can say it is right.
+     *
+     * One per transaction. A second INS_STEALTH is refused, or the host would
+     * choose which value is checked and shown. */
+    unsigned char tx_payment_id_nonce[9];
+    unsigned char tx_payment_id_pub[KEY_SIZE];
+    unsigned char tx_payment_id[8];
+    unsigned char tx_payment_id_set;
 
     /* ------------------------------------------ */
     /* ---               Crypo                --- */
@@ -220,6 +235,7 @@ struct monero_v_state_s {
     unsigned char prefix_addk_expected;    /* build: an output produced additional keys */
     unsigned char prefix_extra_r_found;    /* verify: tag 0x01 seen & matched     */
     unsigned char prefix_extra_addk_found; /* verify: tag 0x04 seen & matched     */
+    unsigned char prefix_extra_pid_found;  /* verify: tag 0x02 seen & matched     */
     unsigned char prefix_outkeys_done;     /* set once vout AND extra are verified   */
 
     /* ------------------------------------------ */
@@ -267,7 +283,17 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define IO_OFFSET_END  (unsigned int)-1
 #define IO_OFFSET_MARK (unsigned int)-2
 
+/* How a vout entry says what kind of output it is. Both
+ * the deriving side and the prefix parser hash this, so it lives here. */
+#define TXOUT_TO_KEY_TAG        0x02
+#define TXOUT_TO_TAGGED_KEY_TAG 0x03
+
 #define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
+
+/* What an extra nonce holding an encrypted payment ID looks like: this subtype
+ * byte then the 8 bytes. INS_STEALTH builds one, the prefix parser checks it. */
+#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID      0x01
+#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID_SIZE 9
 
 /* ---  Errors  --- */
 #define ERROR(x) ((x) << 16)
@@ -360,6 +386,7 @@ typedef struct monero_v_state_s monero_v_state_t;
 #define SW_SECURITY_PREHASH_NOT_FINALIZED    0x691E
 #define SW_SECURITY_PREFIX_NOT_FINALIZED     0x691F
 #define SW_SECURITY_OUTPUTS_NOT_REVIEWED     0x6920
+#define SW_SECURITY_PAYMENT_ID               0x6921
 #define SW_SECURITY_LOCKED                   0x69EE
 
 #define SW_COMMAND_NOT_ALLOWED    0x6980

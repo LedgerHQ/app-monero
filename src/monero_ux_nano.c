@@ -122,6 +122,39 @@ void ui_menu_opentx_display(unsigned int value __attribute__((unused))) {
 
 void ui_menu_amount_validation_action(unsigned int value);
 
+/* The device cannot refuse a main-network spend here - only warn. */
+static char networkWarnBuf[24];
+
+UX_STEP_NOCB(ux_menu_validation_net_step, bn,
+             {networkWarnBuf, "Same keys as Main"});
+
+/* Settings' name for the active network, or NULL on the main network. The name
+ * arrays are in UI order, not network_id order, so map by hand. */
+static const char* other_network_name(void) {
+    switch (N_monero_pstate->network_id) {
+        case STAGENET:
+            return "Stage Network";
+        case TESTNET:
+            return "Test Network";
+        default:
+            return NULL;
+    }
+}
+
+/* Warn on the review that closes the output set, so a many-output transaction
+ * says it once, as the touch UI does. */
+static void start_terminal_review(const ux_flow_step_t* const* plain,
+                                  const ux_flow_step_t* const* warned) {
+    const char* net = other_network_name();
+
+    if (net == NULL) {
+        ux_flow_init(0, plain, NULL);
+        return;
+    }
+    snprintf(networkWarnBuf, sizeof(networkWarnBuf), "%s", net);
+    ux_flow_init(0, warned, NULL);
+}
+
 UX_STEP_NOCB(ux_menu_validation_fee_1_step, bn,
              {
                  "Fee",
@@ -163,6 +196,10 @@ UX_FLOW(ux_flow_fee, &ux_menu_validation_fee_1_step,
 UX_FLOW(ux_flow_change, &ux_menu_validation_change_1_step,
         &ux_menu_validation_cf_2_step, &ux_menu_validation_cf_3_step);
 
+UX_FLOW(ux_flow_change_net, &ux_menu_validation_net_step,
+        &ux_menu_validation_change_1_step, &ux_menu_validation_cf_2_step,
+        &ux_menu_validation_cf_3_step);
+
 UX_FLOW(ux_flow_timelock, &ux_menu_validation_timelock_1_step,
         &ux_menu_validation_cf_2_step, &ux_menu_validation_cf_3_step);
 
@@ -203,7 +240,7 @@ void ui_menu_change_validation_display(unsigned int value) {
 
 void ui_menu_change_validation_display_last(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
-    ux_flow_init(0, ux_flow_change, NULL);
+    start_terminal_review(ux_flow_change, ux_flow_change_net);
 }
 
 void ui_menu_timelock_validation_display(unsigned int value
@@ -230,13 +267,17 @@ UX_FLOW(ux_flow_validation, &ux_menu_validation_1_step,
         &ux_menu_validation_2_step, &ux_menu_validation_3_step,
         &ux_menu_validation_4_step);
 
+UX_FLOW(ux_flow_validation_net, &ux_menu_validation_net_step,
+        &ux_menu_validation_1_step, &ux_menu_validation_2_step,
+        &ux_menu_validation_3_step, &ux_menu_validation_4_step);
+
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
     ux_flow_init(0, ux_flow_validation, NULL);
 }
 
 void ui_menu_validation_display_last(unsigned int value
                                      __attribute__((unused))) {
-    ux_flow_init(0, ux_flow_validation, NULL);
+    start_terminal_review(ux_flow_validation, ux_flow_validation_net);
 }
 
 void ui_menu_validation_action(unsigned int value) {
@@ -383,6 +424,30 @@ static void network_set_net(unsigned int network) {
     monero_init();
 }
 
+static unsigned int pendingNetwork;
+
+static void network_confirm_action(unsigned int value) {
+    if (value == ACCEPT) {
+        network_set_net(pendingNetwork);
+    }
+    ui_menu_main_display();
+}
+
+/* Two short lines, not paging: the page count would depend on the screen and
+ * the test would have to guess how many clicks it takes. The review carries the
+ * full wording. */
+UX_STEP_NOCB(ux_menu_network_warn_1_step, bn,
+             {"Switch network?", "Main keys unchanged"});
+
+UX_STEP_CB(ux_menu_network_warn_2_step, pb, network_confirm_action(ACCEPT),
+           {&C_icon_validate_14, "Switch"});
+
+UX_STEP_CB(ux_menu_network_warn_3_step, pb, network_confirm_action(REJECT),
+           {&C_icon_crossmark, "Cancel"});
+
+UX_FLOW(ux_flow_network_warn, &ux_menu_network_warn_1_step,
+        &ux_menu_network_warn_2_step, &ux_menu_network_warn_3_step);
+
 void network_submenu_selector(unsigned int idx) {
     switch (idx) {
         case 0:
@@ -391,11 +456,11 @@ void network_submenu_selector(unsigned int idx) {
 #endif
             break;
         case 1:
-            network_set_net(STAGENET);
-            break;
         case 2:
-            network_set_net(TESTNET);
-            break;
+            /* Ask first: a test network keeps the Main network keys. */
+            pendingNetwork = (idx == 1) ? STAGENET : TESTNET;
+            ux_flow_init(0, ux_flow_network_warn, NULL);
+            return;
         default:
             break;
     }
@@ -584,8 +649,9 @@ int ui_menu_any_pubaddr_display(unsigned int value __attribute__((unused)),
             break;
     }
 
-    int error = monero_base58_public_key(G_monero_vstate.ux_address, pub_view,
-                                         pub_spend, is_subbadress, paymanetID);
+    int error = monero_base58_public_key(
+        G_monero_vstate.ux_address, sizeof(G_monero_vstate.ux_address),
+        pub_view, pub_spend, is_subbadress, paymanetID);
     if (error) {
         return error;
     }

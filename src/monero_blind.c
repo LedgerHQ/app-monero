@@ -93,6 +93,17 @@ int monero_unblind(unsigned char* v, unsigned char* k, unsigned char* AKout,
                    unsigned int short_amount, size_t v_len, size_t k_len,
                    size_t AKout_len) {
     int error;
+
+    // The short branch xors eight bytes of v and the other subtracts 32, and
+    // both mutate k and AKout first, so check everything before that.
+    if (!v || !k || !AKout) {
+        return SW_WRONG_DATA;
+    }
+    if (k_len < 32 || AKout_len < 32 ||
+        v_len < (short_amount == 2 ? 8u : 32u)) {
+        return SW_WRONG_DATA_RANGE;
+    }
+
     if (short_amount == 2) {
         error = monero_genCommitmentMask(k, AKout, k_len, AKout_len);
         if (error) {

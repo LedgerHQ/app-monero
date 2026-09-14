@@ -128,14 +128,25 @@ static void encode_block(const unsigned char* block, unsigned int size,
     }
 }
 
-int monero_base58_public_key(char* str_b58, unsigned char* view,
-                             unsigned char* spend, unsigned char is_subbadress,
+int monero_base58_public_key(char* str_b58, size_t str_b58_len,
+                             unsigned char* view, unsigned char* spend,
+                             unsigned char is_subbadress,
                              unsigned char* paymanetID) {
     unsigned char data[72 + 8];
     unsigned char hash[32];
     unsigned int offset;
     unsigned int prefix;
     int error = 0;
+
+    // A payment ID adds 8 bytes to the body, which is 11 more base58
+    // characters, so how much this writes depends on an argument. Check it
+    // against the caller's buffer before writing anything: every caller today
+    // has room, and this is what keeps that true.
+    size_t needed =
+        (paymanetID ? INTEGRATED_ADDR_LEN : ADDR_LEN) + 1; /* + the NUL */
+    if (!str_b58 || str_b58_len < needed) {
+        return SW_SECURITY_INTERNAL;
+    }
 
     switch (N_monero_pstate->network_id) {
         case TESTNET:

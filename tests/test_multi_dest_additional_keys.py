@@ -32,7 +32,6 @@ mask the others.
 Run: pytest tests/test_multi_dest_additional_keys.py -v --device flex   (DEBUG=1)
 """
 
-import pytest
 
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import SigType
