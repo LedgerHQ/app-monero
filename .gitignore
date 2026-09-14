@@ -29,3 +29,6 @@ tests/snapshots-tmp/
 
 # Virtual env for sideload (macOS and Windows)
 ledger/
+
+# unit-tests build output
+unit-tests/build*/

@@ -16,11 +16,42 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/*
+ * SW_OK if every stage in `required` has completed, else the status word of the
+ * first missing one. Fake transactions sign with host-supplied secrets, so
+ * nothing is gated there. The test order sets which code a caller sees when
+ * several stages are missing at once -- keep it.
+ */
+int monero_tx_stages_check(unsigned char required) {
+    unsigned char missing;
+
+    if (G_monero_vstate.tx_sig_mode != TRANSACTION_CREATE_REAL) {
+        return SW_OK;
+    }
+    missing = required & (unsigned char)~G_monero_vstate.tx_stages;
+    if (missing & TX_STAGE_USER_APPROVED) {
+        return SW_SECURITY_USER_NOT_APPROVED;
+    }
+    if (missing & TX_STAGE_PREFIX_FINALIZED) {
+        return SW_SECURITY_PREFIX_NOT_FINALIZED;
+    }
+    if (missing & TX_STAGE_OUTPUTS_REVIEWED) {
+        return SW_SECURITY_OUTPUTS_NOT_REVIEWED;
+    }
+    if (missing & TX_STAGE_PREHASH_FINALIZED) {
+        return SW_SECURITY_PREHASH_NOT_FINALIZED;
+    }
+    return SW_OK;
+}
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -37,9 +68,27 @@ int monero_reset_tx(int reset_tx_cnt) {
     }
     monero_sha256_commitment_init();
     monero_sha256_outkeys_init();
+    monero_sha256_out_eph_init();
+    monero_sha256_addk_init();
+    G_monero_vstate.prefix_addk_expected = 0;
+    monero_prefix_outkeys_reset();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
-    G_monero_vstate.tx_change_cnt = 0;
+    explicit_bzero(G_monero_vstate.tx_main_txkey,
+                   sizeof(G_monero_vstate.tx_main_txkey));
+    // No stage completed and no signing transcript yet. Only boundary for both.
+    G_monero_vstate.tx_stages = 0;
+    G_monero_vstate.tx_payment_id_set = 0;
+    explicit_bzero(G_monero_vstate.tx_payment_id_nonce,
+                   sizeof(G_monero_vstate.tx_payment_id_nonce));
+    explicit_bzero(G_monero_vstate.tx_payment_id,
+                   sizeof(G_monero_vstate.tx_payment_id));
+    explicit_bzero(G_monero_vstate.tx_payment_id_pub,
+                   sizeof(G_monero_vstate.tx_payment_id_pub));
+    explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));
+    explicit_bzero(G_monero_vstate.C, sizeof(G_monero_vstate.C));
+    explicit_bzero(G_monero_vstate.mlsagH, sizeof(G_monero_vstate.mlsagH));
+    explicit_bzero(G_monero_vstate.c, sizeof(G_monero_vstate.c));
     if (reset_tx_cnt) {
         G_monero_vstate.tx_cnt = 0;
     }
@@ -82,8 +131,9 @@ int monero_apdu_open_tx_cont() {
         return error;
     }
 
-    error = monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r, sizeof(G_monero_vstate.R),
-                           sizeof(G_monero_vstate.r));
+    error =
+        monero_ecmul_G(G_monero_vstate.R, G_monero_vstate.r,
+                       sizeof(G_monero_vstate.R), sizeof(G_monero_vstate.r));
     if (error) {
         return error;
     }
@@ -91,9 +141,11 @@ int monero_apdu_open_tx_cont() {
     monero_io_insert(G_monero_vstate.R, KEY_SIZE);
     monero_io_insert_encrypt(G_monero_vstate.r, KEY_SIZE, TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_VIEW_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void *)C_FAKE_SEC_VIEW_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_VIEW_KEY, KEY_SIZE,
+                              TYPE_SCALAR);
     monero_io_insert(C_FAKE_SEC_SPEND_KEY, KEY_SIZE);
-    monero_io_insert_hmac_for((void *)C_FAKE_SEC_SPEND_KEY, KEY_SIZE, TYPE_SCALAR);
+    monero_io_insert_hmac_for((void*)C_FAKE_SEC_SPEND_KEY, KEY_SIZE,
+                              TYPE_SCALAR);
     return SW_OK;
 }
 
@@ -103,7 +155,8 @@ int monero_apdu_open_tx_cont() {
 int monero_apdu_close_tx() {
     int error;
     monero_io_discard(1);
-    error = monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
+    error =
+        monero_reset_tx(G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
     if (error) {
         return error;
     }
@@ -134,6 +187,15 @@ int monero_apdu_set_signature_mode() {
     monero_io_discard(0);
     switch (sig_mode) {
         case TRANSACTION_CREATE_REAL:
+            /* Every output and prefix binding is built only for protocol 2 and
+             * above, so on the legacy protocol the device would review one
+             * recipient and sign whatever the host streamed. The wallet has
+             * sent 4 since the protocol existed. */
+            if ((G_monero_vstate.protocol != 3) &&
+                (G_monero_vstate.protocol != 4)) {
+                return SW_PROTOCOL_NOT_SUPPORTED;
+            }
+            break;
         case TRANSACTION_CREATE_FAKE:
             break;
         default:

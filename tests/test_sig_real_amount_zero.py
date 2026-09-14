@@ -17,6 +17,7 @@ from ragger.navigator import Navigator
 
 from monero_client.monero_types import SigType, Keys
 from monero_client.monero_cmd import MoneroCmd
+from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
 
 @pytest.mark.incremental
 class TestSignatureRealAmountZero:
@@ -43,7 +44,9 @@ class TestSignatureRealAmountZero:
             "_ak_amount": [[]],
             "blinded_amount": [[]],
             "blinded_mask": [[]],
-            "y": [[]]
+            "y": [[]],
+            # device-derived one-time output keys, captured for the REAL prefix
+            "eph_keys": [],
         }
 
     @staticmethod
@@ -95,7 +98,7 @@ class TestSignatureRealAmountZero:
     def test_decoy1_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for TX1 decoy 1."""
         for index in range(state["receiver_number"]):
-            _, _ = monero.gen_txout_keys(
+            _, _, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["decoy1_tx_priv_key"],
                 tx_pub_key=state["decoy1_tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -138,7 +141,7 @@ class TestSignatureRealAmountZero:
     def test_decoy2_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for TX1 decoy 2."""
         for index in range(state["receiver_number"]):
-            _, _ = monero.gen_txout_keys(
+            _, _, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["decoy2_tx_priv_key"],
                 tx_pub_key=state["decoy2_tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -185,7 +188,7 @@ class TestSignatureRealAmountZero:
     def test_gen_txout_keys_zero(monero: MoneroCmd, state):
         """Generate output keys for first transaction."""
         for index in range(state["receiver_number"]):
-            _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
+            _ak_amount, out_ephemeral_pub_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -196,16 +199,24 @@ class TestSignatureRealAmountZero:
             )
 
             state["_ak_amount"][index].append(_ak_amount)
+            state["eph_keys"].append(out_ephemeral_pub_key)
             print(f"TX1 Output {index}: ephemeral key = {out_ephemeral_pub_key.hex()}")
 
     @staticmethod
-    def test_prefix_hash_zero(monero: MoneroCmd, navigator: Navigator, device, test_name: str):
-        """Compute transaction prefix hash for first transaction."""
+    def test_prefix_hash_zero(monero: MoneroCmd, navigator: Navigator, device, test_name: str, state):
+        """Compute transaction prefix hash for first transaction.
+
+        Stream a real prefix carrying the device-derived one-time key so the
+        output-key binding check passes; the intended rejection happens later, at
+        validate (amount=0 non-change → SW_SECURITY_AMOUNT_CHAIN_CONTROL).
+        """
+        assert len(state["eph_keys"]) == state["receiver_number"]
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"], tx_pubkey=state["tx_pub_key"])
         monero.prefix_hash_init(test_name, device,
                                 navigator=navigator, version=0, timelock=0)
         result = monero.prefix_hash_update(
             index=1,
-            payload=b"",
+            payload=prefix,
             is_last=True
         )
         print(f"TX1 Prefix hash: {result.hex()}")

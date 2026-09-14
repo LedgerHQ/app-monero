@@ -15,7 +15,7 @@ def check_accepted_version(monero, valid_version: bytes):
 
 
 def check_refused_version(monero, invalid_version: bytes):
-    with pytest.raises(ClientNotSupported) as excinfo:
+    with pytest.raises(ClientNotSupported):
         monero.reset_and_get_version(invalid_version)
 
 

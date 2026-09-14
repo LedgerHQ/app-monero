@@ -16,11 +16,11 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include "os.h"
 #include "cx.h"
-#include "monero_types.h"
 #include "monero_api.h"
+#include "monero_types.h"
 #include "monero_vars.h"
+#include "os.h"
 
 static void update_protocol(void) {
     G_monero_vstate.tx_state_ins = G_monero_vstate.io_ins;
@@ -43,7 +43,8 @@ static int check_protocol(void) {
             if (G_monero_vstate.protocol == 0xff) {
                 G_monero_vstate.protocol = G_monero_vstate.io_protocol_version;
             }
-            if (G_monero_vstate.protocol == G_monero_vstate.io_protocol_version) {
+            if (G_monero_vstate.protocol ==
+                G_monero_vstate.io_protocol_version) {
                 break;
             }
             // unknown protocol or hot protocol switch is not allowed
@@ -64,7 +65,6 @@ int check_ins_access() {
         case INS_RESET:
         case INS_PUT_KEY:
         case INS_GET_KEY:
-        case INS_DISPLAY_ADDRESS:
         case INS_VERIFY_KEY:
         case INS_GET_CHACHA8_PREKEY:
         case INS_GEN_KEY_DERIVATION:
@@ -90,6 +90,16 @@ int check_ins_access() {
 
         case INS_OPEN_TX:
         case INS_SET_SIGNATURE_MODE:
+            return SW_OK;
+
+        // Drives its own screen, so it must not run while a review is being
+        // accumulated. A wallet only shows an address on an explicit user
+        // action, and holds the device lock for the whole of a transaction, so
+        // it never reaches here mid-signing.
+        case INS_DISPLAY_ADDRESS:
+            if (G_monero_vstate.tx_in_progress == 1) {
+                return SW_COMMAND_NOT_ALLOWED;
+            }
             return SW_OK;
 
         case INS_GEN_TXOUT_KEYS:
@@ -255,7 +265,8 @@ int monero_dispatch() {
                     (G_monero_vstate.tx_state_ins != INS_STEALTH)) {
                     return SW_COMMAND_NOT_ALLOWED;
                 }
-                if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
+                if ((G_monero_vstate.io_p1 != 0) ||
+                    (G_monero_vstate.io_p2 != 0)) {
                     return SW_WRONG_P1P2;
                 }
             }
@@ -307,12 +318,14 @@ int monero_dispatch() {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else if (G_monero_vstate.tx_state_p1 == 1) {
-                if ((G_monero_vstate.io_p1 != 2) || (G_monero_vstate.io_p2 != 1)) {
+                if ((G_monero_vstate.io_p1 != 2) ||
+                    (G_monero_vstate.io_p2 != 1)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else if (G_monero_vstate.tx_state_p1 == 2) {
                 if ((G_monero_vstate.io_p1 != 2) ||
-                    (G_monero_vstate.io_p2 - 1 != G_monero_vstate.tx_state_p2)) {
+                    (G_monero_vstate.io_p2 - 1 !=
+                     G_monero_vstate.tx_state_p2)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
@@ -338,6 +351,11 @@ int monero_dispatch() {
             if ((G_monero_vstate.tx_state_ins != INS_PREFIX_HASH) &&
                 (G_monero_vstate.tx_state_ins != INS_GEN_COMMITMENT_MASK)) {
                 return SW_COMMAND_NOT_ALLOWED;
+            }
+            // tx_state_ins == INS_PREFIX_HASH only means P1=1 ran.
+            sw = monero_tx_stages_check(TX_STAGE_PREFIX_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
             }
 
             if ((G_monero_vstate.io_p1 != 0) || (G_monero_vstate.io_p2 != 0)) {
@@ -390,7 +408,8 @@ int monero_dispatch() {
                 G_monero_vstate.tx_state_ins = INS_VALIDATE;
                 G_monero_vstate.tx_state_p1 = 1;
                 G_monero_vstate.tx_state_p2 = 0;
-                if ((G_monero_vstate.io_p1 != 1) || (G_monero_vstate.io_p2 != 1)) {
+                if ((G_monero_vstate.io_p1 != 1) ||
+                    (G_monero_vstate.io_p2 != 1)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             }
@@ -399,7 +418,8 @@ int monero_dispatch() {
                 if (G_monero_vstate.tx_state_p2 != G_monero_vstate.io_p2 - 1) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
-            } else if (G_monero_vstate.tx_state_p1 == G_monero_vstate.io_p1 - 1) {
+            } else if (G_monero_vstate.tx_state_p1 ==
+                       G_monero_vstate.io_p1 - 1) {
                 if (1 != G_monero_vstate.io_p2) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
@@ -425,30 +445,41 @@ int monero_dispatch() {
         /* --- MLSAG --- */
         case INS_MLSAG:
             // 1. state machine check
-            if ((G_monero_vstate.protocol != 3) && (G_monero_vstate.protocol != 4)) {
+            if ((G_monero_vstate.protocol != 3) &&
+                (G_monero_vstate.protocol != 4)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
             if ((G_monero_vstate.tx_state_ins != INS_VALIDATE) &&
                 (G_monero_vstate.tx_state_ins != INS_MLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // Both branches of INS_VALIDATE/P1=3 reach tx_state_p1 == 3, so it
+            // proves nothing about mlsagH.
+            sw = monero_tx_stages_check(TX_STAGE_PREHASH_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
+            }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
-                if ((G_monero_vstate.tx_state_p1 != 3) || (G_monero_vstate.io_p1 != 1) ||
+                if ((G_monero_vstate.tx_state_p1 != 3) ||
+                    (G_monero_vstate.io_p1 != 1) ||
                     (G_monero_vstate.io_p2 != 0)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
                 if (G_monero_vstate.tx_state_p1 == 1) {
-                    if ((2 != G_monero_vstate.io_p1) || (1 != G_monero_vstate.io_p2)) {
+                    if ((2 != G_monero_vstate.io_p1) ||
+                        (1 != G_monero_vstate.io_p2)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 2) {
                     if (2 == G_monero_vstate.io_p1) {
                         if ((0 == G_monero_vstate.io_p2) ||
-                            ((G_monero_vstate.tx_state_p2 != 0) && (1 != G_monero_vstate.io_p2))) {
+                            ((G_monero_vstate.tx_state_p2 != 0) &&
+                             (1 != G_monero_vstate.io_p2))) {
                             return SW_SUBCOMMAND_NOT_ALLOWED;
                         }
-                    } else if ((3 != G_monero_vstate.io_p1) || (G_monero_vstate.tx_state_p2 == 0)) {
+                    } else if ((3 != G_monero_vstate.io_p1) ||
+                               (G_monero_vstate.tx_state_p2 == 0)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 3) {
@@ -474,7 +505,8 @@ int monero_dispatch() {
                 return sw;
             }
             update_protocol();
-            if ((G_monero_vstate.io_p1 == 2) && ((G_monero_vstate.options & 0x80) != 0)) {
+            if ((G_monero_vstate.io_p1 == 2) &&
+                ((G_monero_vstate.options & 0x80) != 0)) {
                 G_monero_vstate.tx_state_p2 = 0;
             }
             break;
@@ -489,23 +521,32 @@ int monero_dispatch() {
                 (G_monero_vstate.tx_state_ins != INS_CLSAG)) {
                 return SW_COMMAND_NOT_ALLOWED;
             }
+            // As for INS_MLSAG: tx_state_p1 == 3 proves nothing about mlsagH.
+            sw = monero_tx_stages_check(TX_STAGE_PREHASH_FINALIZED);
+            if (sw != SW_OK) {
+                return sw;
+            }
             if (G_monero_vstate.tx_state_ins == INS_VALIDATE) {
-                if ((G_monero_vstate.tx_state_p1 != 3) || (G_monero_vstate.io_p1 != 1) ||
+                if ((G_monero_vstate.tx_state_p1 != 3) ||
+                    (G_monero_vstate.io_p1 != 1) ||
                     (G_monero_vstate.io_p2 != 0)) {
                     return SW_SUBCOMMAND_NOT_ALLOWED;
                 }
             } else {
                 if (G_monero_vstate.tx_state_p1 == 1) {
-                    if ((2 != G_monero_vstate.io_p1) || (1 != G_monero_vstate.io_p2)) {
+                    if ((2 != G_monero_vstate.io_p1) ||
+                        (1 != G_monero_vstate.io_p2)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 2) {
                     if (2 == G_monero_vstate.io_p1) {
                         if ((0 == G_monero_vstate.io_p2) ||
-                            ((G_monero_vstate.tx_state_p2 != 0) && (1 != G_monero_vstate.io_p2))) {
+                            ((G_monero_vstate.tx_state_p2 != 0) &&
+                             (1 != G_monero_vstate.io_p2))) {
                             return SW_SUBCOMMAND_NOT_ALLOWED;
                         }
-                    } else if ((3 != G_monero_vstate.io_p1) || (G_monero_vstate.tx_state_p2 == 0)) {
+                    } else if ((3 != G_monero_vstate.io_p1) ||
+                               (G_monero_vstate.tx_state_p2 == 0)) {
                         return SW_SUBCOMMAND_NOT_ALLOWED;
                     }
                 } else if (G_monero_vstate.tx_state_p1 == 3) {
@@ -531,7 +572,8 @@ int monero_dispatch() {
                 return sw;
             }
             update_protocol();
-            if ((G_monero_vstate.io_p1 == 2) && ((G_monero_vstate.options & 0x80) != 0)) {
+            if ((G_monero_vstate.io_p1 == 2) &&
+                ((G_monero_vstate.options & 0x80) != 0)) {
                 G_monero_vstate.tx_state_p2 = 0;
             }
             break;

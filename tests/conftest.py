@@ -20,6 +20,31 @@ configuration.OPTIONAL.CUSTOM_SEED = MNEMONIC
 pytest_plugins = ("ragger.conftest.base_conftest", )
 
 
+def pytest_addoption(parser):
+    # Opt-in flag to force-run tests marked @pytest.mark.skip (the vuln demos)
+    # without editing the test files. Only meaningful against a vulnerable build
+    # (no user_approved_tx gate); on a fixed build these are expected to fail.
+    parser.addoption("--run-skipped", action="store_true", default=False,
+                     help="Also run tests marked @pytest.mark.skip.")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--run-skipped"):
+        return
+
+    seen = set()
+    for item in items:
+        # Strip @pytest.mark.skip wherever it sits in the node chain (function,
+        # class, or module) — iter_markers() reads each node's own_markers at
+        # setup time, so clearing them all disables the skip.
+        for node in item.listchain():
+            if id(node) in seen or not hasattr(node, "own_markers"):
+                continue
+            seen.add(id(node))
+            node.own_markers = [m for m in node.own_markers if m.name != "skip"]
+
+
 @pytest.fixture()
 def monero(backend, debug=False):
     monero_client = MoneroCmd(debug, backend)

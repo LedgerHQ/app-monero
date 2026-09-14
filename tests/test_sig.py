@@ -4,8 +4,12 @@ from ledgered.devices import Device
 from ragger.backend.interface import BackendInterface
 from ragger.navigator import Navigator
 
+from Crypto.Hash import keccak
+
 from monero_client.monero_types import SigType, Keys
 from monero_client.monero_cmd import MoneroCmd
+from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
+from monero_client.utils.varint import encode_varint
 
 @pytest.mark.incremental
 class TestSignature:
@@ -60,7 +64,9 @@ class TestSignature:
                 "_ak_amount": [[], [], []],
                 "blinded_amount": [[], [], []],
                 "blinded_mask": [[], [], []],
-                "y": [[], [], []]}
+                "y": [[], [], []],
+                # device-derived one-time output keys, captured for the REAL prefix
+                "eph_keys": []}
 
     @staticmethod
     def test_set_sig(monero):
@@ -87,7 +93,7 @@ class TestSignature:
     @staticmethod
     def test_gen_txout_keys(monero: MoneroCmd, state):
         for index in range(state["receiver_number"]):
-            _ak_amount, out_ephemeral_pub_key = monero.gen_txout_keys(
+            _ak_amount, out_ephemeral_pub_key, _ = monero.gen_txout_keys(
                 _tx_priv_key=state["_tx_priv_key"],
                 tx_pub_key=state["tx_pub_key"],
                 dst_pub_view_key=state["receiver"][index].public_view_key,
@@ -98,17 +104,28 @@ class TestSignature:
             )  # type: bytes, bytes
 
             state["_ak_amount"][index].append(_ak_amount)  # _ak_amount_t
+            state["eph_keys"].append(out_ephemeral_pub_key)
 
     @staticmethod
-    def test_prefix_hash(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str):
-        expected: bytes = bytes.fromhex("9a259973bf721120aceae3d8d40696c0"
-                                        "7470331e386028753123f37fee36926b")
+    def test_prefix_hash(monero: MoneroCmd, navigator: Navigator, device: Device, test_name: str, state):
+        # Stream a real prefix carrying the device-derived one-time keys (honest
+        # host behaviour). prefixH = Keccak256(version_varint || timelock_varint
+        # || vin || vout || extra); recompute it here to assert the device hashed
+        # exactly our bytes — and, on a fixed build, accepted the bound keys.
+        version: int = 0
+        timelock: int = 2147483650
+        assert len(state["eph_keys"]) == state["receiver_number"]
+        prefix = build_tx_prefix_outkeys(vout_keys=state["eph_keys"], tx_pubkey=state["tx_pub_key"])
+        init_payload = encode_varint(version) + encode_varint(timelock)
+        expected: bytes = keccak.new(digest_bits=256,
+                                     data=init_payload + prefix).digest()
+
         # should ask for timelock validation
         monero.prefix_hash_init(test_name, device,
-                                navigator=navigator, version=0, timelock=2147483650)
+                                navigator=navigator, version=version, timelock=timelock)
         result: bytes = monero.prefix_hash_update(
             index=1,
-            payload=b"",
+            payload=prefix,
             is_last=True
         )
 

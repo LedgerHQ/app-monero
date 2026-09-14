@@ -57,6 +57,7 @@ int monero_apdu_get_tx_proof(void);
 int monero_apdu_open_tx(void);
 int monero_apdu_open_tx_cont(void);
 int monero_reset_tx(int reset_tx_cnt);
+int monero_tx_stages_check(unsigned char required);
 int monero_apdu_open_subtx(void);
 int monero_apdu_set_signature_mode(void);
 int monero_apdu_stealth(void);
@@ -100,8 +101,12 @@ unsigned int ui_menu_transaction_signed(void);
 /* ----------------------------------------------------------------------- */
 #define OFFSETOF(type, field) ((unsigned int)&(((type *)NULL)->field))
 
-int monero_base58_public_key(char *str_b58, unsigned char *view, unsigned char *spend,
-                             unsigned char is_subbadress, unsigned char *paymanetID);
+/** Encode an address into str_b58, at most str_b58_len bytes including the NUL.
+ *  Needs 96 without a payment ID and 107 with one; refuses rather than write
+ *  past a shorter buffer. */
+int monero_base58_public_key(char *str_b58, size_t str_b58_len, unsigned char *view,
+                             unsigned char *spend, unsigned char is_subbadress,
+                             unsigned char *paymanetID);
 
 /** unsigned varint amount to uint64 */
 uint64_t monero_vamount2uint64(unsigned char *binary);
@@ -194,7 +199,13 @@ int monero_get_subaddress(unsigned char *C, unsigned char *D, unsigned char *ind
                           size_t D_len, size_t index_len);
 int monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, unsigned char *index,
                                      size_t sub_s_len, size_t s_len, size_t index_len);
-int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout);
+// On a successful match, *out_major (if non-NULL) receives the change account
+// index (0 for the primary address). Change always lands on the account root
+// (minor 0), so only the account is reported.
+int monero_check_change_address(const unsigned char *Aout, const unsigned char *Bout,
+                                unsigned int *out_major);
+// Build the change-review title ("Change" or "Change account <major>").
+void monero_format_change_title(char *str, size_t str_len, unsigned int major);
 
 /* ----------------------------------------------------------------------- */
 /* ---                              CRYPTO                            ---- */
@@ -256,6 +267,58 @@ static inline int monero_sha256_outkeys_update(const unsigned char *buf, size_t 
 static inline int monero_sha256_outkeys_final(unsigned char *out) {
     return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_keys, out);
 }
+
+static inline void monero_sha256_out_eph_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_out_eph);
+}
+
+static inline int monero_sha256_out_eph_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, buf, len);
+}
+
+/** Start one output in the OUT_EPH transcript: its kind, then its position.
+ *
+ *  Call this before the key, on both sides. Without it the transcript is a bare
+ *  run of bytes -- key, then a view tag only for a tagged output -- and the host
+ *  picks which outputs are tagged. It could then hash [key0 tag0][key1] on one
+ *  side and [key0][tag0+key1 shifted, tag1] on the other: the same bytes, so the
+ *  same digest, but a different key in the signed transaction.
+ */
+static inline int monero_sha256_out_eph_frame(unsigned char target_tag, unsigned int index) {
+    unsigned char header[5];
+
+    header[0] = target_tag;
+    header[1] = (unsigned char)(index >> 24);
+    header[2] = (unsigned char)(index >> 16);
+    header[3] = (unsigned char)(index >> 8);
+    header[4] = (unsigned char)index;
+
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_out_eph, header, sizeof(header));
+}
+
+static inline int monero_sha256_out_eph_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_out_eph, out);
+}
+
+static inline void monero_sha256_addk_init(void) {
+    monero_hash_init_sha256((cx_hash_t *)&G_monero_vstate.sha256_addk);
+}
+
+static inline int monero_sha256_addk_update(const unsigned char *buf, size_t len) {
+    return monero_hash_update((cx_hash_t *)&G_monero_vstate.sha256_addk, buf, len);
+}
+
+static inline int monero_sha256_addk_final(unsigned char *out) {
+    return monero_hash_final((cx_hash_t *)&G_monero_vstate.sha256_addk, out);
+}
+
+/* Reset the tx-prefix output-key parser before streaming a new prefix. */
+void monero_prefix_outkeys_reset(void);
+
+/* Feed the next tx-prefix chunk (vin/vout/extra, as streamed over
+ * INS_PREFIX_HASH P2) to the output-key check. Returns an error if the signed
+ * outputs don't match the ones derived in INS_GEN_TXOUT_KEYS. */
+int monero_prefix_outkeys_parse(const unsigned char *buf, size_t len);
 
 /*
  *  check 1<s<N, else throw
