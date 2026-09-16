@@ -332,6 +332,36 @@ class MoneroCryptoCmd:
 
         return _d_in
 
+    def derivation_to_scalar(self, derivation: bytes,
+                             output_index: int) -> bytes:
+        """Hs(derivation || varint(index)), returned encrypted.
+
+        Same layout note as derive_secret_key: the index follows the
+        derivation, so no HMAC may be interleaved before it.
+        """
+        ins: InsType = InsType.INS_DERIVATION_TO_SCALAR
+
+        payload: bytes = b"".join([
+            derivation,
+            struct.pack(">I", output_index),
+        ])
+
+        self.transport.send(cla=self.protocol,
+                            ins=ins,
+                            p1=0,
+                            p2=0,
+                            option=0,
+                            payload=payload)
+
+        sw, response = self.transport.recv()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(sw, ins)
+
+        assert len(response) == 32
+
+        return response  # encrypted Hs(derivation||index)
+
     def derive_secret_key(self,
                           derivation: bytes,
                           output_index: int,
