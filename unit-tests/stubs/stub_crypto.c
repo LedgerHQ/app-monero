@@ -29,6 +29,8 @@ extern const monero_nv_state_t N_state_pic __attribute__((alias("nv_storage")));
 int stub_crypto_null_dest_seen = 0;
 int stub_crypto_fail_scalar_mult = 0;
 int stub_crypto_fail_addm = 0;
+int stub_crypto_infinite_add_point = 0;
+int stub_crypto_identity_compress = 0;
 
 void stub_crypto_reset(void) {
     memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
@@ -36,6 +38,8 @@ void stub_crypto_reset(void) {
     stub_crypto_null_dest_seen = 0;
     stub_crypto_fail_scalar_mult = 0;
     stub_crypto_fail_addm = 0;
+    stub_crypto_infinite_add_point = 0;
+    stub_crypto_identity_compress = 0;
 }
 
 void __attribute__((noreturn)) send_error_and_kill_app(int sw) {
@@ -177,6 +181,10 @@ cx_err_t cx_ecfp_add_point_no_throw(cx_curve_t curve, uint8_t *R,
     (void) curve;
     (void) P;
     (void) Q;
+    if (stub_crypto_infinite_add_point) {
+        stub_crypto_infinite_add_point = 0;
+        return CX_EC_INFINITE_POINT;
+    }
     memset(R, FILLER, 65);
     return CX_OK;
 }
@@ -198,6 +206,14 @@ cx_err_t cx_edwards_compress_point_no_throw(cx_curve_t curve, uint8_t *p,
                                             size_t p_len) {
     (void) curve;
     (void) p_len;
+    if (stub_crypto_identity_compress) {
+        stub_crypto_identity_compress = 0;
+        /* The neutral element as the SDK writes it: 02 then y = 1. */
+        memset(p, 0, 33);
+        p[0] = 0x02;
+        p[1] = 0x01;
+        return CX_OK;
+    }
     memset(p, FILLER, 33);
     return CX_OK;
 }

@@ -181,14 +181,6 @@ static void test_multm_rejects_a_short_destination(void) {
         "monero_multm");
 }
 
-static void test_multm_8_rejects_a_short_destination(void) {
-    guarded_short_t b;
-    arm(&b, sizeof(b.buf));
-    check_short_dest_refused(
-        monero_multm_8(b.buf, A, sizeof(b.buf), sizeof(A)), &b,
-        "monero_multm_8");
-}
-
 /* A short destination is only half the contract: r_len >= 32 says nothing
  * about r being a real address. The SDK math exports len bytes to r with no
  * pointer check of its own, and the stubs here memset it directly, so without
@@ -218,11 +210,6 @@ static void test_subm_rejects_a_null_destination(void) {
 static void test_multm_rejects_a_null_destination(void) {
     check_null_dest_refused(monero_multm(NULL, A, B, 32, sizeof(A), sizeof(B)),
                             "monero_multm");
-}
-
-static void test_multm_8_rejects_a_null_destination(void) {
-    check_null_dest_refused(monero_multm_8(NULL, A, 32, sizeof(A)),
-                            "monero_multm_8");
 }
 
 static void test_hash_to_scalar_rejects_a_null_destination(void) {
@@ -377,11 +364,6 @@ static void test_full_size_destinations_still_work(void) {
 
     arm(&b, sizeof(b.buf));
     TEST_ASSERT_EQUAL_INT(
-        0, monero_multm_8(b.buf, A, sizeof(b.buf), sizeof(A)));
-    TEST_ASSERT_TRUE(intact(b.guard));
-
-    arm(&b, sizeof(b.buf));
-    TEST_ASSERT_EQUAL_INT(
         0, monero_hash_to_scalar(b.buf, A, sizeof(b.buf), sizeof(A)));
     TEST_ASSERT_TRUE(intact(b.guard));
 }
@@ -400,6 +382,50 @@ static void test_amount2str_formats_normally(void) {
     TEST_ASSERT_EQUAL_STRING("1.5", out);
 }
 
+/* ------------------------------------------ cofactor clearing */
+
+/* monero_ecmul_8k clears the cofactor on the point and refuses when the result
+ * is the identity. The SDK reports that either as an error or as an encoding,
+ * depending on the OS, so both are forced here. */
+
+static void test_ecmul_8k_refuses_a_collapsed_cofactor(void) {
+    unsigned char W[32];
+
+    stub_crypto_infinite_add_point = 1;
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA,
+                          monero_ecmul_8k(W, A, B, sizeof(W), 32, sizeof(B)));
+}
+
+static void test_ecmul_8k_refuses_an_identity_result(void) {
+    unsigned char W[32];
+
+    stub_crypto_identity_compress = 1;
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA,
+                          monero_ecmul_8k(W, A, B, sizeof(W), 32, sizeof(B)));
+}
+
+static void test_ecmul_8k_accepts_an_ordinary_point(void) {
+    unsigned char W[32];
+
+    TEST_ASSERT_EQUAL_INT(0,
+                          monero_ecmul_8k(W, A, B, sizeof(W), 32, sizeof(B)));
+}
+
+static void test_ecmul_8k_rejects_a_null_point(void) {
+    unsigned char W[32];
+
+    TEST_ASSERT_EQUAL_INT(
+        SW_WRONG_DATA_RANGE,
+        monero_ecmul_8k(W, NULL, B, sizeof(W), 32, sizeof(B)));
+}
+
+static void test_ecmul_8k_rejects_a_short_point(void) {
+    unsigned char W[32];
+
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA_RANGE,
+                          monero_ecmul_8k(W, A, B, sizeof(W), 31, sizeof(B)));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ecmul_G_success_path_unchanged);
@@ -411,11 +437,9 @@ int main(void) {
     RUN_TEST(test_addm_rejects_a_short_destination);
     RUN_TEST(test_subm_rejects_a_short_destination);
     RUN_TEST(test_multm_rejects_a_short_destination);
-    RUN_TEST(test_multm_8_rejects_a_short_destination);
     RUN_TEST(test_addm_rejects_a_null_destination);
     RUN_TEST(test_subm_rejects_a_null_destination);
     RUN_TEST(test_multm_rejects_a_null_destination);
-    RUN_TEST(test_multm_8_rejects_a_null_destination);
     RUN_TEST(test_hash_to_scalar_rejects_a_null_destination);
     RUN_TEST(test_hash_to_ec_rejects_a_null_destination);
     RUN_TEST(test_subaddress_secret_key_rejects_a_null_destination);
@@ -429,5 +453,10 @@ int main(void) {
     RUN_TEST(test_amount2str_zero_length_does_not_underflow);
     RUN_TEST(test_full_size_destinations_still_work);
     RUN_TEST(test_amount2str_formats_normally);
+    RUN_TEST(test_ecmul_8k_refuses_a_collapsed_cofactor);
+    RUN_TEST(test_ecmul_8k_refuses_an_identity_result);
+    RUN_TEST(test_ecmul_8k_accepts_an_ordinary_point);
+    RUN_TEST(test_ecmul_8k_rejects_a_null_point);
+    RUN_TEST(test_ecmul_8k_rejects_a_short_point);
     return UNITY_END();
 }
