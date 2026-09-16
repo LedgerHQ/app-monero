@@ -1068,19 +1068,63 @@ end:
     return error;
 }
 
+/* [l]P is the identity exactly when P has no torsion component. Rejecting on
+ * [8]P == identity only catches a point whose whole order divides 8; a mixed
+ * one, prime-order part plus torsion, walks through it and still leaks the
+ * multiplier modulo the torsion order. */
+static int monero_point_in_prime_subgroup(unsigned char* P, size_t P_len) {
+    unsigned char Pxy[PXY_SIZE];
+    cx_err_t err;
+    int ret;
+
+    if (!P || P_len < 32) {
+        PRINTF("Buffer Error: %s:%d \n", __LINE__);
+        return SW_WRONG_DATA_RANGE;
+    }
+
+    Pxy[0] = 0x02;
+    memcpy(&Pxy[1], P, 32);
+    if (cx_edwards_decompress_point_no_throw(CX_CURVE_Ed25519, Pxy,
+                                             sizeof(Pxy))) {
+        ret = SW_WRONG_DATA;
+        goto end;
+    }
+
+    /* The SDK may report the identity either as CX_EC_INFINITE_POINT or as a
+     * compressed identity with no error; accept both so the sense of this test
+     * cannot silently invert. */
+    err = cx_ecfp_scalar_mult_no_throw(CX_CURVE_Ed25519, Pxy, C_ED25519_ORDER,
+                                       32);
+    if (err == CX_EC_INFINITE_POINT) {
+        ret = 0;
+        goto end;
+    }
+    if (err) {
+        ret = SW_SECURITY_INTERNAL;
+        goto end;
+    }
+    if (cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, Pxy,
+                                           sizeof(Pxy))) {
+        ret = SW_SECURITY_INTERNAL;
+        goto end;
+    }
+    ret = (memcmp(&Pxy[1], ED25519_IDENTITY, 32) == 0) ? 0 : SW_WRONG_DATA;
+
+end:
+    explicit_bzero(Pxy, sizeof(Pxy));
+    return ret;
+}
+
 int monero_ecmul_k(unsigned char* W, unsigned char* P, unsigned char* scalar32,
                    size_t W_len, size_t P_len, size_t scalar32_len) {
-    unsigned char eightP[32];
-    int error = 0;
+    int error;
 
-    /* [8]P == identity means P is low order, and the product would leak the
-     * scalar mod ord(P). */
-    error = monero_ecmul_8(eightP, P, sizeof(eightP), P_len);
+    /* The scalar here is a device secret and P comes from the host, so P has
+     * to be in the prime-order subgroup: any torsion component makes the
+     * product carry the scalar modulo that component's order. */
+    error = monero_point_in_prime_subgroup(P, P_len);
     if (error) {
         return error;
-    }
-    if (memcmp(eightP, ED25519_IDENTITY, 32) == 0) {
-        return SW_WRONG_DATA;
     }
 
     return monero_ecmul_point(W, P, scalar32, W_len, P_len, scalar32_len);
