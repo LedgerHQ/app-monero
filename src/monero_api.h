@@ -411,7 +411,6 @@ int monero_multm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_
                  size_t b_len);
 
 /* r = (a*8) %order */
-int monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len);
 
 /* */
 int monero_reduce(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len);
