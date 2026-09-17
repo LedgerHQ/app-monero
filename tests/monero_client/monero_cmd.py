@@ -468,7 +468,18 @@ class MoneroCmd(MoneroCryptoCmd):
                               navigator: Navigator,
                               index: int,
                               txntype: int,
-                              txnfee: int) -> None:
+                              txnfee: int,
+                              more: bool = False,
+                              compare_snapshots: bool = True) -> None:
+        """INS_VALIDATE P1=1 P2=1: the type byte and the fee.
+
+        `more` is the wallet's flag for "pseudoOuts follow", set when the
+        transaction has inputs to stream (device_ledger.cpp:1887).
+
+        `compare_snapshots` False approves the BAGL fee screen without
+        comparing it to a golden set. For a test about what the APDU carries
+        rather than what is drawn, the screens are someone else's coverage and
+        a golden directory would only be churn."""
         ins: InsType = InsType.INS_VALIDATE
 
         # txntype is skipped in the app
@@ -482,13 +493,16 @@ class MoneroCmd(MoneroCryptoCmd):
                                     ins=ins,
                                     p1=1,
                                     p2=index,
-                                    option=0,
+                                    option=0x80 if more else 0,
                                     payload=payload):
 
             if device.is_nano and navigator is not None:
-                navigator.navigate_and_compare(TESTS_ROOT_DIR,
-                                               test_name + "_prehash_init",
-                                               instructions)
+                if compare_snapshots:
+                    navigator.navigate_and_compare(TESTS_ROOT_DIR,
+                                                   test_name + "_prehash_init",
+                                                   instructions)
+                else:
+                    navigator.navigate(instructions)
             else:
                 pass
 
@@ -498,6 +512,30 @@ class MoneroCmd(MoneroCryptoCmd):
 
         if not sw & 0x9000:
             raise DeviceError(error_code=sw, ins=ins, message="P1=1 (init)")
+
+        assert len(response) == 0
+
+    def validate_prehash_pseudo_out(self, index: int, pseudo_out: bytes,
+                                    is_last: bool = True) -> None:
+        """INS_VALIDATE P1=1 P2>=2: one 32-byte pseudoOut.
+
+        RCTTypeSimple only, one per input, and the device draws nothing for
+        them (device_ledger.cpp:1915). `is_last` clears the more-command bit,
+        which is how the wallet marks the end of the sequence."""
+        ins: InsType = InsType.INS_VALIDATE
+
+        self.transport.send(cla=self.protocol,
+                            ins=ins,
+                            p1=1,
+                            p2=index,
+                            option=0 if is_last else 0x80,
+                            payload=pseudo_out)
+
+        sw, response = self.transport.recv()  # type: int, bytes
+
+        if not sw & 0x9000:
+            raise DeviceError(error_code=sw, ins=ins,
+                              message="P1=1 (pseudoOut)")
 
         assert len(response) == 0
 
