@@ -102,12 +102,86 @@ size_t cx_hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *in,
     return mac_len;
 }
 
+/* The real cx_aes_no_throw is AES-128 in CBC with a zero IV. The handle-format
+ * tests need CBC over a keyed 16-byte permutation that diffuses; they do not
+ * need AES itself. This is an eight-round Feistel, and
+ * test_the_stub_cipher_diffuses checks that assumption instead of trusting it.
+ */
+static uint64_t stub_load64(const uint8_t *p) {
+    uint64_t v = 0;
+
+    for (int i = 0; i < 8; i++) {
+        v = (v << 8) | p[i];
+    }
+    return v;
+}
+
+static void stub_store64(uint8_t *p, uint64_t v) {
+    for (int i = 7; i >= 0; i--) {
+        p[i] = (uint8_t) (v & 0xff);
+        v >>= 8;
+    }
+}
+
+static uint64_t stub_round(uint64_t x, unsigned int r) {
+    x ^= 0x9e3779b97f4a7c15ULL + r;
+    x *= 0xbf58476d1ce4e5b9ULL;
+    x ^= x >> 31;
+    x *= 0x94d049bb133111ebULL;
+    x ^= x >> 29;
+    return x;
+}
+
+static void stub_block(uint8_t *b, int decrypt) {
+    uint64_t l = stub_load64(b);
+    uint64_t r = stub_load64(b + 8);
+    uint64_t t;
+
+    for (unsigned int k = 0; k < 8; k++) {
+        if (decrypt) {
+            t = r ^ stub_round(l, 7 - k);
+            r = l;
+            l = t;
+        } else {
+            t = l ^ stub_round(r, k);
+            l = r;
+            r = t;
+        }
+    }
+    stub_store64(b, l);
+    stub_store64(b + 8, r);
+}
+
 cx_err_t cx_aes_no_throw(const cx_aes_key_t *key, uint32_t mode,
                          const uint8_t *in, size_t in_len, uint8_t *out,
                          size_t *out_len) {
+    uint8_t prev[16] = {0}; /* zero IV, as cx_aes_no_throw passes NULL, 0 */
+    uint8_t blk[16];
+    uint8_t ct[16];
+    int decrypt = (mode & CX_ENCRYPT) == 0;
+
     (void) key;
-    (void) mode;
-    memcpy(out, in, in_len);
+    if (in_len % 16) {
+        return CX_INVALID_PARAMETER_SIZE;
+    }
+    for (size_t off = 0; off < in_len; off += 16) {
+        memcpy(blk, in + off, 16);
+        if (decrypt) {
+            memcpy(ct, blk, 16);
+            stub_block(blk, 1);
+            for (int i = 0; i < 16; i++) {
+                blk[i] ^= prev[i];
+            }
+            memcpy(prev, ct, 16);
+        } else {
+            for (int i = 0; i < 16; i++) {
+                blk[i] ^= prev[i];
+            }
+            stub_block(blk, 0);
+            memcpy(prev, blk, 16);
+        }
+        memcpy(out + off, blk, 16);
+    }
     *out_len = in_len;
     return CX_OK;
 }
