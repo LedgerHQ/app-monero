@@ -54,6 +54,9 @@ int monero_apdu_mlsag_prehash_init() {
         if (fee_off + fee_len != G_monero_vstate.io_length) {
             return SW_WRONG_DATA;
         }
+        /* The wallet sets this bit when pseudoOuts follow the fee. */
+        G_monero_vstate.tx_prehash_more =
+            (G_monero_vstate.options & IN_OPTION_MORE_COMMAND) ? 1 : 0;
 
         error = monero_sha256_outkeys_final(G_monero_vstate.OUTK);
         if (error) {
@@ -85,6 +88,21 @@ int monero_apdu_mlsag_prehash_init() {
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
         return 0;
+    }
+
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        /* Past the fee, each step carries one 32-byte pseudoOut and nothing
+         * reviews it, so take exactly what the wallet sends and stop when it
+         * says it is done. Otherwise host bytes reach the prehash unparsed. */
+        if (!G_monero_vstate.tx_prehash_more) {
+            return SW_SUBCOMMAND_NOT_ALLOWED;
+        }
+        if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) !=
+            KEY_SIZE) {
+            return SW_WRONG_LENGTH;
+        }
+        G_monero_vstate.tx_prehash_more =
+            (G_monero_vstate.options & IN_OPTION_MORE_COMMAND) ? 1 : 0;
     }
 
     error = monero_keccak_update_H(
