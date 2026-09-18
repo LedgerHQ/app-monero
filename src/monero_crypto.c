@@ -1684,12 +1684,3 @@ int monero_bamount2str(unsigned char* binary, char* str, size_t binary_len,
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_vamount2str(unsigned char* binary, char* str, unsigned int str_len) {
-    uint64_t amount;
-    unsigned int out_len;
-    unsigned int error = monero_decode_varint(binary, 8, &amount, &out_len);
-    if (error) {
-        return error;
-    }
-    return monero_amount2str(amount, str, str_len);
-}

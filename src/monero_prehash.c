@@ -68,6 +68,16 @@ int monero_apdu_mlsag_prehash_init() {
         if (error) {
             return error;
         }
+        /* Build the review string from the fee that was just decoded, and
+         * before anything is hashed. Re-decoding the bytes capped the width at
+         * 8, so a nine-byte fee left the previous transaction's amount on
+         * screen while this one went into the prehash. */
+        error = monero_amount2str(fee, G_monero_vstate.ux_amount,
+                                  sizeof(G_monero_vstate.ux_amount));
+        if (error) {
+            return error;
+        }
+
         error = monero_keccak_update_H(
             G_monero_vstate.io_buffer + G_monero_vstate.io_offset, 1 + fee_len);
         if (error) {
@@ -75,10 +85,6 @@ int monero_apdu_mlsag_prehash_init() {
         }
         // skip type
         monero_io_fetch_u8();
-        // fee str
-        monero_vamount2str(
-            G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-            G_monero_vstate.ux_amount, 15);
 
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
                  sizeof(G_monero_vstate.ux_amount) -
