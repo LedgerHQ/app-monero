@@ -426,6 +426,31 @@ static void test_ecmul_8k_rejects_a_short_point(void) {
                           monero_ecmul_8k(W, A, B, sizeof(W), 31, sizeof(B)));
 }
 
+/* ------------------------------------------ fee review width */
+
+/* The fee review used to be built by re-decoding the varint with a hard-coded
+ * 8-byte cap, so a nine-byte fee left the previous transaction's amount on
+ * screen while this one went into the prehash. It now formats the value that
+ * was already decoded, which has to survive the full width and be given the
+ * real buffer size. */
+
+static void test_amount2str_formats_a_nine_byte_fee(void) {
+    char out[MAX_AMOUNT_LENGTH];
+
+    TEST_ASSERT_EQUAL_UINT(0,
+                           monero_amount2str(1ULL << 56, out, sizeof(out)));
+    TEST_ASSERT_EQUAL_STRING("72057.594037927936", out);
+}
+
+/* And why the size is now sizeof() rather than 15: the magnitude survives a
+ * short buffer but the trailing decimals do not, silently. */
+static void test_amount2str_truncates_when_told_it_has_less(void) {
+    char out[MAX_AMOUNT_LENGTH];
+
+    TEST_ASSERT_EQUAL_UINT(0, monero_amount2str(1ULL << 56, out, 15));
+    TEST_ASSERT_EQUAL_STRING("72057.59403792", out);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ecmul_G_success_path_unchanged);
@@ -453,6 +478,8 @@ int main(void) {
     RUN_TEST(test_amount2str_zero_length_does_not_underflow);
     RUN_TEST(test_full_size_destinations_still_work);
     RUN_TEST(test_amount2str_formats_normally);
+    RUN_TEST(test_amount2str_formats_a_nine_byte_fee);
+    RUN_TEST(test_amount2str_truncates_when_told_it_has_less);
     RUN_TEST(test_ecmul_8k_refuses_a_collapsed_cofactor);
     RUN_TEST(test_ecmul_8k_refuses_an_identity_result);
     RUN_TEST(test_ecmul_8k_accepts_an_ordinary_point);
