@@ -134,6 +134,67 @@ void monero_io_insert_hmac_for(unsigned char* buffer, int len, int type) {
     monero_io_insert(hmac, 32);
 }
 
+/* One CBC pass lets a spliced handle hand back a half of the handle it was cut
+ * from. Two passes with the halves swapped diffuse instead, and the shape is
+ * its own inverse, so one routine serves both directions. */
+static void monero_io_swap_halves(unsigned char* p) {
+    unsigned char t[16];
+
+    memcpy(t, p, 16);
+    memcpy(p, p + 16, 16);
+    memcpy(p + 16, t, 16);
+    explicit_bzero(t, sizeof(t));
+}
+
+static int monero_io_handle_crypt(unsigned char* dst, unsigned char* src,
+                                  size_t len, int decrypt) {
+    /* One format for every handle. Choosing per instruction cannot work: a
+     * consumer sees 32 bytes and cannot tell how they were made, and the
+     * wallet reads a handle minted inside a transaction from outside one. */
+    int wide = (len == 32);
+    /* The debug transforms protect nothing either way, and holding the format
+     * still leaves the functional suite measuring the app. */
+#if defined(IODUMMYCRYPT)
+    (void)decrypt;
+    (void)wide;
+    for (unsigned int i = 0; i < len; i++) {
+        dst[i] = src[i] ^ 0x55;
+    }
+    return 0;
+#elif defined(IONOCRYPT)
+    (void)decrypt;
+    (void)wide;
+    memcpy(dst, src, len);
+    return 0;
+#else
+    unsigned char t[32];
+    uint32_t mode = (decrypt ? CX_DECRYPT : CX_ENCRYPT) | CX_CHAIN_CBC |
+                    CX_LAST | CX_PAD_NONE;
+    size_t l = len;
+    int error = 0;
+
+    if (!wide) {
+        if (cx_aes_no_throw(&G_monero_vstate.spk, mode, src, len, dst, &l)) {
+            return SW_SECURITY_INTERNAL;
+        }
+        return 0;
+    }
+
+    if (cx_aes_no_throw(&G_monero_vstate.spk, mode, src, len, t, &l)) {
+        error = SW_SECURITY_INTERNAL;
+        goto end;
+    }
+    monero_io_swap_halves(t);
+    l = len;
+    if (cx_aes_no_throw(&G_monero_vstate.spk, mode, t, len, dst, &l)) {
+        error = SW_SECURITY_INTERNAL;
+    }
+end:
+    explicit_bzero(t, sizeof(t));
+    return error;
+#endif
+}
+
 void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
     if (!buffer) {
         send_error_and_kill_app(ERROR_IO_FULL);
@@ -146,21 +207,11 @@ void monero_io_insert_encrypt(unsigned char* buffer, size_t len, int type) {
 
     monero_io_hole(len);
 
-#if defined(IODUMMYCRYPT)
-    for (unsigned int i = 0; i < len; i++) {
-        G_monero_vstate.io_buffer[G_monero_vstate.io_offset + i] =
-            buffer[i] ^ 0x55;
-    }
-#elif defined(IONOCRYPT)
-    memcpy(G_monero_vstate.io_buffer + G_monero_vstate.io_offset, buffer, len);
-#else
-    if (cx_aes_no_throw(
-            &G_monero_vstate.spk,
-            CX_ENCRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE, buffer, len,
-            G_monero_vstate.io_buffer + G_monero_vstate.io_offset, &len)) {
+    if (monero_io_handle_crypt(
+            G_monero_vstate.io_buffer + G_monero_vstate.io_offset, buffer, len,
+            0)) {
         send_error_and_kill_app(SW_SECURITY_INTERNAL);
     }
-#endif
     G_monero_vstate.io_offset += len;
     if (G_monero_vstate.tx_in_progress) {
         monero_io_insert_hmac_for(
@@ -292,21 +343,12 @@ int monero_io_fetch_decrypt(unsigned char* buffer, size_t len, int type) {
     }
 
     if (buffer) {
-#if defined(IODUMMYCRYPT)
-        for (unsigned int i = 0; i < len; i++) {
-            buffer[i] =
-                G_monero_vstate.io_buffer[G_monero_vstate.io_offset + i] ^ 0x55;
+        error = monero_io_handle_crypt(
+            buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len,
+            1);
+        if (error) {
+            return error;
         }
-#elif defined(IONOCRYPT)
-        memcpy(buffer, G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-               len);
-#else  // IOCRYPT
-        error = cx_aes_no_throw(
-            &G_monero_vstate.spk,
-            CX_DECRYPT | CX_CHAIN_CBC | CX_LAST | CX_PAD_NONE,
-            G_monero_vstate.io_buffer + G_monero_vstate.io_offset, len, buffer,
-            &len);
-#endif
     }
     G_monero_vstate.io_offset += len;
     if (G_monero_vstate.tx_in_progress) {

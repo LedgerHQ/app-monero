@@ -113,7 +113,6 @@ uint64_t monero_vamount2uint64(unsigned char *binary);
 /** binary little endian unsigned  int amount to uint64 */
 uint64_t monero_bamount2uint64(unsigned char *binary, size_t binary_len);
 /** unsigned varint amount to str */
-int monero_vamount2str(unsigned char *binary, char *str, unsigned int str_len);
 /** binary little endian unsigned  int amount to str */
 int monero_bamount2str(unsigned char *binary, char *str, size_t binary_len, unsigned int str_len);
 /** uint64  amount to str */
@@ -411,7 +410,6 @@ int monero_multm(unsigned char *r, unsigned char *a, unsigned char *b, size_t r_
                  size_t b_len);
 
 /* r = (a*8) %order */
-int monero_multm_8(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len);
 
 /* */
 int monero_reduce(unsigned char *r, unsigned char *a, size_t r_len, size_t a_len);

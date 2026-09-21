@@ -151,6 +151,7 @@ struct monero_v_state_s {
 #define TX_STAGE_USER_APPROVED     0x04 /* review confirmed             */
 #define TX_STAGE_PREHASH_FINALIZED 0x08 /* terminal P1=3      -> mlsagH  */
     unsigned char tx_stages;
+    unsigned char tx_prehash_more; /* another VALIDATE p1=1 step is expected */
 
     /* sc_add control */
     unsigned char last_derive_secret_key[KEY_SIZE];

@@ -73,6 +73,7 @@
 #define TX_EXTRA_MERGE_MINING_TAG 0x03
 #define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS 0x04
 #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG 0xDE
+#define TX_EXTRA_PADDING_MAX_COUNT 255
 
 enum {
     PFX_VIN_CNT = 0,     /* varint: number of inputs                       */
@@ -95,6 +96,7 @@ enum {
     PFX_EXTRA_NONCE_PID, /* 9 bytes: encrypted payment ID (bound)          */
     PFX_EXTRA_TLV_LEN,   /* varint: merge-mining/minergate length, skip    */
     PFX_EXTRA_SKIP,      /* skip prefix_off_remaining bytes                */
+    PFX_EXTRA_PADDING,   /* like SKIP, but every byte must be zero         */
     PFX_DONE             /* vout + extra verified; remaining bytes ignored */
 };
 
@@ -219,15 +221,26 @@ static int pfx_state_extra_tag(const unsigned char* buf, size_t* i) {
             pfx_enter_varint(PFX_EXTRA_TLV_LEN);
             break;
         case TX_EXTRA_TAG_PADDING:
-        default:
-            /* padding (zeros to end) or an unknown tag with no decodable
-             * length: consume the remainder of `extra`. The mandatory main tx
-             * public key must already have been seen (verified in
-             * pfx_finalize_extra). */
+        default: {
+            int real = (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL);
+
+            /* Neither shape carries a length, so both consume the remainder of
+             * `extra`. The wallet parser has no variant for an unknown tag and
+             * requires a padding run to be zeros, at most 254 of them after
+             * the tag, so a real signature must not reach past either. */
+            if (real && (tag != TX_EXTRA_TAG_PADDING)) {
+                return SW_WRONG_DATA;
+            }
+            if (real && (G_monero_vstate.prefix_extra_remaining >
+                         TX_EXTRA_PADDING_MAX_COUNT - 1)) {
+                return SW_WRONG_DATA;
+            }
             G_monero_vstate.prefix_off_remaining =
                 G_monero_vstate.prefix_extra_remaining;
-            G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
+            G_monero_vstate.prefix_state =
+                real ? PFX_EXTRA_PADDING : PFX_EXTRA_SKIP;
             break;
+        }
     }
     return 0;
 }
@@ -650,6 +663,33 @@ int monero_prefix_outkeys_parse(const unsigned char* buf, size_t len) {
                     G_monero_vstate.prefix_state = PFX_EXTRA_SKIP;
                 }
                 break;
+
+            case PFX_EXTRA_PADDING: {
+                uint64_t need = G_monero_vstate.prefix_off_remaining;
+                size_t avail = len - i;
+                size_t take = (avail < need) ? avail : (size_t)need;
+                size_t k;
+
+                for (k = 0; k < take; k++) {
+                    if (buf[i + k]) {
+                        return SW_WRONG_DATA;
+                    }
+                }
+                i += take;
+                G_monero_vstate.prefix_off_remaining -= take;
+                G_monero_vstate.prefix_extra_remaining -= take;
+                if (G_monero_vstate.prefix_off_remaining == 0) {
+                    if (G_monero_vstate.prefix_extra_remaining == 0) {
+                        err = pfx_finalize_extra();
+                        if (err) {
+                            return err;
+                        }
+                    } else {
+                        G_monero_vstate.prefix_state = PFX_EXTRA_TAG;
+                    }
+                }
+                break;
+            }
 
             case PFX_EXTRA_SKIP: {
                 uint64_t need = G_monero_vstate.prefix_off_remaining;

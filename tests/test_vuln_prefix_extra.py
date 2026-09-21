@@ -17,6 +17,8 @@ Covered:
   * integrated (encrypted) payment ID nonce  -> tag 0x02, 9-byte, accepted
   * long (unencrypted) payment ID nonce      -> tag 0x02, 33-byte, refused
   * tx_extra padding                         -> tag 0x00 + trailing zeros
+  * padding whose run is not all zeros       -> refused
+  * an unknown tx_extra tag                  -> refused
   * multi-destination (3 outputs)            -> larger vout walk
   * subaddress additional tx pubkeys         -> tag 0x04 (checked vs ADDK)
 
@@ -32,7 +34,8 @@ from ragger.error import ExceptionRAPDU
 from monero_client.monero_cmd import MoneroCmd
 from monero_client.monero_types import SigType
 from monero_client.utils.tx_prefix import build_tx_prefix_outkeys
-from monero_client.status_words import SW_SECURITY_PAYMENT_ID
+from monero_client.status_words import (SW_SECURITY_PAYMENT_ID,
+                                        SW_WRONG_DATA)
 
 # The device now requires the prefix to carry the encrypted payment ID it made
 # itself, so a test that streams one has to ask for it first.
@@ -81,6 +84,26 @@ def _stream_prefix(monero: MoneroCmd, device, test_name: str,
     return monero.prefix_hash_update(index=1, payload=prefix, is_last=True)
 
 
+def _stream_prefix_chunked(monero: MoneroCmd, device, test_name: str,
+                           tx_pub_key: bytes, eph_keys,
+                           extra_suffix: bytes, chunk: int = 200):
+    """_stream_prefix for a prefix too long for one APDU.
+
+    The dispatcher wants p2 to run 1, 2, 3 (monero_dispatch.c:316-328), and the
+    parser is resumable, which is what makes splitting legal."""
+    prefix = build_tx_prefix_outkeys(
+        vout_keys=eph_keys, tx_pubkey=tx_pub_key, extra_suffix=extra_suffix,
+    )
+    monero.prefix_hash_init(test_name, device, navigator=None, version=0,
+                            timelock=0)
+    parts = [prefix[o:o + chunk] for o in range(0, len(prefix), chunk)]
+    out = b""
+    for index, part in enumerate(parts, start=1):
+        out = monero.prefix_hash_update(index=index, payload=part,
+                                        is_last=(index == len(parts)))
+    return out
+
+
 # tx_extra nonce sub-tags (cryptonote_basic/tx_extra.h)
 _NONCE_ENCRYPTED_PAYMENT_ID = b"\x01"   # + 8 bytes
 _NONCE_PAYMENT_ID = b"\x00"             # + 32 bytes
@@ -90,6 +113,177 @@ def _nonce_field(content: bytes) -> bytes:
     """TX_EXTRA_NONCE (0x02) || varint(len) || content. len < 128 -> 1 byte."""
     assert len(content) < 128
     return b"\x02" + bytes([len(content)]) + content
+
+
+# --- V-078: what monero-core's own parser accepts -------------------------
+#
+# tx_extra.h:55-72 deserializes padding by reading to the end of extra and
+# failing on the first non-zero byte, with at most TX_EXTRA_PADDING_MAX_COUNT
+# (255) bytes counting the tag. An unknown tag has no variant entry, so
+# do_serialize fails. cryptonote_format_utils.cpp:580 stops at the first bad
+# field and returns false.
+#
+# Only the shapes these tests send are covered; it is a differential oracle,
+# not a second implementation of the wallet.
+
+_PADDING_MAX_COUNT = 255
+
+
+def _reference_parse_extra(extra: bytes) -> bool:
+    """True when monero-core would parse the whole blob."""
+    i = 0
+    while i < len(extra):
+        tag = extra[i]
+        i += 1
+        if tag == 0x00:                                 # padding, to the end
+            run = 1
+            while i < len(extra):
+                if extra[i] != 0:
+                    return False
+                i += 1
+                run += 1
+                if run > _PADDING_MAX_COUNT:
+                    return False
+            return True
+        if tag == 0x01:                                 # main tx public key
+            if len(extra) - i < 32:
+                return False
+            i += 32
+        elif tag == 0x02:                               # nonce
+            if i >= len(extra) or extra[i] >= 128:
+                return False
+            length = extra[i]
+            i += 1
+            if len(extra) - i < length:
+                return False
+            i += length
+        elif tag == 0x04:                               # additional pub keys
+            if i >= len(extra) or extra[i] >= 128:
+                return False
+            count = extra[i]
+            i += 1
+            if len(extra) - i < count * 32:
+                return False
+            i += count * 32
+        else:                                           # no variant entry
+            return False
+    return True
+
+
+def _extra_blob(tx_pub_key: bytes, suffix: bytes) -> bytes:
+    """The extra build_tx_prefix_outkeys emits for these tests: 0x01 || R."""
+    return b"\x01" + tx_pub_key + suffix
+
+
+# A padding tag whose run is not all zeros, and a tag no wallet defines.
+_PADDING_WITH_GARBAGE = b"\x00\x00\x00\x00\xff\x00\x00\x00"
+_UNKNOWN_TAG_FIELD = b"\x7f" + b"\xde\xad\xbe\xef\xde\xad\xbe\xef"
+
+
+@pytest.mark.incremental
+class TestExtraCanonicalDifferential:
+    """No device. The reference rules these two shapes break, and the legal
+    padding they are compared against."""
+
+    @staticmethod
+    def test_reference_refuses_what_the_device_takes(monero: MoneroCmd):
+        r = b"\x11" * 32
+        assert _reference_parse_extra(_extra_blob(r, b"\x00" * 8)), \
+            "all-zero padding is legal and must stay accepted"
+        assert not _reference_parse_extra(_extra_blob(r, _PADDING_WITH_GARBAGE)), \
+            "a non-zero byte in the padding run fails tx_extra.h:67"
+        assert not _reference_parse_extra(_extra_blob(r, _UNKNOWN_TAG_FIELD)), \
+            "an unknown tag has no variant entry"
+        assert not _reference_parse_extra(_extra_blob(r, b"\x00" * 300)), \
+            "a padding run over 255 bytes fails tx_extra.h:71"
+
+
+@pytest.mark.incremental
+class TestExtraNonZeroPadding:
+    """
+    The padding case used to consume the rest of extra without looking at it.
+    A run that is not all zeros is what the wallet parser refuses first, so the
+    device has to refuse it too rather than sign past it.
+    """
+
+    @staticmethod
+    def test_non_zero_padding_refused(monero: MoneroCmd, device,
+                                      test_name: str):
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
+        with pytest.raises(ExceptionRAPDU) as exc:
+            _stream_prefix(monero, device, test_name, tx_pub_key, eph,
+                           _PADDING_WITH_GARBAGE)
+        assert exc.value.status == SW_WRONG_DATA, (
+            "expected %#06x for a non-zero padding byte, got %#06x"
+            % (SW_WRONG_DATA, exc.value.status))
+
+
+@pytest.mark.incremental
+class TestExtraOverlongPadding:
+    """
+    tx_extra.h:71 caps a padding field at 255 bytes including the tag, so 254
+    zeros is the most that parses. One more has to be refused.
+    """
+
+    @staticmethod
+    def test_overlong_padding_refused(monero: MoneroCmd, device,
+                                      test_name: str):
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
+        with pytest.raises(ExceptionRAPDU) as exc:
+            _stream_prefix_chunked(monero, device, test_name, tx_pub_key, eph,
+                                   b"\x00" * 256)
+        assert exc.value.status == SW_WRONG_DATA, (
+            "expected %#06x for an over-long padding run, got %#06x"
+            % (SW_WRONG_DATA, exc.value.status))
+
+
+@pytest.mark.incremental
+class TestExtraUnknownTag:
+    """
+    An unrecognised tag took the same path as padding, so the rest of extra was
+    skipped rather than refused. The wallet parser has no variant for it and
+    stops there, so a real signature must not reach past it.
+    """
+
+    @staticmethod
+    def test_unknown_tag_refused(monero: MoneroCmd, device, test_name: str):
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
+        with pytest.raises(ExceptionRAPDU) as exc:
+            _stream_prefix(monero, device, test_name, tx_pub_key, eph,
+                           _UNKNOWN_TAG_FIELD)
+        assert exc.value.status == SW_WRONG_DATA, (
+            "expected %#06x for an unknown tx_extra tag, got %#06x"
+            % (SW_WRONG_DATA, exc.value.status))
+
+
+@pytest.mark.skip(reason="Shows what the parser took before the canonical "
+                         "padding and unknown-tag rules; passes only on a "
+                         "build without them.")
+@pytest.mark.incremental
+class TestExtraCanonicalVuln:
+    """Both shapes reaching prefixH, kept reproducible on an unfixed build."""
+
+    @staticmethod
+    def test_non_zero_padding_was_accepted(monero: MoneroCmd, device,
+                                           test_name: str):
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
+        h = _stream_prefix(monero, device, test_name, tx_pub_key, eph,
+                           _PADDING_WITH_GARBAGE)
+        assert len(h) == 32
+        assert not _reference_parse_extra(
+            _extra_blob(tx_pub_key, _PADDING_WITH_GARBAGE)), \
+            "the device signed an extra the wallet parser rejects"
+
+    @staticmethod
+    def test_unknown_tag_was_accepted(monero: MoneroCmd, device,
+                                      test_name: str):
+        tx_pub_key, eph, _ = _open_and_genkeys(monero, n_outputs=2)
+        h = _stream_prefix(monero, device, test_name, tx_pub_key, eph,
+                           _UNKNOWN_TAG_FIELD)
+        assert len(h) == 32
+        assert not _reference_parse_extra(
+            _extra_blob(tx_pub_key, _UNKNOWN_TAG_FIELD)), \
+            "the device signed an extra the wallet parser rejects"
 
 
 @pytest.mark.incremental
