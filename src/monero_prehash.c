@@ -54,6 +54,9 @@ int monero_apdu_mlsag_prehash_init() {
         if (fee_off + fee_len != G_monero_vstate.io_length) {
             return SW_WRONG_DATA;
         }
+        /* The wallet sets this bit when pseudoOuts follow the fee. */
+        G_monero_vstate.tx_prehash_more =
+            (G_monero_vstate.options & IN_OPTION_MORE_COMMAND) ? 1 : 0;
 
         error = monero_sha256_outkeys_final(G_monero_vstate.OUTK);
         if (error) {
@@ -65,6 +68,16 @@ int monero_apdu_mlsag_prehash_init() {
         if (error) {
             return error;
         }
+        /* Build the review string from the fee that was just decoded, and
+         * before anything is hashed. Re-decoding the bytes capped the width at
+         * 8, so a nine-byte fee left the previous transaction's amount on
+         * screen while this one went into the prehash. */
+        error = monero_amount2str(fee, G_monero_vstate.ux_amount,
+                                  sizeof(G_monero_vstate.ux_amount));
+        if (error) {
+            return error;
+        }
+
         error = monero_keccak_update_H(
             G_monero_vstate.io_buffer + G_monero_vstate.io_offset, 1 + fee_len);
         if (error) {
@@ -72,10 +85,6 @@ int monero_apdu_mlsag_prehash_init() {
         }
         // skip type
         monero_io_fetch_u8();
-        // fee str
-        monero_vamount2str(
-            G_monero_vstate.io_buffer + G_monero_vstate.io_offset,
-            G_monero_vstate.ux_amount, 15);
 
         snprintf(G_monero_vstate.ux_amount + strlen(G_monero_vstate.ux_amount),
                  sizeof(G_monero_vstate.ux_amount) -
@@ -85,6 +94,21 @@ int monero_apdu_mlsag_prehash_init() {
         monero_io_discard(1);
         ui_menu_fee_validation_display(0);
         return 0;
+    }
+
+    if (G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        /* Past the fee, each step carries one 32-byte pseudoOut and nothing
+         * reviews it, so take exactly what the wallet sends and stop when it
+         * says it is done. Otherwise host bytes reach the prehash unparsed. */
+        if (!G_monero_vstate.tx_prehash_more) {
+            return SW_SUBCOMMAND_NOT_ALLOWED;
+        }
+        if ((G_monero_vstate.io_length - G_monero_vstate.io_offset) !=
+            KEY_SIZE) {
+            return SW_WRONG_LENGTH;
+        }
+        G_monero_vstate.tx_prehash_more =
+            (G_monero_vstate.options & IN_OPTION_MORE_COMMAND) ? 1 : 0;
     }
 
     error = monero_keccak_update_H(

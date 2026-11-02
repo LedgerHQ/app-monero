@@ -8,6 +8,10 @@ void stub_crypto_reset(void);
 extern int stub_crypto_fail_scalar_mult;
 extern int stub_crypto_fail_addm;
 
+/* One knob per way the SDK can report the identity: an error, or an encoding. */
+extern int stub_crypto_infinite_add_point;
+extern int stub_crypto_identity_compress;
+
 /* Set when an SDK call was handed a NULL destination. The real SDK writes
  * regardless; these stubs skip the write so the suite survives, which would
  * otherwise make a missing pointer check look tested. Assert this is clear. */

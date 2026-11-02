@@ -83,6 +83,7 @@ int monero_reset_tx(int reset_tx_cnt) {
                    sizeof(G_monero_vstate.tx_payment_id_nonce));
     explicit_bzero(G_monero_vstate.tx_payment_id,
                    sizeof(G_monero_vstate.tx_payment_id));
+    G_monero_vstate.tx_prehash_more = 0;
     explicit_bzero(G_monero_vstate.tx_payment_id_pub,
                    sizeof(G_monero_vstate.tx_payment_id_pub));
     explicit_bzero(G_monero_vstate.prefixH, sizeof(G_monero_vstate.prefixH));

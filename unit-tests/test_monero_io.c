@@ -388,6 +388,182 @@ static void test_fetch_takes_exactly_what_remains(void) {
     TEST_ASSERT_TRUE(guard_intact(b.guard));
 }
 
+/* ------------------------------------------ handle format */
+
+/* A handle is 32 bytes and the wallet carries no tag beside one, so the fix
+ * cannot add integrity. What it adds is diffusion: a handle is two CBC passes
+ * with the halves swapped between them, so one spliced from two others no
+ * longer hands back a half of either.
+ *
+ * One format for every handle. An earlier version chose per instruction, to
+ * keep handles in old wallet caches readable, and that was wrong: the wallet
+ * reads a handle minted inside a transaction from outside one, in the sanity
+ * check it runs after every send.
+ *
+ * None of this is reachable from a functional test: DEBUG=1 builds define
+ * IODUMMYCRYPT, so the device the ragger suite drives never runs the AES path.
+ * That is why this file is the only guard on it.
+ */
+
+static const unsigned char PLAIN_A[32] = {
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+    0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
+    0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x03};
+static const unsigned char PLAIN_B[32] = {
+    0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b,
+    0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96,
+    0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f, 0x04};
+
+/* insert_encrypt kills the app on failure, which is a longjmp here, so a mint
+ * runs under the jump target. */
+static int mint(unsigned char handle[32], const unsigned char plain[32],
+                unsigned int ins, int in_tx) {
+    if (setjmp(stub_kill_jmp) != 0) {
+        return 0;
+    }
+    G_monero_vstate.tx_in_progress = in_tx;
+    G_monero_vstate.io_ins = ins;
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 0;
+    monero_io_insert_encrypt((unsigned char *) plain, 32, TYPE_SCALAR);
+    memcpy(handle, G_monero_vstate.io_buffer, 32);
+    return 1;
+}
+
+static int redeem(unsigned char plain[32], const unsigned char handle[32],
+                  unsigned int ins) {
+    if (setjmp(stub_kill_jmp) != 0) {
+        return -1;
+    }
+    memcpy(G_monero_vstate.io_buffer, handle, 32);
+    G_monero_vstate.tx_in_progress = 0;
+    G_monero_vstate.io_ins = ins;
+    G_monero_vstate.io_offset = 0;
+    G_monero_vstate.io_length = 32;
+    return monero_io_fetch_decrypt(plain, 32, TYPE_SCALAR);
+}
+
+static int bits_differing(const unsigned char *a, const unsigned char *b,
+                          size_t len) {
+    int n = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        for (int bit = 0; bit < 8; bit++) {
+            if (((a[i] ^ b[i]) >> bit) & 1) {
+                n++;
+            }
+        }
+    }
+    return n;
+}
+
+/* The venue itself. Every claim below rests on the stub cipher behaving like a
+ * block cipher, so that is checked rather than assumed. */
+static void test_the_stub_cipher_diffuses(void) {
+    unsigned char in[16] = {0};
+    unsigned char a[16];
+    unsigned char b[16];
+    unsigned char back[16];
+    size_t len = sizeof(a);
+
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_ENCRYPT, in,
+                                                 sizeof(in), a, &len));
+    in[0] ^= 1;
+    len = sizeof(b);
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_ENCRYPT, in,
+                                                 sizeof(in), b, &len));
+    TEST_ASSERT_GREATER_THAN_INT_MESSAGE(
+        40, bits_differing(a, b, sizeof(a)),
+        "the stub cipher does not diffuse, so the tests below prove nothing");
+
+    len = sizeof(back);
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_DECRYPT, b,
+                                                 sizeof(b), back, &len));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(in, back, sizeof(in));
+}
+
+static void test_a_handle_round_trips(void) {
+    unsigned char handle[32];
+    unsigned char out[32];
+
+    TEST_ASSERT_TRUE(mint(handle, PLAIN_A, INS_SECRET_SCAL_MUL_BASE, 0));
+    TEST_ASSERT_EQUAL_INT(0, redeem(out, handle, INS_SECRET_SCAL_MUL_BASE));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(PLAIN_A, out, 32);
+}
+
+/* The leak, on CBC itself. One pass leaves the first plaintext block a
+ * function of the first ciphertext block alone, so a splice hands back the low
+ * half of whichever handle supplied it. This is why one pass is not enough. */
+static void test_a_single_cbc_pass_hands_back_a_half(void) {
+    unsigned char ca[32];
+    unsigned char cb[32];
+    unsigned char spliced[32];
+    unsigned char out[32];
+    size_t len = 32;
+
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_ENCRYPT, PLAIN_A, 32,
+                                                 ca, &len));
+    len = 32;
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_ENCRYPT, PLAIN_B, 32,
+                                                 cb, &len));
+    memcpy(spliced, ca, 16);
+    memcpy(spliced + 16, cb + 16, 16);
+
+    len = 32;
+    TEST_ASSERT_EQUAL_INT(CX_OK, cx_aes_no_throw(NULL, CX_DECRYPT, spliced, 32,
+                                                 out, &len));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(PLAIN_A, out, 16,
+                                         "expected the low half to leak");
+}
+
+/* And closed. Two passes make both plaintext halves depend on both ciphertext
+ * blocks, so the same splice yields neither half of either source. */
+static void test_a_two_pass_splice_hands_back_neither_half(void) {
+    unsigned char ha[32];
+    unsigned char hb[32];
+    unsigned char spliced[32];
+    unsigned char out[32];
+
+    TEST_ASSERT_TRUE(mint(ha, PLAIN_A, INS_SECRET_SCAL_MUL_BASE, 0));
+    TEST_ASSERT_TRUE(mint(hb, PLAIN_B, INS_SECRET_SCAL_MUL_BASE, 0));
+    memcpy(spliced, ha, 16);
+    memcpy(spliced + 16, hb + 16, 16);
+
+    TEST_ASSERT_EQUAL_INT(0, redeem(out, spliced, INS_SECRET_SCAL_MUL_BASE));
+    TEST_ASSERT_TRUE_MESSAGE(memcmp(out, PLAIN_A, 16) != 0,
+                             "low half of the first source leaked");
+    TEST_ASSERT_TRUE_MESSAGE(memcmp(out + 16, PLAIN_A + 16, 16) != 0,
+                             "high half of the first source leaked");
+    TEST_ASSERT_TRUE_MESSAGE(memcmp(out, PLAIN_B, 16) != 0,
+                             "low half of the second source leaked");
+    TEST_ASSERT_TRUE_MESSAGE(memcmp(out + 16, PLAIN_B + 16, 16) != 0,
+                             "high half of the second source leaked");
+}
+
+/* The regression that reached a real wallet. wallet2 runs a sanity check after
+ * every send: it asks for a transaction proof, which feeds the tx-secret handle
+ * minted inside the transaction to INS_SECRET_SCAL_MUL_KEY from outside one
+ * (wallet2.cpp:12991). While the format depended on the instruction, that
+ * handle came back as garbage and every send with change failed. */
+static void test_a_transaction_handle_redeems_outside_a_transaction(void) {
+    unsigned char handle[32];
+    unsigned char out[32];
+
+    TEST_ASSERT_TRUE(mint(handle, PLAIN_A, INS_OPEN_TX, 1));
+    TEST_ASSERT_EQUAL_INT(0, redeem(out, handle, INS_SECRET_SCAL_MUL_KEY));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(PLAIN_A, out, 32);
+}
+
+/* And the other direction, which the same mistake would have broken. */
+static void test_a_plain_handle_redeems_inside_a_transaction(void) {
+    unsigned char handle[32];
+    unsigned char out[32];
+
+    TEST_ASSERT_TRUE(mint(handle, PLAIN_A, INS_SECRET_SCAL_MUL_KEY, 0));
+    TEST_ASSERT_EQUAL_INT(0, redeem(out, handle, INS_GET_TX_PROOF));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(PLAIN_A, out, 32);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_matching_length_is_accepted);
@@ -398,6 +574,12 @@ int main(void) {
     RUN_TEST(test_more_arrived_than_declared_is_refused);
     RUN_TEST(test_fetch_decrypt_key_rejects_a_short_buffer);
     RUN_TEST(test_fetch_decrypt_key_accepts_a_full_buffer);
+    RUN_TEST(test_the_stub_cipher_diffuses);
+    RUN_TEST(test_a_handle_round_trips);
+    RUN_TEST(test_a_single_cbc_pass_hands_back_a_half);
+    RUN_TEST(test_a_two_pass_splice_hands_back_neither_half);
+    RUN_TEST(test_a_transaction_handle_redeems_outside_a_transaction);
+    RUN_TEST(test_a_plain_handle_redeems_inside_a_transaction);
     RUN_TEST(test_io_hole_refuses_a_wrapping_size);
     RUN_TEST(test_io_hole_still_takes_a_normal_size);
     RUN_TEST(test_io_inserted_refuses_growth_past_capacity);
