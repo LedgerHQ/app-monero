@@ -84,8 +84,9 @@ def _send_during_review(backend: BackendInterface, apdu: bytes,
     """Send `apdu` while a review is pending, in a daemon thread, and observe the
     device. Returns ``(sw, processed)``:
 
-      * ``(sw, False)``: the device ANSWERED (a fixed build's gate replies 0x6980
-        and then exits to the dashboard).
+      * ``(sw, False)``: the device ANSWERED (a fixed build replies
+        SWO_COMMAND_NOT_ACCEPTED from the SDK lock, or SW_COMMAND_NOT_ALLOWED from
+        the app gate, which then exits to the dashboard).
       * ``(None, True)``: the exchange blocked AND ``review_marker`` is gone from
         screen — a vulnerable build dispatched the APDU and moved on to the
         injected output's own deferred review; caller must FAIL.
@@ -116,7 +117,7 @@ def _send_during_review(backend: BackendInterface, apdu: bytes,
 _NOT_DELIVERED_SKIP = ("the concurrent APDU was not delivered to the device — the ragger speculos "
                        "client serialized it behind the pending review's deferred reply. This "
                        "happens with ragger < 1.45.2; use ragger >= 1.45.2 (pinned in "
-                       "tests/requirements.txt) so the 0x6980 rejection can be verified.")
+                       "tests/requirements.txt) so the rejection can be verified.")
 
 # Title shown on the FIRST page of the real review flow
 # (start_signature -> nbgl_useCaseReview, finishTitle "Sign transaction?" is only
@@ -427,14 +428,16 @@ class TestNanoReviewCannotBeSkipped:
     review — the 'skip all reviews' attack can't even begin.
 
     This test holds the device on the fee review and shows the very next signing
-    step (an output) is rejected with 0x6980, after which the app exits
+    step (an output) is rejected: SWO_COMMAND_NOT_ACCEPTED from the SDK lock, or
+    SW_COMMAND_NOT_ALLOWED from the app gate, after which the app exits
     (fail-closed). (The app-side user_approved_tx gate, verified for NBGL in
     TestNbglReviewEnforced, is belt-and-suspenders here since the IO gate already
     blocks reaching finalize unreviewed.)
 
-    Hardware cleanup: the injection makes the app exit, so the device returns to
-    the dashboard on its own — no manual Reject needed. Invisible on speculos
-    (torn down per class)."""
+    Hardware cleanup: after SW_COMMAND_NOT_ALLOWED the app exits, so the device
+    returns to the dashboard on its own. After SWO_COMMAND_NOT_ACCEPTED the fee
+    review stays on screen and needs a manual Reject. Invisible on speculos (torn
+    down per class)."""
 
     _V = TestNbglReviewSkippedVuln
 
@@ -495,11 +498,11 @@ class TestNanoReviewCannotBeSkipped:
             f"expected the review to be mandatory (reject one of "
             f"{[hex(c) for c in SW_REFUSED_MID_REVIEW]}), got {sw:#06x}"
         )
-        # Either code means "rejected"; 0x6980 additionally means the app exited
-        # fail-closed via send_error_and_kill_app, while the SDK's 0x6901 answers
-        # without exiting. We can't probe the screen afterwards:
+        # Either code means "rejected"; SW_COMMAND_NOT_ALLOWED additionally means
+        # the app exited fail-closed via send_error_and_kill_app, while the SDK's
+        # SWO_COMMAND_NOT_ACCEPTED answers without exiting. We can't probe the
+        # screen afterwards:
         # on speculos app_exit() tears the emulator down, on hardware it returns to
         # the dashboard.
         print("\n[FIXED on BAGL] the host cannot advance past an unacknowledged "
-              f"review: the next signing step was rejected with {SW_COMMAND_NOT_ALLOWED:#06x} "
-              "and the app exited.")
+              f"review: the next signing step was rejected with {sw:#06x}.")

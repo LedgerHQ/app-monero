@@ -30,13 +30,15 @@ APDU, so the test skips rather than false-pass). Coverage:
     TestAsyncReviewLocked (fix check: asserts the injection is refused).
   * BAGL (Nano S+/X): TestAsyncReviewLockedNano -- same check via the fee review.
 
-The fix verified here is the local app-side gate (app_main + monero_io_do), not
-the SDK consent-lock: a command arriving mid-review is answered with
-SW_COMMAND_NOT_ALLOWED (0x6980) and the app exits to the dashboard (fail-closed),
-so the review is torn down rather than kept on screen.
+Two layers can refuse a command arriving mid-review, and the tests accept either.
+The SDK consent-lock answers SWO_COMMAND_NOT_ACCEPTED and keeps the review on
+screen. The local app-side gate (app_main + monero_io_do) answers
+SW_COMMAND_NOT_ALLOWED and the app exits to the dashboard (fail-closed).
+When the app is built against an SDK with the lock, the SDK answers first.
 
-Hardware note: on a fixed build the injection makes the app exit, so the device
-returns to the dashboard on its own -- no manual Reject needed.
+Hardware note: after SW_COMMAND_NOT_ALLOWED the device returns to the dashboard on
+its own; after SWO_COMMAND_NOT_ACCEPTED the review stays on screen and needs a
+manual Reject.
 (Invisible on speculos -- the emulator is torn down per class.)
 
 Run:  pytest tests/test_vuln_nbgl_review_toctou.py -v --device flex  (or nanosp / nanox)
@@ -150,8 +152,9 @@ def _inject_during_review(backend: BackendInterface, apdu: bytes,
     """Send `apdu` while a review is pending (a prior reply is deferred), in a
     daemon thread, and observe how the device reacts. Returns ``(sw, processed)``:
 
-      * ``sw`` (int): the device ANSWERED. A fixed build's IO gate replies
-        SW_COMMAND_NOT_ALLOWED (0x6980) and then exits to the dashboard; an
+      * ``sw`` (int): the device ANSWERED. A fixed build replies
+        SWO_COMMAND_NOT_ACCEPTED from the SDK lock, or SW_COMMAND_NOT_ALLOWED from
+        the app gate, which then exits to the dashboard; an
         NBGL-vulnerable build auto-confirms the injected output and replies
         0x9000. ``processed`` is False.
       * ``(None, True)``: the exchange BLOCKED *and* ``review_marker`` is no longer
@@ -191,7 +194,7 @@ def _inject_during_review(backend: BackendInterface, apdu: bytes,
 _NOT_DELIVERED_SKIP = ("the concurrent injection was not delivered to the device — the ragger "
                        "speculos client serialized it behind the pending review's deferred reply. "
                        "This happens with ragger < 1.45.2; use ragger >= 1.45.2 (pinned in "
-                       "tests/requirements.txt) so the 0x6980 rejection can be verified.")
+                       "tests/requirements.txt) so the rejection can be verified.")
 
 
 @pytest.mark.skip(reason="Demonstrates the (now-fixed) async TOCTOU; passes only on a "
@@ -346,12 +349,14 @@ class TestAsyncReviewLocked:
     armed when a command is received, cleared by monero_io_do when its reply is sent.
     A command that arrives while a confirmation is on screen (reply still owed) is
     refused by send_error_and_kill_app(SW_COMMAND_NOT_ALLOWED) -- the app answers
-    0x6980 and then app_exit()s (fail-closed), so the review is torn down rather
+    and then app_exit()s (fail-closed), so the review is torn down rather
     than kept on screen (the difference from the SDK lock).
 
-    The test asserts the injection is answered with 0x6980, which is emitted only
-    by that kill path. The torn-down screen can't be asserted directly: on
-    speculos app_exit() stops the emulator, on hardware it returns to the dashboard.
+    The test asserts the injection is answered with SW_COMMAND_NOT_ALLOWED (emitted
+    only by that kill path) or with the SDK lock's SWO_COMMAND_NOT_ACCEPTED, which
+    pre-empts the app gate when the SDK has the lock. The torn-down screen can't be
+    asserted directly: on speculos app_exit() stops the emulator, on hardware it
+    returns to the dashboard.
 
     The honest review->confirm->finalize path is unaffected and is covered by the
     regression suite (e.g. tests/test_sig_real_simple.py)."""
@@ -413,8 +418,8 @@ class TestAsyncReviewLocked:
                                   payload=_output_payload(s, state["ak"][0][0], state["bm"][0][0],
                                                           state["ba"][0][0], is_change=False))
         # NBGL: a vulnerable build auto-confirms the injected MORE-output and
-        # answers 0x9000 immediately (no review), so an answered SW that is not
-        # 0x6980 is the vulnerability.
+        # answers 0x9000 immediately (no review), so an answered SW outside
+        # SW_REFUSED_MID_REVIEW is the vulnerability.
         sw, _ = _inject_during_review(backend, injected_apdu)
         if sw is None:
             pytest.skip(_NOT_DELIVERED_SKIP)
@@ -424,15 +429,14 @@ class TestAsyncReviewLocked:
             f"(0x9000 = injection accepted = vulnerable)"
         )
 
-        # Either code means "rejected". 0x6980 also means the app exited
-        # fail-closed (review torn down, tx not mutated); the SDK's 0x6901 --
-        # the visible difference from the SDK lock, which keeps the review on
-        # screen. We can't probe the screen afterwards: on speculos app_exit()
-        # tears the emulator down (its HTTP API goes away), and on hardware it
-        # returns to the dashboard.
+        # Either code means "rejected" and the tx was not mutated.
+        # SW_COMMAND_NOT_ALLOWED also means the app exited fail-closed (review torn
+        # down); the SDK's SWO_COMMAND_NOT_ACCEPTED keeps the review on screen. We
+        # can't probe the screen after an exit: on speculos app_exit() tears the
+        # emulator down (its HTTP API goes away), and on hardware it returns to the
+        # dashboard.
         print("\n[FIXED] mid-review injection rejected with "
-              f"{SW_COMMAND_NOT_ALLOWED:#06x}; the app exited fail-closed and the "
-              "transaction was not mutated.")
+              f"{sw:#06x}; the transaction was not mutated.")
 
 
 @pytest.mark.incremental
@@ -447,8 +451,9 @@ class TestAsyncReviewLockedNano:
 
     Here we hold the device on the *fee* review (the first blocking review on
     BAGL) and inject an output (INS_VALIDATE/P1=2). That output would fold a new
-    destination into the prehash; it must be rejected with 0x6980 and the app must
-    exit (fail-closed), tearing down the review."""
+    destination into the prehash; it must be rejected, with SWO_COMMAND_NOT_ACCEPTED
+    from the SDK lock or with SW_COMMAND_NOT_ALLOWED from the app gate, after which
+    the app exits (fail-closed)."""
 
     @staticmethod
     @pytest.fixture(autouse=True, scope="class")
@@ -481,7 +486,8 @@ class TestAsyncReviewLockedNano:
         assert backend.compare_screen_with_text("Fee"), "expected the fee review on screen"
 
         # Inject an output update while the fee review is pending.
-        # On a fixed build the app gate rejects it (0x6980) and the app exits.
+        # On a fixed build the SDK lock (SWO_COMMAND_NOT_ACCEPTED) or the app gate
+        # (SW_COMMAND_NOT_ALLOWED) rejects it.
         # On a VULNERABLE BAGL build there is no gate: the output is dispatched, the
         # app shows the injected output's OWN blocking review and defers — so the
         # exchange blocks AND the fee review is replaced. _inject_during_review tells
@@ -499,8 +505,8 @@ class TestAsyncReviewLockedNano:
             f"expected the injection to be rejected with one of "
             f"{[hex(c) for c in SW_REFUSED_MID_REVIEW]}, got {sw:#06x}"
         )
-        # As on NBGL, either code means rejected; 0x6980 also means the app
-        # exited fail-closed. We can't probe the screen after an exit -- speculos
-        # tears the emulator down, hardware returns to the dashboard.
+        # As on NBGL, either code means rejected; SW_COMMAND_NOT_ALLOWED also means
+        # the app exited fail-closed. We can't probe the screen after an exit --
+        # speculos tears the emulator down, hardware returns to the dashboard.
         print("\n[FIXED on BAGL] output injected during the fee review was "
               f"rejected with {sw:#06x}; tx not mutated.")
