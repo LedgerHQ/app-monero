@@ -20,12 +20,19 @@
 
 monero_v_state_t G_monero_vstate;
 
+static unsigned int inserted;
+
 static monero_nv_state_t nv_storage;
 extern const monero_nv_state_t N_state_pic __attribute__((alias("nv_storage")));
 
 void stub_blind_reset(void) {
     memset(&G_monero_vstate, 0, sizeof(G_monero_vstate));
     memset(&nv_storage, 0, sizeof(nv_storage));
+    inserted = 0;
+}
+
+unsigned int stub_blind_inserted(void) {
+    return inserted;
 }
 
 void __attribute__((noreturn)) send_error_and_kill_app(int sw) {
@@ -90,7 +97,8 @@ int monero_addm(unsigned char* r, unsigned char* a, unsigned char* b,
     return 0;
 }
 
-/* The io layer: linked, not exercised. */
+/* The io layer: fetches give zeros, decrypt succeeds as the real one does, and
+ * inserts are only counted. */
 void monero_io_discard(int clear) { (void) clear; }
 
 int monero_io_fetch(unsigned char* buffer, int len) {
@@ -101,10 +109,22 @@ int monero_io_fetch(unsigned char* buffer, int len) {
 int monero_io_fetch_decrypt(unsigned char* buffer, size_t len, int type) {
     (void) type;
     memset(buffer, 0, len);
-    return len;
+    return 0;
 }
 
 void monero_io_insert(unsigned char const* buff, unsigned int len) {
     (void) buff;
-    (void) len;
+    inserted += len;
+}
+
+/* The SDK's constant-time compare: zero when equal. */
+char os_secure_memcmp(const void *src1, const void *src2, size_t length) {
+    const unsigned char *a = src1;
+    const unsigned char *b = src2;
+    unsigned char acc = 0;
+
+    for (size_t i = 0; i < length; i++) {
+        acc |= a[i] ^ b[i];
+    }
+    return acc;
 }
