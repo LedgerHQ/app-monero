@@ -107,12 +107,14 @@ static void ui_menu_validation_action(bool value) {
     }
 }
 
-static void add_amount(const char* title, bool forcePageStart) {
+/* The row helpers return false once they have refused the transaction: the
+ * refusal is the reply, so the caller must stop there. */
+static bool add_amount(const char* title, bool forcePageStart) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
     if ((transactionContext.amountNum >= MAX_AMOUNT_NUMBER) ||
         (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
-        return;
+        return false;
     }
 
     strncpy(transactionContext.amountBuffer[transactionContext.amountNum],
@@ -131,15 +133,16 @@ static void add_amount(const char* title, bool forcePageStart) {
 
     transactionContext.tagValueList.nbPairs++;
     transactionContext.amountNum++;
+    return true;
 }
 
-static void add_address(void) {
+static bool add_address(void) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
 
     if ((transactionContext.addrNum >= MAX_ADDR_NUMBER) ||
         (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
-        return;
+        return false;
     }
 
     strncpy(transactionContext.dstBuffer[transactionContext.addrNum],
@@ -153,6 +156,7 @@ static void add_address(void) {
 
     transactionContext.tagValueList.nbPairs++;
     transactionContext.addrNum++;
+    return true;
 }
 
 /* ------------------------------- OPEN TX UX ------------------------------- */
@@ -230,7 +234,9 @@ static void start_signature(void) {
 
 void ui_menu_fee_validation_display(unsigned int value
                                     __attribute__((unused))) {
-    add_amount(feeTitle, false);
+    if (!add_amount(feeTitle, false)) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
@@ -240,13 +246,17 @@ static char changeTitleBuf[AMOUNT_TITLE_LENGTH];
 
 void ui_menu_change_validation_display(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
-    add_amount(changeTitleBuf, false);
+    if (!add_amount(changeTitleBuf, false)) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_change_validation_display_last(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
-    add_amount(changeTitleBuf, true);
+    if (!add_amount(changeTitleBuf, true)) {
+        return;
+    }
     start_signature();
 }
 
@@ -267,15 +277,17 @@ void ui_menu_timelock_validation_display(unsigned int value
 /* ---------------------- USER DEST/AMOUNT VALIDATION ----------------------- */
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
-    add_amount(amountTitle, true);
-    add_address();
+    if (!add_amount(amountTitle, true) || !add_address()) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_validation_display_last(unsigned int value
                                      __attribute__((unused))) {
-    add_amount(amountTitle, true);
-    add_address();
+    if (!add_amount(amountTitle, true) || !add_address()) {
+        return;
+    }
     start_signature();
 }
 /* ---------------------------- PUBLIC ADDRESS UX ----------------------------
