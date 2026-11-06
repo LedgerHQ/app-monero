@@ -36,11 +36,15 @@
 #define MAX_TAGVALUE_NUMBER 9
 #define MAX_AMOUNT_NUMBER 6
 #define MAX_ADDR_NUMBER 3  //  MAX_AMOUNT_NUMBER - timelock - fee - change
+#define AMOUNT_TITLE_LENGTH 32
 
 typedef struct {
     nbgl_contentTagValue_t tagValuePair[MAX_TAGVALUE_NUMBER];
     nbgl_contentTagValueList_t tagValueList;
     nbgl_pageInfoLongPress_t infoLongPress;
+    /* Rows are drawn only after the last output, so each keeps its own title:
+     * a shared one would take the last change output's account for all. */
+    char amountTitleBuffer[MAX_AMOUNT_NUMBER][AMOUNT_TITLE_LENGTH];
     char amountBuffer[MAX_AMOUNT_NUMBER][MAX_AMOUNT_LENGTH];
     uint32_t amountNum;
     char dstBuffer[MAX_ADDR_NUMBER][MAX_ADDR_LENGTH];
@@ -113,8 +117,11 @@ static void add_amount(const char* title, bool forcePageStart) {
 
     strncpy(transactionContext.amountBuffer[transactionContext.amountNum],
             G_monero_vstate.ux_amount, MAX_AMOUNT_LENGTH);
+    snprintf(transactionContext.amountTitleBuffer[transactionContext.amountNum],
+             AMOUNT_TITLE_LENGTH, "%s", title);
 
-    transactionContext.tagValuePair[nbPairs].item = title;
+    transactionContext.tagValuePair[nbPairs].item =
+        transactionContext.amountTitleBuffer[transactionContext.amountNum];
     transactionContext.tagValuePair[nbPairs].value =
         transactionContext.amountBuffer[transactionContext.amountNum];
     if (forcePageStart)
@@ -229,7 +236,7 @@ void ui_menu_fee_validation_display(unsigned int value
 
 // value carries the change account index (0 = primary). Surface a non-primary
 // account so a host cannot silently route change to an undisplayed account.
-static char changeTitleBuf[32];
+static char changeTitleBuf[AMOUNT_TITLE_LENGTH];
 
 void ui_menu_change_validation_display(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
