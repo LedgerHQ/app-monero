@@ -349,6 +349,13 @@ int monero_io_fetch_decrypt(unsigned char* buffer, size_t len, int type) {
         if (error) {
             return error;
         }
+        /* The spend key reaches a command only through its placeholder, which
+         * only the commands that need it accept. A handle holding it would
+         * carry it anywhere, such as into the hash that gives the view key. */
+        if (os_secure_memcmp(buffer, G_monero_vstate.b, len) == 0) {
+            explicit_bzero(buffer, len);
+            return SW_WRONG_DATA;
+        }
     }
     G_monero_vstate.io_offset += len;
     if (G_monero_vstate.tx_in_progress) {

@@ -36,11 +36,15 @@
 #define MAX_TAGVALUE_NUMBER 9
 #define MAX_AMOUNT_NUMBER 6
 #define MAX_ADDR_NUMBER 3  //  MAX_AMOUNT_NUMBER - timelock - fee - change
+#define AMOUNT_TITLE_LENGTH 32
 
 typedef struct {
     nbgl_contentTagValue_t tagValuePair[MAX_TAGVALUE_NUMBER];
     nbgl_contentTagValueList_t tagValueList;
     nbgl_pageInfoLongPress_t infoLongPress;
+    /* Rows are drawn only after the last output, so each keeps its own title:
+     * a shared one would take the last change output's account for all. */
+    char amountTitleBuffer[MAX_AMOUNT_NUMBER][AMOUNT_TITLE_LENGTH];
     char amountBuffer[MAX_AMOUNT_NUMBER][MAX_AMOUNT_LENGTH];
     uint32_t amountNum;
     char dstBuffer[MAX_ADDR_NUMBER][MAX_ADDR_LENGTH];
@@ -103,18 +107,23 @@ static void ui_menu_validation_action(bool value) {
     }
 }
 
-static void add_amount(const char* title, bool forcePageStart) {
+/* The row helpers return false once they have refused the transaction: the
+ * refusal is the reply, so the caller must stop there. */
+static bool add_amount(const char* title, bool forcePageStart) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
     if ((transactionContext.amountNum >= MAX_AMOUNT_NUMBER) ||
         (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
-        return;
+        return false;
     }
 
     strncpy(transactionContext.amountBuffer[transactionContext.amountNum],
             G_monero_vstate.ux_amount, MAX_AMOUNT_LENGTH);
+    snprintf(transactionContext.amountTitleBuffer[transactionContext.amountNum],
+             AMOUNT_TITLE_LENGTH, "%s", title);
 
-    transactionContext.tagValuePair[nbPairs].item = title;
+    transactionContext.tagValuePair[nbPairs].item =
+        transactionContext.amountTitleBuffer[transactionContext.amountNum];
     transactionContext.tagValuePair[nbPairs].value =
         transactionContext.amountBuffer[transactionContext.amountNum];
     if (forcePageStart)
@@ -124,15 +133,16 @@ static void add_amount(const char* title, bool forcePageStart) {
 
     transactionContext.tagValueList.nbPairs++;
     transactionContext.amountNum++;
+    return true;
 }
 
-static void add_address(void) {
+static bool add_address(void) {
     uint8_t nbPairs = transactionContext.tagValueList.nbPairs;
 
     if ((transactionContext.addrNum >= MAX_ADDR_NUMBER) ||
         (nbPairs >= MAX_TAGVALUE_NUMBER)) {
         ui_menu_validation_action_cancel();
-        return;
+        return false;
     }
 
     strncpy(transactionContext.dstBuffer[transactionContext.addrNum],
@@ -146,6 +156,7 @@ static void add_address(void) {
 
     transactionContext.tagValueList.nbPairs++;
     transactionContext.addrNum++;
+    return true;
 }
 
 /* ------------------------------- OPEN TX UX ------------------------------- */
@@ -223,23 +234,29 @@ static void start_signature(void) {
 
 void ui_menu_fee_validation_display(unsigned int value
                                     __attribute__((unused))) {
-    add_amount(feeTitle, false);
+    if (!add_amount(feeTitle, false)) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
 // value carries the change account index (0 = primary). Surface a non-primary
 // account so a host cannot silently route change to an undisplayed account.
-static char changeTitleBuf[32];
+static char changeTitleBuf[AMOUNT_TITLE_LENGTH];
 
 void ui_menu_change_validation_display(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
-    add_amount(changeTitleBuf, false);
+    if (!add_amount(changeTitleBuf, false)) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_change_validation_display_last(unsigned int value) {
     monero_format_change_title(changeTitleBuf, sizeof(changeTitleBuf), value);
-    add_amount(changeTitleBuf, true);
+    if (!add_amount(changeTitleBuf, true)) {
+        return;
+    }
     start_signature();
 }
 
@@ -260,15 +277,17 @@ void ui_menu_timelock_validation_display(unsigned int value
 /* ---------------------- USER DEST/AMOUNT VALIDATION ----------------------- */
 
 void ui_menu_validation_display(unsigned int value __attribute__((unused))) {
-    add_amount(amountTitle, true);
-    add_address();
+    if (!add_amount(amountTitle, true) || !add_address()) {
+        return;
+    }
     ui_menu_validation_action_confirm();
 }
 
 void ui_menu_validation_display_last(unsigned int value
                                      __attribute__((unused))) {
-    add_amount(amountTitle, true);
-    add_address();
+    if (!add_amount(amountTitle, true) || !add_address()) {
+        return;
+    }
     start_signature();
 }
 /* ---------------------------- PUBLIC ADDRESS UX ----------------------------

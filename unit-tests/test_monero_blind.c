@@ -162,8 +162,58 @@ static void test_long_amount_rejects_a_short_value_buffer(void) {
     TEST_ASSERT_NOT_EQUAL(0, err);
 }
 
+/* Hs of the spend key is the view key, and the long branch returns
+ * k - Hs(AKout). The io layer already refuses a handle of the spend key, so no
+ * APDU reaches this; it is the second line. The stub hash gives 0x33 bytes. */
+static void test_long_unblind_refuses_a_key_hashing_to_the_view_key(void) {
+    unsigned char v[32] = {0};
+
+    memset(G_monero_vstate.a, 0x33, sizeof(G_monero_vstate.a));
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA,
+                          monero_unblind(v, k, akout, 0, sizeof(v), sizeof(k),
+                                         sizeof(akout)));
+}
+
+/* Control: any other view key, the long branch still unblinds. */
+static void test_long_unblind_still_works_for_other_keys(void) {
+    unsigned char v[32] = {0};
+
+    memset(G_monero_vstate.a, 0x44, sizeof(G_monero_vstate.a));
+    TEST_ASSERT_EQUAL_INT(0, monero_unblind(v, k, akout, 0, sizeof(v),
+                                            sizeof(k), sizeof(akout)));
+}
+
+/* The short branch never hashes the key to a scalar, so it is not refused. */
+static void test_short_unblind_is_not_affected(void) {
+    unsigned char v[32] = {0};
+
+    memset(G_monero_vstate.a, 0x33, sizeof(G_monero_vstate.a));
+    TEST_ASSERT_EQUAL_INT(0, monero_unblind(v, k, akout, SHORT_AMOUNT,
+                                            sizeof(v), sizeof(k),
+                                            sizeof(akout)));
+}
+
+/* The same guard in INS_BLIND: refused before anything goes in the reply. */
+static void test_long_blind_refuses_a_key_hashing_to_the_view_key(void) {
+    memset(G_monero_vstate.a, 0x33, sizeof(G_monero_vstate.a));
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA, monero_apdu_blind());
+    TEST_ASSERT_EQUAL_UINT(0, stub_blind_inserted());
+}
+
+/* Control: any other view key, INS_BLIND returns the blinded value and mask. */
+static void test_long_blind_still_works_for_other_keys(void) {
+    memset(G_monero_vstate.a, 0x44, sizeof(G_monero_vstate.a));
+    TEST_ASSERT_EQUAL_INT(SW_OK, monero_apdu_blind());
+    TEST_ASSERT_EQUAL_UINT(64, stub_blind_inserted());
+}
+
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_long_unblind_refuses_a_key_hashing_to_the_view_key);
+    RUN_TEST(test_long_unblind_still_works_for_other_keys);
+    RUN_TEST(test_short_unblind_is_not_affected);
+    RUN_TEST(test_long_blind_refuses_a_key_hashing_to_the_view_key);
+    RUN_TEST(test_long_blind_still_works_for_other_keys);
     RUN_TEST(test_short_amount_rejects_a_short_value_buffer);
     RUN_TEST(test_short_amount_accepts_a_full_value_buffer);
     RUN_TEST(test_rejects_a_null_value_buffer);

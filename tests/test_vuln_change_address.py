@@ -598,8 +598,9 @@ def _compute_subaddress_keys(major: int, minor: int):
 
 def _record_index(monero: MoneroCmd, fake_view_key: bytes, major: int, minor: int) -> None:
     """
-    Send INS_GET_SUBADDRESS_SECRET_KEY with the given (major, minor) index so
-    the device records it in tx_change_major/minor_indices.  Return value is
+    Send INS_GET_SUBADDRESS_SECRET_KEY with the given (major, minor) index, as
+    the wallet does for an input on that subaddress. The device records the
+    major in tx_input_majors when it is non-zero. Return value is
     discarded — we only care that the recording side-effect happens.
     """
     idx = major.to_bytes(4, "little") + minor.to_bytes(4, "little")
@@ -721,12 +722,13 @@ def _drive_change_through_prehash(monero, backend, navigator, test_name,
 @pytest.mark.incremental
 class TestSubaddressChangeDirect:
     """
-    Recording an index no longer makes it a change address.
+    Recording an index does not make that exact subaddress a change address.
 
     The device used to keep every (major, minor) the host asked about during a
     real tx and accept that exact subaddress as change. Nothing bound those
     indices to an input being spent, so the host chose the destination. It is
-    gone: only account roots (M, 0) are accepted, re-derived on the device.
+    gone: only the root (M, 0) of a recorded account is accepted, re-derived on
+    the device.
 
     No client loses anything: a wallet only flags an output as change when it
     equals its own change address, and that is always the root of the account
@@ -813,8 +815,8 @@ class TestSubaddressChangeAccountRoot:
                                    backend: BackendInterface,
                                    navigator: Navigator,
                                    test_name: str):
-        # Record (1, 3) but send change to the root (1, 0): the device
-        # re-derives the root, so the recording is irrelevant.
+        # An input on (1, 3) makes account 1 the change account; the device
+        # re-derives its root (1, 0) and accepts change there.
         sw = _drive_change_through_prehash(
             monero, backend, navigator, test_name,
             chg_view=None, chg_spend=None, is_subaddress=True,
@@ -829,10 +831,15 @@ class TestSubaddressChangeAccountRoot:
 # TestChangeAccountDisplayed — a non-primary change account is shown to the user.
 # Change to account 1 must render "Change account 1" on the review, so a host
 # can't hide change in an undisclosed account.
-# NBGL-only: the text renders on one page (the Nano bold title scrolls).
+# NBGL-only: Nano shows the title in TestChangeToInputAccountAccepted's snapshot.
 # ---------------------------------------------------------------------------
 @pytest.mark.incremental
 class TestChangeAccountDisplayed:
+    # The input's (major, minor), the change subaddress, and a suffix that keeps
+    # a subclass's snapshots apart, since the snapshot is named after the test.
+    INPUT = (1, 0)
+    CHANGE = (1, 0)
+    SNAPSHOT = ""
 
     @staticmethod
     @pytest.fixture(autouse=True, scope="class")
@@ -867,11 +874,10 @@ class TestChangeAccountDisplayed:
         state["_tx_priv_key"] = _tx_priv_key
         state["fvk"] = fvk
 
-    @staticmethod
-    def test_gen_txout_keys(monero: MoneroCmd, state):
-        # Whitelist account 1 (device records (1,0) as an allowed change dest).
-        _record_index(monero, state["fvk"], major=1, minor=0)
-        A_chg, B_chg = _compute_subaddress_keys(major=1, minor=0)
+    def test_gen_txout_keys(self, monero: MoneroCmd, state):
+        # Derive the input's key so the device records its account.
+        _record_index(monero, state["fvk"], *self.INPUT)
+        A_chg, B_chg = _compute_subaddress_keys(*self.CHANGE)
         rv = [_USER.public_view_key, A_chg]
         rs = [_USER.public_spend_key, B_chg]
         is_change = [False, True]
@@ -914,12 +920,12 @@ class TestChangeAccountDisplayed:
             state["blinded_mask"][i].append(bm)
             state["blinded_amount"][i].append(ba)
 
-    @staticmethod
     def test_validate_shows_change_account(
-        monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
-        device, test_name: str, state,
+        self, monero: MoneroCmd, backend: BackendInterface,
+        navigator: Navigator, device, test_name: str, state,
     ):
-        A_chg, B_chg = _compute_subaddress_keys(major=1, minor=0)
+        test_name += self.SNAPSHOT
+        A_chg, B_chg = _compute_subaddress_keys(*self.CHANGE)
         monero.validate_prehash_init(test_name, device, navigator, 1, 0, _FEE)
 
         # output 0: legitimate destination (amount + address), no navigation
@@ -932,10 +938,10 @@ class TestChangeAccountDisplayed:
             is_last=False, do_navigation=False,
         )
 
-        # output 1: change to subaddress account 1 (last). navigate_and_compare
+        # output 1: change to the account root (last). navigate_and_compare
         # swipes through the review and screenshots each page; the golden snapshot
-        # for the change page captures the "Change account 1" title.
-        # Review pages: Fee, Amount(out0), Destination(out0), "Change account 1"
+        # for the change page captures the "Change account N" title.
+        # Review pages: Fee, Amount(out0), Destination(out0), "Change account N"
         # (out1) + Hold-to-sign = 5 pages -> 3 swipes (N-1) before TAP + CONFIRM.
         monero.validate_prehash_update(
             backend, test_name, navigator,
@@ -962,136 +968,24 @@ class TestChangeAccountDisplayed:
         monero.close_tx()
 
 
-# ---------------------------------------------------------------------------
-# TestNonPrimaryChangeRealWalletFlow — the real-wallet flow that used to crash.
-#
-# monero_check_change_address only accepted a non-primary change (account_N, 0) if
-# that index was recorded earlier in the same tx via INS_GET_SUBADDRESS_SECRET_KEY
-# (0x4C). But a real wallet never issues 0x4C while signing -- change comes from its
-# cached subaddress table (wallet2.cpp: change_dts.addr =
-# get_subaddress({subaddr_account, 0})). So for any user on a non-zero account the
-# whitelist was empty and gen_txout_keys returned SW_SECURITY_CHANGE_ADDRESS,
-# killing the app. Account-0 users were fine (change == primary). That is what the
-# account lookahead fixed, and the host-populated whitelist has since been removed
-# entirely -- the _record_index() calls left in this file now only show that
-# recording an index buys the host nothing.
-#
-# This test omits _record_index to mirror the real wallet, and asserts the change
-# is accepted.
-# ---------------------------------------------------------------------------
 @pytest.mark.incremental
-class TestNonPrimaryChangeRealWalletFlow:
-
-    @staticmethod
-    @pytest.fixture(autouse=True, scope="class")
-    def state():
-        return {"tx_pub_key": None, "_tx_priv_key": None, "fvk": None}
-
-    @staticmethod
-    def test_reset_npc(monero: MoneroCmd):
-        monero.reset_and_get_version(monero_client_version=b"0.18")
-
-    @staticmethod
-    def test_set_sig_npc(monero: MoneroCmd):
-        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-
-    @staticmethod
-    def test_open_tx_npc(monero: MoneroCmd, state):
-        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
-        state["tx_pub_key"] = tx_pub_key
-        state["_tx_priv_key"] = _tx_priv_key
-        state["fvk"] = fvk
-
-    @staticmethod
-    def test_destination_output_ok_npc(monero: MoneroCmd, state):
-        """Output 0 — the real destination to the primary address — is fine."""
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=_USER.public_view_key,
-            dst_pub_spend_key=_USER.public_spend_key,
-            output_index=0,
-            is_change_addr=False,
-            is_subaddress=False,
-        )
-
-    @staticmethod
-    def test_nonprimary_change_accepted_npc(monero: MoneroCmd, state):
-        """
-        Output 1 — legitimate change to the user's OWN account 1 root
-        (A_{1,0}, B_{1,0}), exactly as a wallet operating from account 1 routes
-        it. No INS 0x4C was issued (real wallets don't), so the recorded-index
-        whitelist is empty. Before the fix this returned SW_SECURITY_CHANGE_ADDRESS
-        (0x691C) and the app exited to the dashboard ("Preparing TX" crash).
-
-        After the fix, monero_check_change_address re-derives the account roots
-        (M, 0) up to the wallet lookahead and recognises account 1 as the user's
-        own, so gen_txout_keys succeeds (no exception).
-        """
-        A_chg, B_chg = _compute_subaddress_keys(major=1, minor=0)
-
-        # Must not raise: change to the user's own account 1 is now accepted
-        # without any prior INS 0x4C recording.
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=A_chg,
-            dst_pub_spend_key=B_chg,
-            output_index=1,
-            is_change_addr=True,
-            is_subaddress=True,
-        )
+class TestHighChangeAccountDisplayed(TestChangeAccountDisplayed):
+    """
+    The same review for a wallet spending from account 267. An account past the
+    wallet's default lookahead of 50 is accepted only because an input came
+    from it, and a host can name one the wallet never scans, so the title is
+    the only thing that tells the user where the change goes.
+    """
+    INPUT = (267, 5)
+    CHANGE = (267, 0)
+    SNAPSHOT = "_account_267"
 
 
 # ---------------------------------------------------------------------------
-# TestPrimaryChangeRealWalletFlow — control: the SAME real-wallet flow (no
-# INS 0x4C) succeeds when the active account is 0, because change == primary
-# address. This is why only account != 0 users are affected by the crash.
-# ---------------------------------------------------------------------------
-@pytest.mark.incremental
-class TestPrimaryChangeRealWalletFlow:
-
-    @staticmethod
-    @pytest.fixture(autouse=True, scope="class")
-    def state():
-        return {"tx_pub_key": None, "_tx_priv_key": None, "fvk": None}
-
-    @staticmethod
-    def test_reset_pc(monero: MoneroCmd):
-        monero.reset_and_get_version(monero_client_version=b"0.18")
-
-    @staticmethod
-    def test_set_sig_pc(monero: MoneroCmd):
-        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-
-    @staticmethod
-    def test_open_tx_pc(monero: MoneroCmd, state):
-        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
-        state["tx_pub_key"] = tx_pub_key
-        state["_tx_priv_key"] = _tx_priv_key
-        state["fvk"] = fvk
-
-    @staticmethod
-    def test_primary_change_accepted_pc(monero: MoneroCmd, state):
-        """Change to the primary address (account 0) is accepted, no recording."""
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=_USER.public_view_key,
-            dst_pub_spend_key=_USER.public_spend_key,
-            output_index=0,
-            is_change_addr=True,
-            is_subaddress=False,
-        )
-
-
-# ---------------------------------------------------------------------------
-# Boundary tests for the bounded-re-derivation fix (monero_check_change_address,
-# CHANGE_ACCOUNT_LOOKAHEAD = 50). All mirror the real-wallet flow: NO INS 0x4C
-# recording. Each rejecting case is in its own class because a rejection calls
-# send_error_and_kill_app() -> app_exit(): once the app exits, no further APDU
-# can be exchanged in the same speculos session, so the reject must be the
-# class's last device interaction.
+# Refusal edges. All mirror the real-wallet flow. Each rejecting case is in
+# its own class because a rejection calls send_error_and_kill_app() ->
+# app_exit(): once the app exits, no further APDU can be exchanged in the same
+# speculos session, so the reject must be the class's last device interaction.
 # ---------------------------------------------------------------------------
 @pytest.mark.incremental
 class TestChangeNonRootSubaddrRejected:
@@ -1120,69 +1014,84 @@ class TestChangeNonRootSubaddrRejected:
 
 
 @pytest.mark.incremental
-class TestChangeAccountAtBoundRejected:
+class TestChangeAccountWithoutInputRejected:
     """
-    Edge 2 (the cliff): change to account (50, 0) — exactly at
-    CHANGE_ACCOUNT_LOOKAHEAD, just outside the re-derived range [1, 50) — is
-    rejected. Documents the residual blast radius (users with 50+ accounts) as
-    a deliberate limit. Clean removal needs a protocol-level account hint at
-    open_tx (follow-up).
+    Change to account 1's root (1, 0) is refused when no input of the tx comes
+    from account 1. A wallet only sends change back to the account it spends
+    from, so any other account root is not change.
     """
 
     @staticmethod
-    def test_account_at_bound_rejected(
+    def test_account_without_input_rejected(
         monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
         test_name: str):
-        # Non-zero change to account (50, 0), exactly at the lookahead bound:
-        # rejected at prehash_update.
-        A_chg, B_chg = _compute_subaddress_keys(major=50, minor=0)
         sw = _drive_change_through_prehash(
             monero, backend, navigator, test_name,
-            chg_view=A_chg, chg_spend=B_chg, is_subaddress=True,
-            amount=_AMOUNT_CHANGE, is_last=False)
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False, subaddr=(1, 0))
         assert sw == 0x691C, (
-            f"Expected SW_SECURITY_CHANGE_ADDRESS (0x691C) for account >= bound, "
-            f"got {hex(sw)}"
-        )
+            f"change to an account no input comes from must be refused, "
+            f"got {hex(sw)}")
 
-
-@pytest.mark.incremental
-class TestChangeAccountLastInBoundAccepted:
+# ---------------------------------------------------------------------------
+# Change to the root of an input's account, any number (issue #190)
+# ---------------------------------------------------------------------------
+class TestChangeToInputAccountAccepted:
     """
-    Other side of the cliff (acceptance does not exit the app): account (49, 0)
-    — the highest index still inside [1, 50) — IS accepted. Confirms the bound
-    is exactly 49 inclusive / 50 exclusive.
+    A wallet with 267 accounts spends from account 267: the input's key is
+    derived for (267, m), and wallet2 sends change to (267, 0). The device
+    records the input's account and accepts that root, whatever its number.
     """
 
     @staticmethod
-    @pytest.fixture(autouse=True, scope="class")
-    def state():
-        return {"tx_pub_key": None, "_tx_priv_key": None, "fvk": None}
+    def test_input_account_root_accepted(
+        monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
+        test_name: str):
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(267, 5), subaddr=(267, 0), approve=True)
+        assert sw == 0x9000, (
+            f"the root of the input's account (267, 0) must be accepted as "
+            f"change, got {hex(sw)}")
+
+
+class TestChangeToOtherHighAccountRejected:
+    """
+    Recording account 267 does not open other accounts:
+    change to (268, 0) is still refused.
+    """
 
     @staticmethod
-    def test_reset_lb(monero: MoneroCmd):
-        monero.reset_and_get_version(monero_client_version=b"0.18")
+    def test_other_account_root_rejected(
+        monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
+        test_name: str):
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(267, 5), subaddr=(268, 0))
+        assert sw == 0x691C, (
+            f"change to an account no input comes from must be refused, "
+            f"got {hex(sw)}")
+
+
+class TestChangeToInputAccountNonRootRejected:
+    """
+    Only the root is accepted: change to the input's own subaddress (267, 5)
+    is still refused.
+    """
 
     @staticmethod
-    def test_set_sig_lb(monero: MoneroCmd):
-        assert monero.set_signature_mode(sig_type=SigType.REAL) == SigType.REAL
-
-    @staticmethod
-    def test_open_tx_lb(monero: MoneroCmd, state):
-        tx_pub_key, _tx_priv_key, fvk, _ = monero.open_tx()
-        state["tx_pub_key"] = tx_pub_key
-        state["_tx_priv_key"] = _tx_priv_key
-        state["fvk"] = fvk
-
-    @staticmethod
-    def test_last_in_bound_accepted(monero: MoneroCmd, state):
-        A_chg, B_chg = _compute_subaddress_keys(major=49, minor=0)
-        monero.gen_txout_keys(
-            _tx_priv_key=state["_tx_priv_key"],
-            tx_pub_key=state["tx_pub_key"],
-            dst_pub_view_key=A_chg,
-            dst_pub_spend_key=B_chg,
-            output_index=0,
-            is_change_addr=True,
-            is_subaddress=True,
-        )
+    def test_input_subaddress_rejected(
+        monero: MoneroCmd, backend: BackendInterface, navigator: Navigator,
+        test_name: str):
+        sw = _drive_change_through_prehash(
+            monero, backend, navigator, test_name,
+            chg_view=None, chg_spend=None, is_subaddress=True,
+            amount=_AMOUNT_CHANGE, is_last=False,
+            record=(267, 5), subaddr=(267, 5))
+        assert sw == 0x691C, (
+            f"change to a non-root subaddress must be refused even when an "
+            f"input comes from it, got {hex(sw)}")

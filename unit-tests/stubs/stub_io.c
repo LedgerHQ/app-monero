@@ -203,3 +203,15 @@ unsigned int monero_decode_varint(const unsigned char *varint, size_t max_len,
     *len = 1;
     return 0;
 }
+
+/* The SDK's constant-time compare: zero when equal. */
+char os_secure_memcmp(const void *src1, const void *src2, size_t length) {
+    const unsigned char *a = src1;
+    const unsigned char *b = src2;
+    unsigned char acc = 0;
+
+    for (size_t i = 0; i < length; i++) {
+        acc |= a[i] ^ b[i];
+    }
+    return acc;
+}
