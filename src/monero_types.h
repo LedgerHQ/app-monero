@@ -157,6 +157,13 @@ struct monero_v_state_s {
     unsigned char last_derive_secret_key[KEY_SIZE];
     unsigned char last_get_subaddress_secret_key[KEY_SIZE];
 
+    /* Non-zero accounts this tx spends from, seen through the inputs'
+     * subaddress key derivation: the change roots monero_check_change_address
+     * accepts besides the primary address. wallet2 spends from one account
+     * per tx; the extra slots are margin. Reset per tx. */
+    unsigned int tx_input_majors[4];
+    unsigned char tx_input_major_cnt;
+
     /* The single main tx public key the wallet uses for every output of this tx
      * (r.G, or r.D for a single subaddress destination). Recorded from the first
      * output and enforced on the rest, so the change can't be derived under a

@@ -56,6 +56,12 @@ int monero_apdu_blind() {
         if (err) {
             goto end;
         }
+        // Hs of the spend key is the view key, and k + Hs(AKout) goes back in
+        // clear.
+        if (os_secure_memcmp(AKout, G_monero_vstate.a, KEY_SIZE) == 0) {
+            err = SW_WRONG_DATA;
+            goto end;
+        }
 
         err = monero_addm(k, k, AKout, sizeof(k), sizeof(k), sizeof(AKout));
         if (err) {
@@ -123,6 +129,11 @@ int monero_unblind(unsigned char* v, unsigned char* k, unsigned char* AKout,
         error = monero_hash_to_scalar(AKout, AKout, AKout_len, AKout_len);
         if (error) {
             return error;
+        }
+        // Hs of the spend key is the view key, and k - Hs(AKout) goes back in
+        // clear.
+        if (os_secure_memcmp(AKout, G_monero_vstate.a, KEY_SIZE) == 0) {
+            return SW_WRONG_DATA;
         }
 
         error = monero_subm(k, k, AKout, k_len, k_len, AKout_len);

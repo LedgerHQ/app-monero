@@ -752,6 +752,30 @@ int monero_apdu_get_subaddress_spend_public_key(
     return SW_OK;
 }
 
+/* The wallet spends every input of a tx from one account and sends change to
+ * that account's root, so an input's account is the change candidate. Account
+ * 0's root is the primary address, checked directly. Only the major is kept:
+ * change to a non-root subaddress stays refused. */
+static void monero_record_input_account(const unsigned char* index) {
+    unsigned int major =
+        (unsigned int)index[0] | ((unsigned int)index[1] << 8) |
+        ((unsigned int)index[2] << 16) | ((unsigned int)index[3] << 24);
+
+    if (major == 0) {
+        return;
+    }
+    for (unsigned char i = 0; i < G_monero_vstate.tx_input_major_cnt; i++) {
+        if (G_monero_vstate.tx_input_majors[i] == major) {
+            return;
+        }
+    }
+    if (G_monero_vstate.tx_input_major_cnt <
+        ARRAYLEN(G_monero_vstate.tx_input_majors)) {
+        G_monero_vstate.tx_input_majors[G_monero_vstate.tx_input_major_cnt++] =
+            major;
+    }
+}
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -779,10 +803,49 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 
     memcpy(G_monero_vstate.last_get_subaddress_secret_key, sub_sec, KEY_SIZE);
 
+    if (G_monero_vstate.tx_in_progress &&
+        G_monero_vstate.tx_sig_mode == TRANSACTION_CREATE_REAL) {
+        monero_record_input_account(index);
+    }
+
     monero_io_insert_encrypt(sub_sec, KEY_SIZE, TYPE_SCALAR);
     explicit_bzero(sec, sizeof(sec));
     explicit_bzero(sub_sec, sizeof(sec));
     return SW_OK;
+}
+
+/* Sets *match when (Aout, Bout) is the root (M, 0) of account M. */
+static int monero_match_account_root(const unsigned char* Aout,
+                                     const unsigned char* Bout, unsigned int M,
+                                     bool* match) {
+    unsigned char C[KEY_SIZE];
+    unsigned char D[KEY_SIZE];
+    unsigned char index[8] = {0};
+    int err;
+
+    *match = false;
+    index[0] = (unsigned char)(M & 0xFF);
+    index[1] = (unsigned char)((M >> 8) & 0xFF);
+    index[2] = (unsigned char)((M >> 16) & 0xFF);
+    index[3] = (unsigned char)((M >> 24) & 0xFF);
+    /* Spend key first: it costs one base multiply, while the view key
+     * needs a second, variable-base one. Only derive that on a match. */
+    err = monero_get_subaddress_spend_public_key(D, index, KEY_SIZE,
+                                                 sizeof(index));
+    if (err) {
+        return err;
+    }
+    if (memcmp(Bout, D, KEY_SIZE) != 0) {
+        return 0;
+    }
+    /* C = a.D, the rest of monero_get_subaddress, on the D we just made. */
+    err = monero_ecmul_k(C, D, G_monero_vstate.a, KEY_SIZE, KEY_SIZE,
+                         sizeof(G_monero_vstate.a));
+    if (err) {
+        return err;
+    }
+    *match = (memcmp(Aout, C, KEY_SIZE) == 0);
+    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -791,9 +854,7 @@ int monero_apdu_get_subaddress_secret_key(/*const crypto::secret_key& sec, const
 int monero_check_change_address(const unsigned char* Aout,
                                 const unsigned char* Bout,
                                 unsigned int* out_major) {
-    unsigned char C[KEY_SIZE];
-    unsigned char D[KEY_SIZE];
-    unsigned char index[8] = {0};
+    bool match;
     int err;
 
     /* primary address (major=0, minor=0) */
@@ -805,42 +866,26 @@ int monero_check_change_address(const unsigned char* Aout,
         return 0;
     }
 
-    /* Account roots only, derived here rather than taken from the host: the
-     * wallet always sends change to the root of the account it spends from, so
-     * a non-root subaddress is never legitimate change. B can't be forged
-     * without the spend key, so substitution is still caught. The bound is the
-     * wallet's own default account lookahead. index keeps minor = 0 from its
-     * initialiser; only the major varies below. */
-#define CHANGE_ACCOUNT_LOOKAHEAD 50
-    for (unsigned int M = 1; M < CHANGE_ACCOUNT_LOOKAHEAD; M++) {
-        index[0] = (unsigned char)(M & 0xFF);
-        index[1] = (unsigned char)((M >> 8) & 0xFF);
-        index[2] = (unsigned char)((M >> 16) & 0xFF);
-        index[3] = (unsigned char)((M >> 24) & 0xFF);
-        /* Spend key first: it costs one base multiply, while the view key
-         * needs a second, variable-base one. Only derive that on a match. */
-        err = monero_get_subaddress_spend_public_key(D, index, KEY_SIZE,
-                                                     sizeof(index));
+    /* Otherwise only the root of an account this tx spends from, derived here
+     * rather than taken from the host: the wallet sends change back to the
+     * root of the account it spends from, and asks for each input's
+     * subaddress key first. B can't be forged without the spend key, so
+     * substitution is still caught. The host picks which accounts get
+     * recorded, but every root it can name is the user's own, and a non-zero
+     * account is shown on the review. */
+    for (unsigned char i = 0; i < G_monero_vstate.tx_input_major_cnt; i++) {
+        unsigned int M = G_monero_vstate.tx_input_majors[i];
+        err = monero_match_account_root(Aout, Bout, M, &match);
         if (err) {
             return err;
         }
-        if (memcmp(Bout, D, KEY_SIZE) != 0) {
-            continue;
-        }
-        /* C = a.D, the rest of monero_get_subaddress, on the D we just made. */
-        err = monero_ecmul_k(C, D, G_monero_vstate.a, KEY_SIZE, KEY_SIZE,
-                             sizeof(G_monero_vstate.a));
-        if (err) {
-            return err;
-        }
-        if (memcmp(Aout, C, KEY_SIZE) == 0) {
+        if (match) {
             if (out_major != NULL) {
                 *out_major = M;
             }
             return 0;
         }
     }
-#undef CHANGE_ACCOUNT_LOOKAHEAD
 
     return SW_SECURITY_CHANGE_ADDRESS;
 }

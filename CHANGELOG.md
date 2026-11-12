@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.5 - 2026-11-06
+
+- Different security and bug fixes
+- Allow change to accounts above 49
+
 ## 2.2.4 - 2026-09-18
 
 - Different security and bug fixes

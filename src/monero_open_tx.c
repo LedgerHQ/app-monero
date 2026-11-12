@@ -74,6 +74,7 @@ int monero_reset_tx(int reset_tx_cnt) {
     monero_prefix_outkeys_reset();
     G_monero_vstate.tx_in_progress = 0;
     G_monero_vstate.tx_output_cnt = 0;
+    G_monero_vstate.tx_input_major_cnt = 0;
     explicit_bzero(G_monero_vstate.tx_main_txkey,
                    sizeof(G_monero_vstate.tx_main_txkey));
     // No stage completed and no signing transcript yet. Only boundary for both.

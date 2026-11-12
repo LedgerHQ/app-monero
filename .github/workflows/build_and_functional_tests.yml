@@ -20,6 +20,11 @@ on:
         options:
           - 'Raise an error (default)'
           - 'Open a PR'
+      delete_obsolete_snapshots:
+        type: boolean
+        required: false
+        default: false
+        description: When opening a PR, also delete snapshots that are no longer generated (e.g. for removed/renamed tests). Only safe for a full-suite regeneration.
   push:
     branches:
       - master
@@ -42,3 +47,4 @@ jobs:
     with:
       download_app_binaries_artifact: "compiled_app_binaries"
       regenerate_snapshots: ${{ github.event_name == 'workflow_dispatch' && inputs.golden_run == 'Open a PR' }}
+      also_delete_snapshots: ${{ github.event_name == 'workflow_dispatch' && inputs.golden_run == 'Open a PR' && inputs.delete_obsolete_snapshots }}

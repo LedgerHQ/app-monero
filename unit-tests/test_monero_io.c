@@ -564,8 +564,36 @@ static void test_a_plain_handle_redeems_inside_a_transaction(void) {
     TEST_ASSERT_EQUAL_HEX8_ARRAY(PLAIN_A, out, 32);
 }
 
+/* The spend key reaches a command only through its placeholder. A real handle
+ * holding it is refused, and the plaintext does not stay in the caller's
+ * buffer. */
+static void test_a_handle_of_the_spend_key_is_refused(void) {
+    unsigned char handle[32];
+    unsigned char out[32];
+    unsigned char zero[32] = {0};
+
+    memcpy(G_monero_vstate.b, PLAIN_B, 32);
+    TEST_ASSERT_TRUE(mint(handle, PLAIN_B, INS_SECRET_SCAL_MUL_KEY, 0));
+    memset(out, 0xaa, sizeof(out));
+    TEST_ASSERT_EQUAL_INT(SW_WRONG_DATA, redeem(out, handle, INS_UNBLIND));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(zero, out, 32);
+}
+
+/* Control: with the spend key set, any other handle still redeems. */
+static void test_a_handle_of_another_scalar_still_redeems(void) {
+    unsigned char handle[32];
+    unsigned char out[32];
+
+    memcpy(G_monero_vstate.b, PLAIN_B, 32);
+    TEST_ASSERT_TRUE(mint(handle, PLAIN_A, INS_SECRET_SCAL_MUL_KEY, 0));
+    TEST_ASSERT_EQUAL_INT(0, redeem(out, handle, INS_UNBLIND));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(PLAIN_A, out, 32);
+}
+
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_a_handle_of_the_spend_key_is_refused);
+    RUN_TEST(test_a_handle_of_another_scalar_still_redeems);
     RUN_TEST(test_matching_length_is_accepted);
     RUN_TEST(test_empty_payload_is_accepted);
     RUN_TEST(test_declared_more_than_arrived_is_refused);
